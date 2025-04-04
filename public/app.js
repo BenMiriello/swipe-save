@@ -1,4 +1,3 @@
-// app.js
 document.addEventListener('DOMContentLoaded', () => {
   const mediaList = document.getElementById('mediaList');
   const API_URL = 'http://your-debian-ip:3000';
