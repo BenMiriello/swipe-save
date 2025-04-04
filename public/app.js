@@ -6,21 +6,6 @@ document.addEventListener('DOMContentLoaded', () => {
   let allFiles = [];
   let currentIndex = 0;
   
-  // Add instruction legend
-  const container = document.querySelector('.container');
-  const legend = document.createElement('div');
-  legend.className = 'legend';
-  legend.innerHTML = `
-    <h3>Swipe Actions:</h3>
-    <ul>
-      <li><span class="action-icon">←</span> Move to date folder</li>
-      <li><span class="action-icon">→</span> Copy to local backup + Move to date folder</li>
-      <li><span class="action-icon">↑</span> Super save (add * to filename)</li>
-      <li><span class="action-icon">↓</span> Move to deleted folder</li>
-    </ul>
-  `;
-  container.insertBefore(legend, mediaList.parentElement);
-  
   // Add controls
   const controls = document.createElement('div');
   controls.className = 'controls';
@@ -42,23 +27,29 @@ document.addEventListener('DOMContentLoaded', () => {
   undoButton.textContent = 'Undo';
   undoButton.addEventListener('click', undoLastAction);
   
-  // Add refresh button
-  const refreshButton = document.createElement('button');
-  refreshButton.className = 'btn btn-primary';
-  refreshButton.textContent = 'Refresh';
-  refreshButton.addEventListener('click', fetchMediaFiles);
-  
   controls.appendChild(prevButton);
   controls.appendChild(undoButton);
   controls.appendChild(nextButton);
-  controls.appendChild(refreshButton);
   
+  const container = document.querySelector('.container');
   container.appendChild(controls);
   
-  // Add image counter display
+  // Add image counter display with refresh button
+  const counterContainer = document.createElement('div');
+  counterContainer.className = 'counter-container';
+  
   const imageCounter = document.createElement('div');
   imageCounter.className = 'image-counter';
-  container.appendChild(imageCounter);
+  
+  const refreshIcon = document.createElement('button');
+  refreshIcon.className = 'refresh-icon';
+  refreshIcon.innerHTML = '&#x21bb;'; // Refresh icon
+  refreshIcon.title = 'Refresh';
+  refreshIcon.addEventListener('click', fetchMediaFiles);
+  
+  counterContainer.appendChild(imageCounter);
+  counterContainer.appendChild(refreshIcon);
+  container.appendChild(counterContainer);
   
   // Function to update the image counter display
   function updateImageCounter() {
@@ -85,6 +76,96 @@ document.addEventListener('DOMContentLoaded', () => {
     displayCurrentImage();
   }
   
+  // Perform action on current image
+  async function performAction(action) {
+    if (allFiles.length === 0) return;
+    
+    const file = allFiles[currentIndex];
+    const filename = file.name;
+    const mediaItem = document.querySelector('.media-item');
+    
+    if (!mediaItem) return;
+    
+    // Visual feedback
+    mediaItem.classList.add(`swipe-${action}`);
+    
+    // Update instruction text
+    const instruction = mediaItem.querySelector('.swipe-instruction');
+    if (instruction) {
+      switch(action) {
+        case 'left': instruction.textContent = 'Moving to date folder...'; break;
+        case 'right': instruction.textContent = 'Copying to local backup...'; break;
+        case 'up': instruction.textContent = 'Super saving...'; break;
+        case 'down': instruction.textContent = 'Moving to deleted...'; break;
+      }
+      instruction.style.opacity = 1;
+    }
+    
+    try {
+      const response = await fetch(`${API_URL}/api/files/action`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ filename, action })
+      });
+      
+      if (response.ok) {
+        // Wait for animation to complete
+        setTimeout(() => {
+          // Remove current file from array
+          allFiles.splice(currentIndex, 1);
+          
+          // If there are no more files, show empty state
+          if (allFiles.length === 0) {
+            mediaList.innerHTML = '<div class="no-media">No media files found</div>';
+            updateImageCounter();
+            return;
+          }
+          
+          // If we're at the end of the array, go back one
+          if (currentIndex >= allFiles.length) {
+            currentIndex = allFiles.length - 1;
+          }
+          
+          // Display the next image
+          displayCurrentImage();
+        }, 500);
+      } else {
+        // Handle error
+        const errorData = await response.json();
+        console.error('Action failed:', errorData.error);
+        mediaItem.classList.remove(`swipe-${action}`);
+        if (instruction) instruction.style.opacity = 0;
+      }
+    } catch (error) {
+      console.error('Error performing action:', error);
+      mediaItem.classList.remove(`swipe-${action}`);
+      if (instruction) instruction.style.opacity = 0;
+    }
+  }
+  
+  // Handle keydown events
+  function handleKeyDown(e) {
+    switch(e.key) {
+      case 'ArrowLeft':
+        performAction('left');
+        break;
+      case 'ArrowRight':
+        performAction('right');
+        break;
+      case 'ArrowUp':
+        performAction('up');
+        break;
+      case 'ArrowDown':
+        performAction('down');
+        break;
+    }
+  }
+  
+  // Add keyboard event listener
+  document.addEventListener('keydown', handleKeyDown);
+  
   // Display the current image
   function displayCurrentImage() {
     if (allFiles.length === 0) {
@@ -100,6 +181,7 @@ document.addEventListener('DOMContentLoaded', () => {
     mediaList.appendChild(mediaItem);
     
     setupSwipeHandlers();
+    setupTapHandlers();
     updateImageCounter();
   }
   
@@ -164,6 +246,14 @@ document.addEventListener('DOMContentLoaded', () => {
       mediaContent = document.createElement('img');
       mediaContent.src = `${API_URL}${file.path}`;
       mediaContent.alt = file.name;
+      // Check orientation after loading
+      mediaContent.onload = function() {
+        if (this.naturalHeight > this.naturalWidth) {
+          item.classList.add('portrait');
+        } else {
+          item.classList.add('landscape');
+        }
+      };
     } else {
       mediaContent = document.createElement('video');
       mediaContent.src = `${API_URL}${file.path}`;
@@ -171,6 +261,40 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     
     mediaContent.className = 'media-content';
+    
+    // Create tap zones
+    const tapZones = document.createElement('div');
+    tapZones.className = 'tap-zones';
+    
+    const leftZone = document.createElement('div');
+    leftZone.className = 'tap-zone left-zone';
+    leftZone.dataset.action = 'left';
+    
+    const middleZone = document.createElement('div');
+    middleZone.className = 'tap-zone middle-zone';
+    
+    const topMiddleZone = document.createElement('div');
+    topMiddleZone.className = 'tap-zone top-middle-zone';
+    topMiddleZone.dataset.action = 'up';
+    
+    const centerZone = document.createElement('div');
+    centerZone.className = 'tap-zone center-zone';
+    
+    const bottomMiddleZone = document.createElement('div');
+    bottomMiddleZone.className = 'tap-zone bottom-middle-zone';
+    bottomMiddleZone.dataset.action = 'down';
+    
+    middleZone.appendChild(topMiddleZone);
+    middleZone.appendChild(centerZone);
+    middleZone.appendChild(bottomMiddleZone);
+    
+    const rightZone = document.createElement('div');
+    rightZone.className = 'tap-zone right-zone';
+    rightZone.dataset.action = 'right';
+    
+    tapZones.appendChild(leftZone);
+    tapZones.appendChild(middleZone);
+    tapZones.appendChild(rightZone);
     
     const swipeInstruction = document.createElement('div');
     swipeInstruction.className = 'swipe-instruction';
@@ -184,10 +308,54 @@ document.addEventListener('DOMContentLoaded', () => {
     
     info.appendChild(name);
     item.appendChild(mediaContent);
+    item.appendChild(tapZones);
     item.appendChild(swipeInstruction);
     item.appendChild(info);
     
     return item;
+  }
+  
+  // Setup tap handlers
+  function setupTapHandlers() {
+    const tapZones = document.querySelectorAll('.tap-zone');
+    
+    tapZones.forEach(zone => {
+      if (zone.dataset.action) {
+        // Show action label on tap
+        zone.addEventListener('click', () => {
+          // Show action label
+          const actionName = zone.dataset.action;
+          const actionLabel = document.createElement('div');
+          actionLabel.className = 'action-label';
+          
+          switch(actionName) {
+            case 'left': actionLabel.textContent = 'Date folder'; break;
+            case 'right': actionLabel.textContent = 'Local backup'; break;
+            case 'up': actionLabel.textContent = 'Super save'; break;
+            case 'down': actionLabel.textContent = 'Delete'; break;
+          }
+          
+          document.body.appendChild(actionLabel);
+          
+          // Position the label
+          const rect = zone.getBoundingClientRect();
+          actionLabel.style.top = rect.top + rect.height / 2 + 'px';
+          actionLabel.style.left = rect.left + rect.width / 2 + 'px';
+          
+          // Animate and remove after 1 second
+          setTimeout(() => {
+            actionLabel.classList.add('fade-out');
+            setTimeout(() => {
+              if (actionLabel.parentNode) {
+                actionLabel.parentNode.removeChild(actionLabel);
+              }
+            }, 300);
+          }, 1000);
+          
+          performAction(actionName);
+        });
+      }
+    });
   }
   
   // Setup swipe handlers
@@ -200,8 +368,7 @@ document.addEventListener('DOMContentLoaded', () => {
       // Enable all directions
       hammer.get('swipe').set({ direction: Hammer.DIRECTION_ALL });
       
-      hammer.on('swipeleft swiperight swipeup swipedown', async (e) => {
-        const filename = item.dataset.filename;
+      hammer.on('swipeleft swiperight swipeup swipedown', (e) => {
         let action;
         
         switch(e.type) {
@@ -211,61 +378,7 @@ document.addEventListener('DOMContentLoaded', () => {
           case 'swipedown': action = 'down'; break;
         }
         
-        // Visual feedback
-        item.classList.add(`swipe-${action}`);
-        
-        // Update instruction text
-        const instruction = item.querySelector('.swipe-instruction');
-        switch(action) {
-          case 'left': instruction.textContent = 'Moving to date folder...'; break;
-          case 'right': instruction.textContent = 'Copying to local backup...'; break;
-          case 'up': instruction.textContent = 'Super saving...'; break;
-          case 'down': instruction.textContent = 'Moving to deleted...'; break;
-        }
-        instruction.style.opacity = 1;
-        
-        try {
-          const response = await fetch(`${API_URL}/api/files/action`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({ filename, action })
-          });
-          
-          if (response.ok) {
-            // Wait for animation to complete
-            setTimeout(() => {
-              // Remove current file from array
-              allFiles.splice(currentIndex, 1);
-              
-              // If there are no more files, show empty state
-              if (allFiles.length === 0) {
-                mediaList.innerHTML = '<div class="no-media">No media files found</div>';
-                updateImageCounter();
-                return;
-              }
-              
-              // If we're at the end of the array, go back one
-              if (currentIndex >= allFiles.length) {
-                currentIndex = allFiles.length - 1;
-              }
-              
-              // Display the next image
-              displayCurrentImage();
-            }, 500);
-          } else {
-            // Handle error
-            const errorData = await response.json();
-            console.error('Action failed:', errorData.error);
-            item.classList.remove(`swipe-${action}`);
-            instruction.style.opacity = 0;
-          }
-        } catch (error) {
-          console.error('Error performing action:', error);
-          item.classList.remove(`swipe-${action}`);
-          instruction.style.opacity = 0;
-        }
+        performAction(action);
       });
       
       // Add visual feedback during swipe
