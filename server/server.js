@@ -9,9 +9,12 @@ app.use(cors());
 app.use(express.json());
 
 // Config
-const OUTPUT_DIR = path.resolve(process.env.HOME, 'Documents/ComfyUI/outputs');
+const OUTPUT_DIR = path.resolve(process.env.HOME, 'Documents/ComfyUI/output');
 const LOCAL_COPY_DIR = path.resolve(process.env.HOME, 'Documents/copies_from_swipe-save');
 const DELETED_DIR = path.join(OUTPUT_DIR, 'deleted');
+
+console.log('OUTPUT_DIR path:', OUTPUT_DIR);
+console.log('OUTPUT_DIR exists:', fs.existsSync(OUTPUT_DIR));
 
 // Create needed directories if they don't exist
 if (!fs.existsSync(DELETED_DIR)) {
@@ -22,8 +25,20 @@ if (!fs.existsSync(LOCAL_COPY_DIR)) {
   fs.mkdirSync(LOCAL_COPY_DIR, { recursive: true });
 }
 
-// Serve static files from the outputs directory
-app.use('/media', express.static(OUTPUT_DIR));
+// Serve static files from the output directory
+app.use('/media', express.static(OUTPUT_DIR, {
+  dotfiles: 'allow',
+  setHeaders: (res, path) => {
+    // Set proper content type based on file extension
+    if (path.endsWith('.png')) {
+      res.set('Content-Type', 'image/png');
+    } else if (path.endsWith('.mp4')) {
+      res.set('Content-Type', 'video/mp4');
+    } else if (path.endsWith('.webm')) {
+      res.set('Content-Type', 'video/webm');
+    }
+  }
+}));
 
 // Serve the frontend files from the public directory
 // Note the '..' to go up one directory level
@@ -45,24 +60,79 @@ app.get('/', (req, res) => {
 // Get list of media files
 app.get('/api/files', (req, res) => {
   const mediaFiles = [];
-  
-  fs.readdirSync(OUTPUT_DIR, { withFileTypes: true })
-    .filter(entry => !entry.isDirectory()) // Skip directories
-    .filter(file => /\.(png|mp4|webm)$/i.test(file.name)) // Only media files
-    .forEach(file => {
-      const stats = fs.statSync(path.join(OUTPUT_DIR, file.name));
+
+  console.log('Looking for media files in:', OUTPUT_DIR);
+
+  try {
+    const entries = fs.readdirSync(OUTPUT_DIR, { withFileTypes: true });
+    console.log('Found entries in directory:', entries.length);
+
+    const mediaEntries = entries
+      .filter(entry => !entry.isDirectory()) // Skip directories
+      .filter(file => /\.(png|mp4|webm)$/i.test(file.name)) // Only media files
+      .filter(file => !file.name.startsWith('._')); // Skip dot-underscore files
+
+    console.log('Found media files:', mediaEntries.length);
+    console.log('Media filenames:', mediaEntries.map(entry => entry.name));
+
+    mediaEntries.forEach(file => {
+      const filePath = path.join(OUTPUT_DIR, file.name);
+      const stats = fs.statSync(filePath);
+
+      // Use encodeURIComponent to handle special characters in filenames
+      const encodedFilename = encodeURIComponent(file.name);
+
       mediaFiles.push({
         name: file.name,
-        path: `/media/${file.name}`,
+        path: `/media/${encodedFilename}`,
         size: stats.size,
         date: stats.mtime
       });
     });
-  
-  // Sort by most recent first
-  mediaFiles.sort((a, b) => b.date - a.date);
+
+    // Sort by most recent first
+    mediaFiles.sort((a, b) => b.date - a.date);
+
+    console.log('Returning media files:', mediaFiles.length);
+  } catch (error) {
+    console.error('Error reading directory:', error);
+  }
   
   res.json(mediaFiles);
+});
+
+// In server.js, add these headers to the media file handler
+app.get('/media/:filename', (req, res) => {
+  try {
+    const filename = decodeURIComponent(req.params.filename);
+    const filePath = path.join(OUTPUT_DIR, filename);
+    
+    console.log('Requested media file:', filename);
+    
+    if (fs.existsSync(filePath)) {
+      // Set headers to prevent caching issues
+      res.set('Access-Control-Allow-Origin', '*');
+      res.set('Cache-Control', 'no-store');
+      
+      // Set content type based on file extension
+      if (filename.toLowerCase().endsWith('.png')) {
+        res.set('Content-Type', 'image/png');
+      } else if (filename.toLowerCase().endsWith('.mp4')) {
+        res.set('Content-Type', 'video/mp4');
+      } else if (filename.toLowerCase().endsWith('.webm')) {
+        res.set('Content-Type', 'video/webm');
+      }
+      
+      // Stream the file
+      fs.createReadStream(filePath).pipe(res);
+    } else {
+      console.log('File not found:', filePath);
+      res.status(404).send('File not found');
+    }
+  } catch (error) {
+    console.error('Error serving file:', error);
+    res.status(500).send('Server error');
+  }
 });
 
 // Handle file operations (swipe actions)
