@@ -26,7 +26,21 @@ if (!fs.existsSync(LOCAL_COPY_DIR)) {
 app.use('/media', express.static(OUTPUT_DIR));
 
 // Serve the frontend files from the public directory
-app.use(express.static(path.join(__dirname, 'public')));
+// Note the '..' to go up one directory level
+app.use(express.static(path.join(__dirname, '..', 'public')));
+
+// Add a route handler for the root path specifically
+app.get('/', (req, res) => {
+  const indexPath = path.join(__dirname, '..', 'public', 'index.html');
+  console.log('Trying to serve index from:', indexPath);
+  console.log('File exists?', fs.existsSync(indexPath));
+  
+  if (fs.existsSync(indexPath)) {
+    res.sendFile(indexPath);
+  } else {
+    res.status(404).send('Index file not found. Check server configuration.');
+  }
+});
 
 // Get list of media files
 app.get('/api/files', (req, res) => {
