@@ -11,7 +11,7 @@ document.addEventListener('DOMContentLoaded', () => {
     <h3>Swipe Actions:</h3>
     <ul>
       <li><span class="action-icon">←</span> Move to date folder</li>
-      <li><span class="action-icon">→</span> Copy to Mac + Move to date folder</li>
+      <li><span class="action-icon">→</span> Copy to local backup + Move to date folder</li>
       <li><span class="action-icon">↑</span> Super save (add * to filename)</li>
       <li><span class="action-icon">↓</span> Move to deleted folder</li>
     </ul>
