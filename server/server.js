@@ -2,7 +2,6 @@ const express = require('express');
 const fs = require('fs-extra');
 const path = require('path');
 const cors = require('cors');
-const { exec } = require('child_process');
 const moment = require('moment');
 
 const app = express();
@@ -11,18 +10,31 @@ app.use(express.json());
 
 // Config
 const OUTPUT_DIR = path.resolve(process.env.HOME, 'Documents/ComfyUI/outputs');
-const MAC_DESTINATION = '/Volumes/Secure_Storage';
+const LOCAL_COPY_DIR = path.resolve(process.env.HOME, 'Documents/copies_from_swipe-save');
+const DELETED_DIR = path.join(OUTPUT_DIR, 'deleted');
+
+// Create needed directories if they don't exist
+if (!fs.existsSync(DELETED_DIR)) {
+  fs.mkdirSync(DELETED_DIR, { recursive: true });
+}
+
+if (!fs.existsSync(LOCAL_COPY_DIR)) {
+  fs.mkdirSync(LOCAL_COPY_DIR, { recursive: true });
+}
 
 // Serve static files from the outputs directory
 app.use('/media', express.static(OUTPUT_DIR));
+
+// Serve the frontend files from the public directory
+app.use(express.static(path.join(__dirname, 'public')));
 
 // Get list of media files
 app.get('/api/files', (req, res) => {
   const mediaFiles = [];
   
   fs.readdirSync(OUTPUT_DIR, { withFileTypes: true })
-    .filter(entry => !entry.isDirectory())
-    .filter(file => /\.(png|mp4|webm)$/i.test(file.name))
+    .filter(entry => !entry.isDirectory()) // Skip directories
+    .filter(file => /\.(png|mp4|webm)$/i.test(file.name)) // Only media files
     .forEach(file => {
       const stats = fs.statSync(path.join(OUTPUT_DIR, file.name));
       mediaFiles.push({
@@ -33,6 +45,9 @@ app.get('/api/files', (req, res) => {
       });
     });
   
+  // Sort by most recent first
+  mediaFiles.sort((a, b) => b.date - a.date);
+  
   res.json(mediaFiles);
 });
 
@@ -41,23 +56,55 @@ app.post('/api/files/action', (req, res) => {
   const { filename, action } = req.body;
   const sourcePath = path.join(OUTPUT_DIR, filename);
   
-  // Create date folder
-  const dateFolder = moment().format('YYYYMMDD');
-  const dateFolderPath = path.join(OUTPUT_DIR, dateFolder);
-  
-  if (!fs.existsSync(dateFolderPath)) {
-    fs.mkdirSync(dateFolderPath);
-  }
-  
   try {
-    // Move to date folder
-    const destPath = path.join(dateFolderPath, filename);
-    fs.moveSync(sourcePath, destPath);
-    
-    // If swiped right, also copy to Mac
-    if (action === 'right') {
-      const macPath = path.join(MAC_DESTINATION, filename);
-      fs.copySync(destPath, macPath);
+    switch(action) {
+      case 'left':
+      case 'right': {
+        // Create date folder
+        const dateFolder = moment().format('YYYYMMDD');
+        const dateFolderPath = path.join(OUTPUT_DIR, dateFolder);
+        
+        if (!fs.existsSync(dateFolderPath)) {
+          fs.mkdirSync(dateFolderPath, { recursive: true });
+        }
+        
+        // Move to date folder
+        const destPath = path.join(dateFolderPath, filename);
+        fs.moveSync(sourcePath, destPath);
+        
+        // If swiped right, also copy to local directory
+        if (action === 'right') {
+          // Create date folder in local copy directory too
+          const copyDateFolder = path.join(LOCAL_COPY_DIR, dateFolder);
+          if (!fs.existsSync(copyDateFolder)) {
+            fs.mkdirSync(copyDateFolder, { recursive: true });
+          }
+          
+          // Copy with the same filename
+          const copyPath = path.join(copyDateFolder, filename);
+          fs.copySync(destPath, copyPath);
+        }
+        break;
+      }
+      
+      case 'up': {
+        // Add asterisk to filename for "super save"
+        const directory = path.dirname(sourcePath);
+        const starredFilename = `* ${filename}`;
+        const destPath = path.join(directory, starredFilename);
+        fs.renameSync(sourcePath, destPath);
+        break;
+      }
+      
+      case 'down': {
+        // Move to deleted folder
+        const destPath = path.join(DELETED_DIR, filename);
+        fs.moveSync(sourcePath, destPath);
+        break;
+      }
+      
+      default:
+        throw new Error(`Unknown action: ${action}`);
     }
     
     res.json({ success: true });
@@ -70,4 +117,5 @@ app.post('/api/files/action', (req, res) => {
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`Server running on http://localhost:${PORT}`);
+  console.log(`View the app at http://localhost:${PORT}`);
 });
