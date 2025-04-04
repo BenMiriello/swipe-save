@@ -1,0 +1,15 @@
+{
+  "name": "comfyui-media-manager-server",
+  "version": "1.0.0",
+  "description": "Server for managing ComfyUI media files",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^4.17.3",
+    "fs-extra": "^10.0.1",
+    "moment": "^2.29.1"
+  }
+}
