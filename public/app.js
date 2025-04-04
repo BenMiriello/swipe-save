@@ -2,7 +2,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const mediaList = document.getElementById('mediaList');
   // Use window.location to dynamically determine the API_URL
   const API_URL = `${window.location.protocol}//${window.location.host}`;
-  
+
   // Add instruction legend
   const container = document.querySelector('.container');
   const legend = document.createElement('div');
@@ -17,32 +17,40 @@ document.addEventListener('DOMContentLoaded', () => {
     </ul>
   `;
   container.insertBefore(legend, mediaList.parentElement);
-  
-  // Fetch media files
+
   async function fetchMediaFiles() {
     try {
+      const mediaContainer = document.querySelector('.media-container');
+      mediaContainer.innerHTML = '<div style="text-align: center; padding: 2rem;">Loading media files...</div>';
+
       const response = await fetch(`${API_URL}/api/files`);
       const files = await response.json();
-      
+
       mediaList.innerHTML = '';
-      
+
+      if (files.length === 0) {
+        mediaContainer.innerHTML = '<div style="text-align: center; padding: 2rem;">No media files found. Make sure your ComfyUI outputs directory contains PNG, MP4 or WEBM files.</div>';
+        return;
+      }
+
       files.forEach(file => {
         const mediaItem = createMediaItem(file);
         mediaList.appendChild(mediaItem);
       });
-      
+
       setupSwipeHandlers();
     } catch (error) {
       console.error('Error fetching media files:', error);
+      const mediaContainer = document.querySelector('.media-container');
+      mediaContainer.innerHTML = `<div style="text-align: center; padding: 2rem; color: red;">Error loading media files: ${error.message}</div>`;
     }
   }
-  
-  // Create media item element
+
   function createMediaItem(file) {
     const item = document.createElement('div');
     item.className = 'media-item';
     item.dataset.filename = file.name;
-    
+
     let mediaContent;
     if (/\.(png)$/i.test(file.name)) {
       mediaContent = document.createElement('img');
@@ -52,51 +60,51 @@ document.addEventListener('DOMContentLoaded', () => {
       mediaContent.src = `${API_URL}${file.path}`;
       mediaContent.controls = true;
     }
-    
+
     mediaContent.className = 'media-content';
-    
+
     const swipeInstruction = document.createElement('div');
     swipeInstruction.className = 'swipe-instruction';
-    
+
     const info = document.createElement('div');
     info.className = 'media-info';
-    
+
     const name = document.createElement('div');
     name.className = 'media-name';
     name.textContent = file.name;
-    
+
     info.appendChild(name);
     item.appendChild(mediaContent);
     item.appendChild(swipeInstruction);
     item.appendChild(info);
-    
+
     return item;
   }
-  
+
   // Setup swipe handlers
   function setupSwipeHandlers() {
     const mediaItems = document.querySelectorAll('.media-item');
-    
+
     mediaItems.forEach(item => {
       const hammer = new Hammer(item);
-      
+
       // Enable all directions
       hammer.get('swipe').set({ direction: Hammer.DIRECTION_ALL });
-      
+
       hammer.on('swipeleft swiperight swipeup swipedown', async (e) => {
         const filename = item.dataset.filename;
         let action;
-        
+
         switch(e.type) {
           case 'swipeleft': action = 'left'; break;
           case 'swiperight': action = 'right'; break;
           case 'swipeup': action = 'up'; break;
           case 'swipedown': action = 'down'; break;
         }
-        
+
         // Visual feedback
         item.classList.add(`swipe-${action}`);
-        
+
         // Update instruction text
         const instruction = item.querySelector('.swipe-instruction');
         switch(action) {
@@ -106,7 +114,7 @@ document.addEventListener('DOMContentLoaded', () => {
           case 'down': instruction.textContent = 'Moving to deleted...'; break;
         }
         instruction.style.opacity = 1;
-        
+
         try {
           const response = await fetch(`${API_URL}/api/files/action`, {
             method: 'POST',
@@ -115,7 +123,7 @@ document.addEventListener('DOMContentLoaded', () => {
             },
             body: JSON.stringify({ filename, action })
           });
-          
+
           if (response.ok) {
             // Wait for animation to complete before removing
             setTimeout(() => {
@@ -128,7 +136,7 @@ document.addEventListener('DOMContentLoaded', () => {
           instruction.style.opacity = 0;
         }
       });
-      
+
       // Add visual feedback during swipe
       hammer.on('pan', (e) => {
         const instruction = item.querySelector('.swipe-instruction');
@@ -167,7 +175,7 @@ document.addEventListener('DOMContentLoaded', () => {
           }
         }
       });
-      
+
       hammer.on('panend', () => {
         // Reset transform when pan ends without a swipe
         const instruction = item.querySelector('.swipe-instruction');
@@ -176,10 +184,10 @@ document.addEventListener('DOMContentLoaded', () => {
       });
     });
   }
-  
+
   // Initial load
   fetchMediaFiles();
-  
+
   // Add a refresh button
   const refreshButton = document.createElement('button');
   refreshButton.textContent = 'Refresh';
@@ -191,7 +199,7 @@ document.addEventListener('DOMContentLoaded', () => {
   refreshButton.style.border = 'none';
   refreshButton.style.borderRadius = '4px';
   refreshButton.style.cursor = 'pointer';
-  
+
   refreshButton.addEventListener('click', fetchMediaFiles);
   container.appendChild(refreshButton);
 });
