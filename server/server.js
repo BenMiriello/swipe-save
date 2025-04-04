@@ -10,11 +10,8 @@ app.use(express.json());
 
 // Config
 const OUTPUT_DIR = path.resolve(process.env.HOME, 'Documents/ComfyUI/output');
-const LOCAL_COPY_DIR = path.resolve(process.env.HOME, 'Documents/copies_from_swipe-save');
+const LOCAL_COPY_DIR = path.resolve(process.env.HOME, 'Documents/ComfyUI/output/copies_from_swipe-save');
 const DELETED_DIR = path.join(OUTPUT_DIR, 'deleted');
-
-console.log('OUTPUT_DIR path:', OUTPUT_DIR);
-console.log('OUTPUT_DIR exists:', fs.existsSync(OUTPUT_DIR));
 
 // Create needed directories if they don't exist
 if (!fs.existsSync(DELETED_DIR)) {
@@ -24,6 +21,9 @@ if (!fs.existsSync(DELETED_DIR)) {
 if (!fs.existsSync(LOCAL_COPY_DIR)) {
   fs.mkdirSync(LOCAL_COPY_DIR, { recursive: true });
 }
+
+// Action history for undo functionality
+const actionHistory = [];
 
 // Serve static files from the output directory
 app.use('/media', express.static(OUTPUT_DIR, {
@@ -41,15 +41,11 @@ app.use('/media', express.static(OUTPUT_DIR, {
 }));
 
 // Serve the frontend files from the public directory
-// Note the '..' to go up one directory level
 app.use(express.static(path.join(__dirname, '..', 'public')));
 
-// Add a route handler for the root path specifically
+// Add a route handler for the root path
 app.get('/', (req, res) => {
   const indexPath = path.join(__dirname, '..', 'public', 'index.html');
-  console.log('Trying to serve index from:', indexPath);
-  console.log('File exists?', fs.existsSync(indexPath));
-  
   if (fs.existsSync(indexPath)) {
     res.sendFile(indexPath);
   } else {
@@ -61,19 +57,13 @@ app.get('/', (req, res) => {
 app.get('/api/files', (req, res) => {
   const mediaFiles = [];
 
-  console.log('Looking for media files in:', OUTPUT_DIR);
-
   try {
     const entries = fs.readdirSync(OUTPUT_DIR, { withFileTypes: true });
-    console.log('Found entries in directory:', entries.length);
 
     const mediaEntries = entries
       .filter(entry => !entry.isDirectory()) // Skip directories
       .filter(file => /\.(png|mp4|webm)$/i.test(file.name)) // Only media files
       .filter(file => !file.name.startsWith('._')); // Skip dot-underscore files
-
-    console.log('Found media files:', mediaEntries.length);
-    console.log('Media filenames:', mediaEntries.map(entry => entry.name));
 
     mediaEntries.forEach(file => {
       const filePath = path.join(OUTPUT_DIR, file.name);
@@ -92,8 +82,6 @@ app.get('/api/files', (req, res) => {
 
     // Sort by most recent first
     mediaFiles.sort((a, b) => b.date - a.date);
-
-    console.log('Returning media files:', mediaFiles.length);
   } catch (error) {
     console.error('Error reading directory:', error);
   }
@@ -101,13 +89,11 @@ app.get('/api/files', (req, res) => {
   res.json(mediaFiles);
 });
 
-// In server.js, add these headers to the media file handler
+// Media file handler
 app.get('/media/:filename', (req, res) => {
   try {
     const filename = decodeURIComponent(req.params.filename);
     const filePath = path.join(OUTPUT_DIR, filename);
-    
-    console.log('Requested media file:', filename);
     
     if (fs.existsSync(filePath)) {
       // Set headers to prevent caching issues
@@ -126,12 +112,41 @@ app.get('/media/:filename', (req, res) => {
       // Stream the file
       fs.createReadStream(filePath).pipe(res);
     } else {
-      console.log('File not found:', filePath);
       res.status(404).send('File not found');
     }
   } catch (error) {
     console.error('Error serving file:', error);
     res.status(500).send('Server error');
+  }
+});
+
+// Get action history for undo
+app.get('/api/history', (req, res) => {
+  res.json(actionHistory);
+});
+
+// Undo last action
+app.post('/api/undo', (req, res) => {
+  try {
+    if (actionHistory.length === 0) {
+      return res.status(400).json({ error: 'No actions to undo' });
+    }
+    
+    const lastAction = actionHistory.pop();
+    
+    // Reverse the last action
+    if (lastAction.sourcePath && lastAction.destPath) {
+      // Check if destination file still exists
+      if (fs.existsSync(lastAction.destPath)) {
+        // Move the file back to its original location
+        fs.moveSync(lastAction.destPath, lastAction.sourcePath, { overwrite: true });
+      }
+    }
+    
+    res.json({ success: true, undoneAction: lastAction });
+  } catch (error) {
+    console.error('Error undoing action:', error);
+    res.status(500).json({ error: error.message });
   }
 });
 
@@ -141,6 +156,13 @@ app.post('/api/files/action', (req, res) => {
   const sourcePath = path.join(OUTPUT_DIR, filename);
   
   try {
+    let actionRecord = {
+      action,
+      filename,
+      sourcePath,
+      timestamp: new Date().toISOString()
+    };
+
     switch(action) {
       case 'left':
       case 'right': {
@@ -155,6 +177,7 @@ app.post('/api/files/action', (req, res) => {
         // Move to date folder
         const destPath = path.join(dateFolderPath, filename);
         fs.moveSync(sourcePath, destPath);
+        actionRecord.destPath = destPath;
         
         // If swiped right, also copy to local directory
         if (action === 'right') {
@@ -167,6 +190,7 @@ app.post('/api/files/action', (req, res) => {
           // Copy with the same filename
           const copyPath = path.join(copyDateFolder, filename);
           fs.copySync(destPath, copyPath);
+          actionRecord.copyPath = copyPath;
         }
         break;
       }
@@ -177,6 +201,7 @@ app.post('/api/files/action', (req, res) => {
         const starredFilename = `* ${filename}`;
         const destPath = path.join(directory, starredFilename);
         fs.renameSync(sourcePath, destPath);
+        actionRecord.destPath = destPath;
         break;
       }
       
@@ -184,12 +209,16 @@ app.post('/api/files/action', (req, res) => {
         // Move to deleted folder
         const destPath = path.join(DELETED_DIR, filename);
         fs.moveSync(sourcePath, destPath);
+        actionRecord.destPath = destPath;
         break;
       }
       
       default:
         throw new Error(`Unknown action: ${action}`);
     }
+    
+    // Add action to history
+    actionHistory.push(actionRecord);
     
     res.json({ success: true });
   } catch (error) {
@@ -201,5 +230,4 @@ app.post('/api/files/action', (req, res) => {
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`Server running on http://localhost:${PORT}`);
-  console.log(`View the app at http://localhost:${PORT}`);
 });
