@@ -1,6 +1,22 @@
 document.addEventListener('DOMContentLoaded', () => {
   const mediaList = document.getElementById('mediaList');
-  const API_URL = 'http://your-debian-ip:3000';
+  // Use window.location to dynamically determine the API_URL
+  const API_URL = `${window.location.protocol}//${window.location.host}`;
+  
+  // Add instruction legend
+  const container = document.querySelector('.container');
+  const legend = document.createElement('div');
+  legend.className = 'legend';
+  legend.innerHTML = `
+    <h3>Swipe Actions:</h3>
+    <ul>
+      <li><span class="action-icon">←</span> Move to date folder</li>
+      <li><span class="action-icon">→</span> Copy to Mac + Move to date folder</li>
+      <li><span class="action-icon">↑</span> Super save (add * to filename)</li>
+      <li><span class="action-icon">↓</span> Move to deleted folder</li>
+    </ul>
+  `;
+  container.insertBefore(legend, mediaList.parentElement);
   
   // Fetch media files
   async function fetchMediaFiles() {
@@ -63,14 +79,33 @@ document.addEventListener('DOMContentLoaded', () => {
     
     mediaItems.forEach(item => {
       const hammer = new Hammer(item);
-      hammer.on('swipeleft swiperight', async (e) => {
+      
+      // Enable all directions
+      hammer.get('swipe').set({ direction: Hammer.DIRECTION_ALL });
+      
+      hammer.on('swipeleft swiperight swipeup swipedown', async (e) => {
         const filename = item.dataset.filename;
-        const action = e.type === 'swiperight' ? 'right' : 'left';
+        let action;
+        
+        switch(e.type) {
+          case 'swipeleft': action = 'left'; break;
+          case 'swiperight': action = 'right'; break;
+          case 'swipeup': action = 'up'; break;
+          case 'swipedown': action = 'down'; break;
+        }
         
         // Visual feedback
         item.classList.add(`swipe-${action}`);
-        item.querySelector('.swipe-instruction').textContent = 
-          action === 'right' ? 'Copying to Mac...' : 'Moving to date folder...';
+        
+        // Update instruction text
+        const instruction = item.querySelector('.swipe-instruction');
+        switch(action) {
+          case 'left': instruction.textContent = 'Moving to date folder...'; break;
+          case 'right': instruction.textContent = 'Copying to Mac...'; break;
+          case 'up': instruction.textContent = 'Super saving...'; break;
+          case 'down': instruction.textContent = 'Moving to deleted...'; break;
+        }
+        instruction.style.opacity = 1;
         
         try {
           const response = await fetch(`${API_URL}/api/files/action`, {
@@ -82,31 +117,62 @@ document.addEventListener('DOMContentLoaded', () => {
           });
           
           if (response.ok) {
+            // Wait for animation to complete before removing
             setTimeout(() => {
               item.remove();
-            }, 300);
+            }, 500);
           }
         } catch (error) {
           console.error('Error performing action:', error);
           item.classList.remove(`swipe-${action}`);
+          instruction.style.opacity = 0;
         }
       });
       
-      hammer.on('swipemove', (e) => {
+      // Add visual feedback during swipe
+      hammer.on('pan', (e) => {
         const instruction = item.querySelector('.swipe-instruction');
-        if (e.deltaX > 50) {
-          instruction.textContent = 'Swipe right to copy to Mac';
-          item.classList.add('swiping');
-        } else if (e.deltaX < -50) {
-          instruction.textContent = 'Swipe left to move to date folder';
-          item.classList.add('swiping');
+        
+        if (Math.abs(e.deltaX) > Math.abs(e.deltaY)) {
+          // Horizontal swipe
+          if (e.deltaX > 50) {
+            instruction.textContent = 'Swipe right to copy to Mac';
+            instruction.style.opacity = 0.9;
+            // Add visual rotation effect
+            item.style.transform = `translateX(${e.deltaX * 0.5}px) rotate(${e.deltaX * 0.02}deg)`;
+          } else if (e.deltaX < -50) {
+            instruction.textContent = 'Swipe left to move to date folder';
+            instruction.style.opacity = 0.9;
+            // Add visual rotation effect
+            item.style.transform = `translateX(${e.deltaX * 0.5}px) rotate(${e.deltaX * 0.02}deg)`;
+          } else {
+            instruction.style.opacity = 0;
+            item.style.transform = '';
+          }
         } else {
-          item.classList.remove('swiping');
+          // Vertical swipe
+          if (e.deltaY < -50) {
+            instruction.textContent = 'Swipe up for super save (add *)';
+            instruction.style.opacity = 0.9;
+            // Add visual scale effect
+            item.style.transform = `translateY(${e.deltaY * 0.5}px) scale(${1 - Math.abs(e.deltaY) * 0.001})`;
+          } else if (e.deltaY > 50) {
+            instruction.textContent = 'Swipe down to delete';
+            instruction.style.opacity = 0.9;
+            // Add visual scale effect
+            item.style.transform = `translateY(${e.deltaY * 0.5}px) scale(${1 - Math.abs(e.deltaY) * 0.001})`;
+          } else {
+            instruction.style.opacity = 0;
+            item.style.transform = '';
+          }
         }
       });
       
-      hammer.on('swipeend', () => {
-        item.classList.remove('swiping');
+      hammer.on('panend', () => {
+        // Reset transform when pan ends without a swipe
+        const instruction = item.querySelector('.swipe-instruction');
+        instruction.style.opacity = 0;
+        item.style.transform = '';
       });
     });
   }
@@ -114,6 +180,18 @@ document.addEventListener('DOMContentLoaded', () => {
   // Initial load
   fetchMediaFiles();
   
-  // Refresh periodically
-  setInterval(fetchMediaFiles, 30000);
+  // Add a refresh button
+  const refreshButton = document.createElement('button');
+  refreshButton.textContent = 'Refresh';
+  refreshButton.style.display = 'block';
+  refreshButton.style.margin = '1rem auto';
+  refreshButton.style.padding = '0.5rem 1rem';
+  refreshButton.style.backgroundColor = '#007bff';
+  refreshButton.style.color = 'white';
+  refreshButton.style.border = 'none';
+  refreshButton.style.borderRadius = '4px';
+  refreshButton.style.cursor = 'pointer';
+  
+  refreshButton.addEventListener('click', fetchMediaFiles);
+  container.appendChild(refreshButton);
 });
