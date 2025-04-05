@@ -86,244 +86,196 @@ function getFileCreationDate(filePath) {
   }
 }
 
-// Enhanced metadata extraction function focused on ComfyUI workflow and prompt data
-async function extractMetadata(filePath) {
+// Improved metadata extraction function for ComfyUI PNG files
+async function extractComfyMetadata(sourcePath, filename) {
   try {
-    const stats = fs.statSync(filePath);
-    
-    const basicMetadata = {
-      filename: path.basename(filePath),
+    // Basic file stats
+    const stats = fs.statSync(sourcePath);
+    const metadata = {
+      filename: filename,
       filesize: stats.size,
       createdAt: stats.birthtime || stats.mtime,
       modifiedAt: stats.mtime,
-      absolutePath: filePath
+      absolutePath: sourcePath
     };
     
-    // Only extract detailed metadata for PNG files
-    if (!filePath.toLowerCase().endsWith('.png')) {
-      return basicMetadata;
+    // Skip non-PNG files
+    if (!filename.toLowerCase().endsWith('.png')) {
+      return metadata;
     }
     
     try {
-      // Read the PNG file
-      const buffer = fs.readFileSync(filePath);
+      // Read the file
+      const buffer = fs.readFileSync(sourcePath);
       
-      // Convert buffer to string for regex matching
-      // Note: This is a simplified approach - ideally we'd use a proper PNG chunk parser
-      const fileText = buffer.toString();
+      // Convert to string to search for metadata
+      // Note: PNG files can have text chunks which often contain metadata
+      const fileStr = buffer.toString('binary');
       
-      // Extract ComfyUI metadata
-      const comfyMetadata = {};
+      // Capture everything between tEXt chunks
+      const pngInfoRegex = /tEXtpnginfo(.+?)(?=IDAT|IEND|tEXt)/s;
+      const match = fileStr.match(pngInfoRegex);
       
-      // Try to extract workflow data - this is the most important part
-      const workflowRegex = /"workflow"\s*:\s*({.*?}(?:\s*\})+)/s;
-      const workflowMatch = fileText.match(workflowRegex);
-      if (workflowMatch && workflowMatch[1]) {
-        try {
-          // Try to extract the workflow JSON
-          let workflowText = workflowMatch[1];
-          // Ensure proper JSON closure if needed
-          if ((workflowText.match(/{/g) || []).length > (workflowText.match(/}/g) || []).length) {
-            workflowText += '}';
-          }
-          comfyMetadata.workflow = workflowText;
-        } catch (e) {
-          console.log(`Could not parse workflow JSON in ${filePath}`);
-        }
+      if (match && match[1]) {
+        metadata.pnginfo = match[1];
       }
       
-      // Try to extract prompt data
-      const promptRegex = /"prompt"\s*:\s*({.*?}(?:\s*\})+)/s;
-      const promptMatch = fileText.match(promptRegex);
-      if (promptMatch && promptMatch[1]) {
-        try {
-          // Try to extract the prompt JSON
-          let promptText = promptMatch[1];
-          // Ensure proper JSON closure if needed
-          if ((promptText.match(/{/g) || []).length > (promptText.match(/}/g) || []).length) {
-            promptText += '}';
+      // Try to extract ComfyUI-specific metadata
+      // Look for chunks with specific keywords
+      const keywords = [
+        'prompt', 'workflow', 'comfy', 'parameters', 
+        'seed', 'model', 'extra'
+      ];
+      
+      // Function to extract JSON-like data
+      function extractJsonData(str, keyword) {
+        const regex = new RegExp(`"${keyword}"\\s*:\\s*({[^}]*(?:{[^}]*}[^}]*)*})`, 'g');
+        const matches = [];
+        let match;
+        
+        while ((match = regex.exec(str)) !== null) {
+          if (match[1]) {
+            matches.push(match[1]);
           }
-          comfyMetadata.prompt = promptText;
-        } catch (e) {
-          console.log(`Could not parse prompt JSON in ${filePath}`);
         }
+        
+        return matches.length > 0 ? matches : null;
       }
       
-      // Extract important values directly
-      // Extract any seeds found
+      // Extract complete text chunks that might contain workflow or prompt
+      const utf8Str = buffer.toString('utf8');
+      
+      // Function to extract a complete JSON object, handling nested braces
+      const extractCompleteJson = (text, startKey) => {
+        const keyIndex = text.indexOf(`"${startKey}"`);
+        if (keyIndex === -1) return null;
+        
+        // Find the colon after the key
+        const colonIndex = text.indexOf(':', keyIndex);
+        if (colonIndex === -1) return null;
+        
+        // Find the start of the JSON object
+        let startPos = text.indexOf('{', colonIndex);
+        if (startPos === -1) return null;
+        
+        // Track nesting level to find the matching closing brace
+        let braceLevel = 1;
+        let inString = false;
+        let i = startPos + 1;
+        
+        while (i < text.length && braceLevel > 0) {
+          const char = text.charAt(i);
+          
+          if (char === '"' && text.charAt(i-1) !== '\\') {
+            inString = !inString;
+          } else if (!inString) {
+            if (char === '{') {
+              braceLevel++;
+            } else if (char === '}') {
+              braceLevel--;
+            }
+          }
+          
+          i++;
+        }
+        
+        if (braceLevel === 0) {
+          // Extract the complete JSON object including outer braces
+          return text.substring(startPos, i);
+        }
+        
+        return null;
+      };
+      
+      // Try to extract workflow and prompt as complete JSON objects
+      const workflowJson = extractCompleteJson(utf8Str, "workflow");
+      if (workflowJson) {
+        metadata.workflow = workflowJson;
+      }
+      
+      const promptJson = extractCompleteJson(utf8Str, "prompt");
+      if (promptJson) {
+        metadata.prompt = promptJson;
+      }
+      
+      // Extract additional ComfyUI metadata
+      keywords.forEach(keyword => {
+        if (keyword !== 'workflow' && keyword !== 'prompt') {
+          const extracted = extractJsonData(utf8Str, keyword);
+          if (extracted) {
+            metadata[keyword] = extracted;
+          }
+        }
+      });
+      
+      // Extract seeds (these are particularly important)
       const seedRegex = /"seed"\s*:\s*(\d+)/g;
       const seeds = [];
       let seedMatch;
-      while ((seedMatch = seedRegex.exec(fileText)) !== null) {
+      
+      while ((seedMatch = seedRegex.exec(utf8Str)) !== null) {
         seeds.push(parseInt(seedMatch[1]));
       }
+      
       if (seeds.length > 0) {
-        comfyMetadata.seeds = seeds;
+        metadata.seeds = seeds;
       }
       
-      // Extract any model names
+      // Extract model names
       const modelRegex = /"model"\s*:\s*"([^"]+)"/g;
       const models = [];
       let modelMatch;
-      while ((modelMatch = modelRegex.exec(fileText)) !== null) {
+      
+      while ((modelMatch = modelRegex.exec(utf8Str)) !== null) {
         models.push(modelMatch[1]);
       }
+      
       if (models.length > 0) {
-        comfyMetadata.models = models;
+        metadata.models = models;
       }
       
-      // Add the ComfyUI metadata to the basic metadata
-      basicMetadata.comfyUI = comfyMetadata;
+      // Also try a basic string extraction of the raw metadata
+      const pngInfoChunk = utf8Str.indexOf('parameters');
+      if (pngInfoChunk !== -1) {
+        const endChunk = utf8Str.indexOf('\0', pngInfoChunk);
+        if (endChunk !== -1) {
+          metadata.rawParameters = utf8Str.substring(pngInfoChunk, endChunk);
+        }
+      }
+      
+      // Look for text in the PNG specifically about ComfyUI
+      const comfyMatch = utf8Str.match(/ComfyUI.*?(?:\0|$)/);
+      if (comfyMatch) {
+        metadata.comfyInfo = comfyMatch[0].replace(/\0/g, '');
+      }
       
     } catch (error) {
-      console.error(`Error extracting ComfyUI metadata from PNG: ${error.message}`);
-      basicMetadata.metadataError = error.message;
+      console.error(`Error extracting detailed metadata: ${error.message}`);
+      metadata.extractionError = error.message;
     }
     
-    return basicMetadata;
+    return metadata;
   } catch (error) {
-    console.error(`Error extracting metadata for ${filePath}:`, error);
+    console.error(`Error in metadata extraction: ${error.message}`);
     return {
-      filename: path.basename(filePath),
+      filename: filename,
       error: error.message
     };
   }
 }
 
-async function extractComfyMetadata(sourcePath, filename) {
-  try {
-    // Read the PNG file for metadata
-    const buffer = fs.readFileSync(sourcePath);
-    const fileText = buffer.toString();
-    
-    const metadata = {
-      filename: filename,
-      filesize: fs.statSync(sourcePath).size,
-      seeds: [],
-      models: []
-    };
-    
-    // Extract complete text chunks that might contain workflow or prompt
-    // Look for chunks starting with "workflow" and "prompt"
-    const extractChunk = (startKey) => {
-      // Find the start of the key
-      const keyIndex = fileText.indexOf(`"${startKey}"`);
-      if (keyIndex === -1) return null;
-      
-      // Start after the key and colon
-      let startPos = fileText.indexOf(':', keyIndex);
-      if (startPos === -1) return null;
-      startPos++;
-      
-      // Now we need to find the matching closing bracket/brace
-      let openBraces = 0;
-      let inString = false;
-      let chunk = '';
-      
-      // Skip whitespace
-      while (startPos < fileText.length && /\s/.test(fileText[startPos])) {
-        startPos++;
-      }
-      
-      // Make sure we're starting with an object
-      if (fileText[startPos] !== '{') return null;
-      
-      // Extract the full object
-      for (let i = startPos; i < fileText.length; i++) {
-        const char = fileText[i];
-        
-        // Handle string boundaries
-        if (char === '"' && (i === 0 || fileText[i-1] !== '\\')) {
-          inString = !inString;
-        }
-        
-        // Count braces only when not in a string
-        if (!inString) {
-          if (char === '{') openBraces++;
-          else if (char === '}') {
-            openBraces--;
-            if (openBraces === 0) {
-              // We've found the end of the object
-              chunk = fileText.substring(startPos, i + 1);
-              break;
-            }
-          }
-        }
-        
-        // Safety check
-        if (i - startPos > 1000000) { // Prevent infinite loop
-          console.log(`Chunk extraction exceeded maximum length for ${startKey}`);
-          break;
-        }
-      }
-      
-      return chunk;
-    };
-    
-    // Extract workflow and prompt chunks
-    const workflowChunk = extractChunk('workflow');
-    const promptChunk = extractChunk('prompt');
-    
-    if (workflowChunk) {
-      metadata.workflow = workflowChunk;
-    }
-    
-    if (promptChunk) {
-      metadata.prompt = promptChunk;
-    }
-    
-    // Extract seeds
-    const seedPattern = /seed\"\s*:\s*(\d+)/g;
-    let seedMatch;
-    while ((seedMatch = seedPattern.exec(fileText)) !== null) {
-      metadata.seeds.push(parseInt(seedMatch[1]));
-    }
-    
-    // Extract models
-    const modelPattern = /model\"\s*:\s*\"([^\"]+)/g;
-    let modelMatch;
-    while ((modelMatch = modelPattern.exec(fileText)) !== null) {
-      metadata.models.push(modelMatch[1]);
-    }
-    
-    return metadata;
-  } catch (error) {
-    console.error(`Error extracting metadata: ${error.message}`);
-    return { 
-      error: `Failed to extract metadata: ${error.message}`,
-      filename: filename
-    };
-  }
-}
-
-async function logAction(action, sourcePath, destinationPath, success = true, details = {}) {
+// Simplified logging function that uses daily log files
+function logSimpleAction(actionType, data) {
   try {
     // Make sure we're using today's log file
     const todayDate = moment().format('YYYYMMDD');
     const currentLogFile = path.join(LOG_DIR, `selection_log_${todayDate}.json`);
     
-    // Extract metadata only from the source file (original file)
-    let fileMetadata = {};
-    
-    if (fs.existsSync(sourcePath) && !fs.statSync(sourcePath).isDirectory()) {
-      fileMetadata = await extractMetadata(sourcePath);
-    } else {
-      fileMetadata = { 
-        filename: path.basename(sourcePath),
-        error: 'Source path does not exist or is a directory' 
-      };
-    }
-    
-    // Create the log entry with focused metadata and destination info
+    // Create the log entry
     const logEntry = {
       timestamp: new Date().toISOString(),
-      action: action,
-      success: success,
-      filename: path.basename(sourcePath),
-      sourcePath: sourcePath,
-      destinationPath: destinationPath || null,
-      fileMetadata: fileMetadata,
-      details: details
+      action: actionType,
+      ...data
     };
     
     // Read existing log
@@ -464,7 +416,11 @@ app.post('/api/undo', (req, res) => {
         }
         
         // Log the undo action
-        logAction('undo', lastAction.destPath, lastAction.sourcePath);
+        logSimpleAction('undo', {
+          filename: lastAction.filename,
+          sourcePath: lastAction.destPath,
+          destPath: lastAction.sourcePath
+        });
       } else {
         console.log(`Destination file not found for undo: ${lastAction.destPath}`);
       }
@@ -746,43 +702,6 @@ app.post('/api/files/action', async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 });
-
-// Simplified logging function that uses daily log files
-function logSimpleAction(actionType, data) {
-  try {
-    // Make sure we're using today's log file
-    const todayDate = moment().format('YYYYMMDD');
-    const currentLogFile = path.join(LOG_DIR, `selection_log_${todayDate}.json`);
-    
-    // Create the log entry
-    const logEntry = {
-      timestamp: new Date().toISOString(),
-      action: actionType,
-      ...data
-    };
-    
-    // Read existing log
-    let logData = { selections: [] };
-    if (fs.existsSync(currentLogFile)) {
-      try {
-        logData = fs.readJsonSync(currentLogFile);
-      } catch (error) {
-        console.error('Error reading log file, creating new log:', error);
-      }
-    }
-    
-    // Add new entry
-    logData.selections.push(logEntry);
-    
-    // Write updated log
-    fs.writeJsonSync(currentLogFile, logData, { spaces: 2 });
-    
-    return true;
-  } catch (error) {
-    console.error('Error logging action:', error);
-    return false;
-  }
-}
 
 const PORT = process.env.PORT || 8081;
 app.listen(PORT, () => {
