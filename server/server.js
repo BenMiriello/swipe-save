@@ -435,7 +435,7 @@ app.post('/api/undo', (req, res) => {
 
 // Handle file operations (swipe actions)
 app.post('/api/files/action', async (req, res) => {
-  const { filename, action } = req.body;
+  const { filename, action, customFilename } = req.body;
   const sourcePath = path.join(OUTPUT_DIR, filename);
   
   try {
@@ -451,10 +451,14 @@ app.post('/api/files/action', async (req, res) => {
     // Extract metadata BEFORE moving the file
     const fileMetadata = await extractComfyMetadata(sourcePath, filename);
     
+    // Determine target filename
+    const targetFilename = customFilename || filename;
+    
     let actionRecord = {
       action,
       filename,
       sourcePath,
+      targetFilename,
       timestamp: new Date().toISOString(),
       metadata: fileMetadata  // Store metadata directly in the action record
     };
@@ -462,9 +466,17 @@ app.post('/api/files/action', async (req, res) => {
     // Get file creation date for organizing
     const fileDate = getFileCreationDate(sourcePath);
 
-    switch(action) {
-      case 'left':
-      case 'right': {
+    // Determine action type (normalize swipe directions to specific action types)
+    let actionType = action;
+    if (action === 'left') actionType = 'archive';
+    if (action === 'right') actionType = 'saved';
+    if (action === 'up') actionType = 'best_complete';
+    if (action === 'down') actionType = 'delete';
+
+    switch(actionType) {
+      case 'archive':
+      case 'archive_good':
+      case 'archive_bad': {
         // Create date folder based on file creation date
         const dateFolderPath = path.join(OUTPUT_DIR, fileDate);
         
@@ -473,7 +485,7 @@ app.post('/api/files/action', async (req, res) => {
         }
         
         // Move to date folder
-        const destPath = path.join(dateFolderPath, filename);
+        const destPath = path.join(dateFolderPath, targetFilename);
         
         // Check if destination already exists
         if (fs.existsSync(destPath)) {
@@ -492,59 +504,119 @@ app.post('/api/files/action', async (req, res) => {
         actionRecord.destPath = destPath;
         
         // Log the action with the pre-extracted metadata
-        logSimpleAction('move_to_date', {
+        logSimpleAction(actionType, {
           filename,
+          targetFilename,
           sourcePath,
           destPath,
           fileDate,
           metadata: fileMetadata,
-          action
+          action: actionType
         });
         
-        // If swiped right, also copy to local directory
-        if (action === 'right') {
-          // Create date folder in local copy directory
-          const copyDateFolder = path.join(LOCAL_COPY_DIR, fileDate);
-          if (!fs.existsSync(copyDateFolder)) {
-            fs.mkdirSync(copyDateFolder, { recursive: true });
-          }
-          
-          // Copy with the same filename
-          const copyPath = path.join(copyDateFolder, filename);
-          
-          // Check if copy destination already exists
-          if (fs.existsSync(copyPath)) {
-            console.log(`Copy destination already exists, removing: ${copyPath}`);
-            fs.removeSync(copyPath);
-          }
-          
-          // Use copyFileSync to ensure we're copying a file, not creating a directory
-          fs.copyFileSync(destPath, copyPath);
-          
-          // Verify the copy worked
-          if (!fs.existsSync(copyPath) || fs.statSync(copyPath).isDirectory()) {
-            throw new Error(`Failed to properly copy file to ${copyPath}`);
-          }
-          
-          actionRecord.copyPath = copyPath;
-          
-          // Log the copy action with the same metadata
-          logSimpleAction('copy_to_local', {
-            filename,
-            sourcePath: destPath,
-            destPath: copyPath,
-            fileDate,
-            metadata: fileMetadata,
-            action
-          });
-        }
         break;
       }
       
-      case 'up': {
+      case 'saved':
+      case 'saved_wip': {
+        // Create date folder for saved files
+        const dateFolderPath = path.join(OUTPUT_DIR, fileDate);
+        if (!fs.existsSync(dateFolderPath)) {
+          fs.mkdirSync(dateFolderPath, { recursive: true });
+        }
+        
+        // For work-in-progress, create a "wip" subfolder
+        let destFolder = dateFolderPath;
+        if (actionType === 'saved_wip') {
+          destFolder = path.join(dateFolderPath, 'wip');
+          if (!fs.existsSync(destFolder)) {
+            fs.mkdirSync(destFolder, { recursive: true });
+          }
+        }
+        
+        // Move to appropriate folder
+        const destPath = path.join(destFolder, targetFilename);
+        
+        // Check if destination already exists
+        if (fs.existsSync(destPath)) {
+          console.log(`Destination already exists, removing: ${destPath}`);
+          fs.removeSync(destPath);
+        }
+        
+        // Move the file
+        fs.moveSync(sourcePath, destPath, { overwrite: true });
+        
+        // Verify the move worked
+        if (!fs.existsSync(destPath) || fs.statSync(destPath).isDirectory()) {
+          throw new Error(`Failed to properly move file to ${destPath}`);
+        }
+        
+        actionRecord.destPath = destPath;
+        
+        // Log the move action
+        logSimpleAction(actionType, {
+          filename,
+          targetFilename,
+          sourcePath,
+          destPath,
+          fileDate,
+          metadata: fileMetadata,
+          action: actionType
+        });
+        
+        // Also copy to local save directory
+        const copyDateFolder = path.join(LOCAL_COPY_DIR, fileDate);
+        if (!fs.existsSync(copyDateFolder)) {
+          fs.mkdirSync(copyDateFolder, { recursive: true });
+        }
+        
+        // For work-in-progress, create a "wip" subfolder in the copy location too
+        let copyDestFolder = copyDateFolder;
+        if (actionType === 'saved_wip') {
+          copyDestFolder = path.join(copyDateFolder, 'wip');
+          if (!fs.existsSync(copyDestFolder)) {
+            fs.mkdirSync(copyDestFolder, { recursive: true });
+          }
+        }
+        
+        // Define copy path
+        const copyPath = path.join(copyDestFolder, targetFilename);
+        
+        // Check if copy destination already exists
+        if (fs.existsSync(copyPath)) {
+          console.log(`Copy destination already exists, removing: ${copyPath}`);
+          fs.removeSync(copyPath);
+        }
+        
+        // Copy the file
+        fs.copyFileSync(destPath, copyPath);
+        
+        // Verify the copy worked
+        if (!fs.existsSync(copyPath) || fs.statSync(copyPath).isDirectory()) {
+          throw new Error(`Failed to properly copy file to ${copyPath}`);
+        }
+        
+        actionRecord.copyPath = copyPath;
+        
+        // Log the copy action
+        logSimpleAction(`${actionType}_copy`, {
+          filename,
+          targetFilename,
+          sourcePath: destPath,
+          destPath: copyPath,
+          fileDate,
+          metadata: fileMetadata,
+          action: actionType
+        });
+        
+        break;
+      }
+      
+      case 'best_complete':
+      case 'best_wip': {
         // "Super save" - Copy to best subfolder within the date folder
         try {
-          console.log(`SUPER SAVE: Processing file: ${filename}`);
+          console.log(`SUPER SAVE: Processing file: ${filename} as ${actionType}`);
           
           // Create date folder in local copy directory
           const copyDateFolder = path.join(LOCAL_COPY_DIR, fileDate);
@@ -552,14 +624,20 @@ app.post('/api/files/action', async (req, res) => {
             fs.mkdirSync(copyDateFolder, { recursive: true });
           }
           
-          // Create best subfolder within the date folder
-          const bestFolder = path.join(copyDateFolder, 'best');
+          // Create the appropriate best folder based on action
+          let bestFolder;
+          if (actionType === 'best_complete') {
+            bestFolder = path.join(copyDateFolder, 'best');
+          } else { // best_wip
+            bestFolder = path.join(copyDateFolder, 'best_wip');
+          }
+          
           if (!fs.existsSync(bestFolder)) {
             fs.mkdirSync(bestFolder, { recursive: true });
           }
           
           // Define the destination path
-          const bestDestPath = path.join(bestFolder, filename);
+          const bestDestPath = path.join(bestFolder, targetFilename);
           
           // Check if destination already exists
           if (fs.existsSync(bestDestPath)) {
@@ -589,7 +667,7 @@ app.post('/api/files/action', async (req, res) => {
           }
           
           // Set the destination path for the original file
-          const movedOriginal = path.join(dateFolderPath, filename);
+          const movedOriginal = path.join(dateFolderPath, targetFilename);
           
           // Check if move destination already exists
           if (fs.existsSync(movedOriginal)) {
@@ -616,24 +694,26 @@ app.post('/api/files/action', async (req, res) => {
           actionRecord.destPath = movedOriginal;
           
           // Log the super save action
-          logSimpleAction('super_save', {
+          logSimpleAction(actionType, {
             filename,
+            targetFilename,
             sourcePath,
             bestDestPath,
             movedOriginal,
             fileDate,
             metadata: fileMetadata,
-            action
+            action: actionType
           });
           
-          console.log(`SUPER SAVE: Completed successfully`);
+          console.log(`SUPER SAVE: Completed successfully as ${actionType}`);
         } catch (error) {
           console.error(`SUPER SAVE ERROR: ${error.message}`);
           console.error(error.stack);
           
           // Log the error
-          logSimpleAction('super_save_error', {
+          logSimpleAction(`${actionType}_error`, {
             filename,
+            targetFilename,
             sourcePath,
             error: error.message,
             metadata: fileMetadata
@@ -644,14 +724,14 @@ app.post('/api/files/action', async (req, res) => {
         break;
       }
       
-      case 'down': {
+      case 'delete': {
         // Move to deleted folder
         // Check if deleted directory exists
         if (!fs.existsSync(DELETED_DIR)) {
           fs.mkdirSync(DELETED_DIR, { recursive: true });
         }
         
-        const destPath = path.join(DELETED_DIR, filename);
+        const destPath = path.join(DELETED_DIR, targetFilename);
         
         // Check if destination already exists
         if (fs.existsSync(destPath)) {
@@ -669,19 +749,20 @@ app.post('/api/files/action', async (req, res) => {
         actionRecord.destPath = destPath;
         
         // Log the delete action
-        logSimpleAction('move_to_deleted', {
+        logSimpleAction('delete', {
           filename,
+          targetFilename,
           sourcePath,
           destPath,
           fileDate,
           metadata: fileMetadata,
-          action
+          action: actionType
         });
         break;
       }
       
       default:
-        throw new Error(`Unknown action: ${action}`);
+        throw new Error(`Unknown action: ${action} (normalized to ${actionType})`);
     }
     
     // Add action to history

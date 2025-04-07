@@ -5,8 +5,23 @@ document.addEventListener('DOMContentLoaded', () => {
   // State management
   let allFiles = [];
   let currentIndex = 0;
+  let customFilename = null;
   
-  // Add controls
+  // Setup modal
+  const modal = document.getElementById('filenameModal');
+  const closeModal = document.querySelector('.close-modal');
+  const filenameInput = document.getElementById('customFilename');
+  const saveFilenameBtn = document.getElementById('saveFilename');
+  
+  // Add bottom controls container
+  const bottomControls = document.createElement('div');
+  bottomControls.className = 'bottom-controls';
+  
+  // Add counter to the left
+  const counterContainer = document.createElement('div');
+  counterContainer.className = 'counter-container';
+  
+  // Add controls in the center
   const controls = document.createElement('div');
   controls.className = 'controls';
   
@@ -31,32 +46,121 @@ document.addEventListener('DOMContentLoaded', () => {
   controls.appendChild(undoButton);
   controls.appendChild(nextButton);
   
+  // Add options dropdown to the right
+  const optionsContainer = document.createElement('div');
+  optionsContainer.className = 'options-container';
+  
+  const optionsButton = document.createElement('button');
+  optionsButton.className = 'btn btn-options';
+  optionsButton.textContent = 'Options';
+  optionsButton.addEventListener('click', toggleOptionsDropdown);
+  
+  const optionsDropdown = document.createElement('div');
+  optionsDropdown.className = 'options-dropdown';
+  optionsDropdown.innerHTML = `
+    <ul>
+      <li id="customName">Custom Name</li>
+    </ul>
+  `;
+  
+  optionsContainer.appendChild(optionsButton);
+  optionsContainer.appendChild(optionsDropdown);
+  
+  // Add all elements to the bottom controls
+  bottomControls.appendChild(counterContainer);
+  bottomControls.appendChild(controls);
+  bottomControls.appendChild(optionsContainer);
+  
   const container = document.querySelector('.container');
-  container.appendChild(controls);
+  container.appendChild(bottomControls);
   
-  // Add image counter display with refresh button
-  const counterContainer = document.createElement('div');
-  counterContainer.className = 'counter-container';
-  
-  const imageCounter = document.createElement('div');
-  imageCounter.className = 'image-counter';
-  
-  const refreshIcon = document.createElement('button');
-  refreshIcon.className = 'refresh-icon';
-  refreshIcon.innerHTML = '&#x21bb;'; // Refresh icon
-  refreshIcon.title = 'Refresh';
+  // Set up header buttons
+  const refreshIcon = document.querySelector('.refresh-icon');
   refreshIcon.addEventListener('click', fetchMediaFiles);
   
-  counterContainer.appendChild(imageCounter);
-  counterContainer.appendChild(refreshIcon);
-  container.appendChild(counterContainer);
+  const saveIcon = document.querySelector('.save-icon');
+  saveIcon.addEventListener('click', downloadCurrentImage);
+  
+  // Function to download the current image to device
+  function downloadCurrentImage() {
+    if (allFiles.length === 0) return;
+    
+    const currentFile = allFiles[currentIndex];
+    const imageUrl = `${API_URL}${currentFile.path}`;
+    
+    // Create a temporary link element
+    const downloadLink = document.createElement('a');
+    downloadLink.href = imageUrl;
+    downloadLink.download = customFilename || currentFile.name; // Use custom filename if available
+    
+    // Append to the body, click and remove
+    document.body.appendChild(downloadLink);
+    downloadLink.click();
+    document.body.removeChild(downloadLink);
+  }
+  
+  // Function to toggle options dropdown
+  function toggleOptionsDropdown() {
+    optionsDropdown.classList.toggle('show');
+  }
+  
+  // Close dropdown when clicking outside
+  window.addEventListener('click', function(event) {
+    if (!optionsButton.contains(event.target) && !optionsDropdown.contains(event.target)) {
+      optionsDropdown.classList.remove('show');
+    }
+  });
+  
+  // Custom name option
+  document.getElementById('customName').addEventListener('click', function() {
+    openFilenameModal();
+    optionsDropdown.classList.remove('show');
+  });
+  
+  // Modal functions
+  function openFilenameModal() {
+    const currentFile = allFiles[currentIndex];
+    filenameInput.value = customFilename || currentFile.name;
+    modal.style.display = "block";
+  }
+  
+  closeModal.addEventListener('click', function() {
+    modal.style.display = "none";
+  });
+  
+  window.addEventListener('click', function(event) {
+    if (event.target === modal) {
+      modal.style.display = "none";
+    }
+  });
+  
+  saveFilenameBtn.addEventListener('click', function() {
+    customFilename = filenameInput.value.trim();
+    modal.style.display = "none";
+    updateFilenameDisplay();
+  });
+  
+  function updateFilenameDisplay() {
+    const nameElement = document.querySelector('.media-name');
+    if (nameElement && customFilename) {
+      nameElement.textContent = customFilename;
+    }
+  }
+  
+  // Save current file (placeholder function)
+  function saveCurrentFile() {
+    if (allFiles.length === 0) return;
+    
+    // Default to "saved" action (right)
+    performAction('right');
+  }
   
   // Function to update the image counter display
   function updateImageCounter() {
     if (allFiles.length === 0) {
-      imageCounter.textContent = 'No images';
+      counterContainer.textContent = 'No images';
     } else {
-      imageCounter.textContent = `Image ${currentIndex + 1} of ${allFiles.length}`;
+      counterContainer.textContent = `${currentIndex + 1} of ${allFiles.length}`;
     }
   }
   
@@ -64,6 +168,7 @@ document.addEventListener('DOMContentLoaded', () => {
   function showPreviousImage() {
     if (allFiles.length === 0) return;
     
+    customFilename = null; // Reset custom filename
     currentIndex = (currentIndex - 1 + allFiles.length) % allFiles.length;
     displayCurrentImage();
   }
@@ -72,6 +177,7 @@ document.addEventListener('DOMContentLoaded', () => {
   function showNextImage() {
     if (allFiles.length === 0) return;
     
+    customFilename = null; // Reset custom filename
     currentIndex = (currentIndex + 1) % allFiles.length;
     displayCurrentImage();
   }
@@ -93,28 +199,46 @@ document.addEventListener('DOMContentLoaded', () => {
     const instruction = mediaItem.querySelector('.swipe-instruction');
     if (instruction) {
       switch(action) {
-        case 'left': instruction.textContent = 'Moving to date folder...'; break;
-        case 'right': instruction.textContent = 'Copying to local backup...'; break;
-        case 'up': instruction.textContent = 'Super saving...'; break;
-        case 'down': instruction.textContent = 'Moving to deleted...'; break;
+        case 'archive': 
+        case 'left': instruction.textContent = 'Archived'; break;
+        case 'archive_good': instruction.textContent = 'Archived - Good'; break;
+        case 'archive_bad': instruction.textContent = 'Archived - Bad'; break;
+        case 'saved':
+        case 'right': instruction.textContent = 'Saved'; break;
+        case 'saved_wip': instruction.textContent = 'Saved - WIP'; break;
+        case 'best_complete': 
+        case 'up': instruction.textContent = 'Super Save - Complete'; break;
+        case 'best_wip': instruction.textContent = 'Super Save - WIP'; break;
+        case 'delete':
+        case 'down': instruction.textContent = 'Deleted'; break;
       }
       instruction.style.opacity = 1;
     }
     
     try {
+      // Add custom filename if set
+      const requestData = { 
+        filename,
+        action,
+        ...(customFilename && { customFilename })
+      };
+      
       const response = await fetch(`${API_URL}/api/files/action`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({ filename, action })
+        body: JSON.stringify(requestData)
       });
       
       if (response.ok) {
-        // Wait for animation to complete
+        // Move to next image faster: reduced timeout from 500ms to 300ms
         setTimeout(() => {
           // Remove current file from array
           allFiles.splice(currentIndex, 1);
+          
+          // Reset custom filename for next image
+          customFilename = null;
           
           // If there are no more files, show empty state
           if (allFiles.length === 0) {
@@ -130,7 +254,7 @@ document.addEventListener('DOMContentLoaded', () => {
           
           // Display the next image
           displayCurrentImage();
-        }, 500);
+        }, 300);
       } else {
         // Handle error
         const errorData = await response.json();
@@ -149,16 +273,16 @@ document.addEventListener('DOMContentLoaded', () => {
   function handleKeyDown(e) {
     switch(e.key) {
       case 'ArrowLeft':
-        performAction('left');
+        performAction('archive');
         break;
       case 'ArrowRight':
-        performAction('right');
+        performAction('saved');
         break;
       case 'ArrowUp':
-        performAction('up');
+        performAction('best_complete');
         break;
       case 'ArrowDown':
-        performAction('down');
+        performAction('delete');
         break;
     }
   }
@@ -182,7 +306,32 @@ document.addEventListener('DOMContentLoaded', () => {
     
     setupSwipeHandlers();
     setupTapHandlers();
+    setupPinchZoom();
     updateImageCounter();
+  }
+  
+  // Setup pinch zoom
+  function setupPinchZoom() {
+    const mediaContent = document.querySelector('.media-content');
+    if (mediaContent && mediaContent.tagName === 'IMG') {
+      const container = mediaContent.parentElement;
+      
+      // Create a wrapper for pinch zoom
+      const wrapper = document.createElement('div');
+      wrapper.className = 'pinch-zoom-container';
+      
+      // Move the image into the wrapper
+      container.insertBefore(wrapper, mediaContent);
+      wrapper.appendChild(mediaContent);
+      
+      // Initialize pinch zoom if the library is available
+      if (typeof PinchZoom !== 'undefined') {
+        new PinchZoom(wrapper, {
+          draggable: true,
+          maxZoom: 5
+        });
+      }
+    }
   }
   
   // Undo last action
@@ -225,6 +374,7 @@ document.addEventListener('DOMContentLoaded', () => {
       
       // Reset to first image when refreshing
       currentIndex = 0;
+      customFilename = null;
       displayCurrentImage();
     } catch (error) {
       console.error('Error fetching media files:', error);
@@ -262,39 +412,31 @@ document.addEventListener('DOMContentLoaded', () => {
     
     mediaContent.className = 'media-content';
     
-    // Create tap zones
+    // Create 9-zone grid for taps
     const tapZones = document.createElement('div');
     tapZones.className = 'tap-zones';
     
-    const leftZone = document.createElement('div');
-    leftZone.className = 'tap-zone left-zone';
-    leftZone.dataset.action = 'left';
+    // Create 9 zones (3x3 grid)
+    const zoneConfig = [
+      { className: 'top-left', action: 'archive_good' },
+      { className: 'top-middle', action: 'best_complete' },
+      { className: 'top-right', action: 'best_wip' },
+      { className: 'middle-left', action: 'archive' },
+      { className: 'middle-center', action: null },
+      { className: 'middle-right', action: 'saved' },
+      { className: 'bottom-left', action: 'archive_bad' },
+      { className: 'bottom-middle', action: 'delete' },
+      { className: 'bottom-right', action: 'saved_wip' }
+    ];
     
-    const middleZone = document.createElement('div');
-    middleZone.className = 'tap-zone middle-zone';
-    
-    const topMiddleZone = document.createElement('div');
-    topMiddleZone.className = 'tap-zone top-middle-zone';
-    topMiddleZone.dataset.action = 'up';
-    
-    const centerZone = document.createElement('div');
-    centerZone.className = 'tap-zone center-zone';
-    
-    const bottomMiddleZone = document.createElement('div');
-    bottomMiddleZone.className = 'tap-zone bottom-middle-zone';
-    bottomMiddleZone.dataset.action = 'down';
-    
-    middleZone.appendChild(topMiddleZone);
-    middleZone.appendChild(centerZone);
-    middleZone.appendChild(bottomMiddleZone);
-    
-    const rightZone = document.createElement('div');
-    rightZone.className = 'tap-zone right-zone';
-    rightZone.dataset.action = 'right';
-    
-    tapZones.appendChild(leftZone);
-    tapZones.appendChild(middleZone);
-    tapZones.appendChild(rightZone);
+    zoneConfig.forEach(config => {
+      const zone = document.createElement('div');
+      zone.className = `tap-zone ${config.className}`;
+      if (config.action) {
+        zone.dataset.action = config.action;
+      }
+      tapZones.appendChild(zone);
+    });
     
     const swipeInstruction = document.createElement('div');
     swipeInstruction.className = 'swipe-instruction';
@@ -304,7 +446,7 @@ document.addEventListener('DOMContentLoaded', () => {
     
     const name = document.createElement('div');
     name.className = 'media-name';
-    name.textContent = file.name;
+    name.textContent = customFilename || file.name;
     
     info.appendChild(name);
     item.appendChild(mediaContent);
@@ -329,10 +471,14 @@ document.addEventListener('DOMContentLoaded', () => {
           actionLabel.className = 'action-label';
           
           switch(actionName) {
-            case 'left': actionLabel.textContent = 'Date folder'; break;
-            case 'right': actionLabel.textContent = 'Local backup'; break;
-            case 'up': actionLabel.textContent = 'Super save'; break;
-            case 'down': actionLabel.textContent = 'Delete'; break;
+            case 'archive': actionLabel.textContent = 'Archived'; break;
+            case 'archive_good': actionLabel.textContent = 'Archived - Good'; break;
+            case 'archive_bad': actionLabel.textContent = 'Archived - Bad'; break;
+            case 'saved': actionLabel.textContent = 'Saved'; break;
+            case 'saved_wip': actionLabel.textContent = 'Saved - WIP'; break;
+            case 'best_complete': actionLabel.textContent = 'Super Save - Complete'; break;
+            case 'best_wip': actionLabel.textContent = 'Super Save - WIP'; break;
+            case 'delete': actionLabel.textContent = 'Deleted'; break;
           }
           
           document.body.appendChild(actionLabel);
@@ -372,10 +518,10 @@ document.addEventListener('DOMContentLoaded', () => {
         let action;
         
         switch(e.type) {
-          case 'swipeleft': action = 'left'; break;
-          case 'swiperight': action = 'right'; break;
-          case 'swipeup': action = 'up'; break;
-          case 'swipedown': action = 'down'; break;
+          case 'swipeleft': action = 'archive'; break;
+          case 'swiperight': action = 'saved'; break;
+          case 'swipeup': action = 'best_complete'; break;
+          case 'swipedown': action = 'delete'; break;
         }
         
         performAction(action);
@@ -388,12 +534,12 @@ document.addEventListener('DOMContentLoaded', () => {
         if (Math.abs(e.deltaX) > Math.abs(e.deltaY)) {
           // Horizontal swipe
           if (e.deltaX > 50) {
-            instruction.textContent = 'Swipe right to copy to local backup';
+            instruction.textContent = 'Swipe right to save';
             instruction.style.opacity = 0.9;
             // Add visual rotation effect
             item.style.transform = `translateX(${e.deltaX * 0.5}px) rotate(${e.deltaX * 0.02}deg)`;
           } else if (e.deltaX < -50) {
-            instruction.textContent = 'Swipe left to move to date folder';
+            instruction.textContent = 'Swipe left to archive';
             instruction.style.opacity = 0.9;
             // Add visual rotation effect
             item.style.transform = `translateX(${e.deltaX * 0.5}px) rotate(${e.deltaX * 0.02}deg)`;
@@ -404,7 +550,7 @@ document.addEventListener('DOMContentLoaded', () => {
         } else {
           // Vertical swipe
           if (e.deltaY < -50) {
-            instruction.textContent = 'Swipe up for super save (add *)';
+            instruction.textContent = 'Swipe up for super save';
             instruction.style.opacity = 0.9;
             // Add visual scale effect
             item.style.transform = `translateY(${e.deltaY * 0.5}px) scale(${1 - Math.abs(e.deltaY) * 0.001})`;
