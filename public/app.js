@@ -271,7 +271,11 @@ document.addEventListener('DOMContentLoaded', () => {
   
   // Handle keydown events
   function handleKeyDown(e) {
+    // Skip if typing in an input or textarea
+    if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+    
     switch(e.key) {
+      // Original arrow key controls
       case 'ArrowLeft':
         performAction('archive');
         break;
@@ -284,6 +288,94 @@ document.addEventListener('DOMContentLoaded', () => {
       case 'ArrowDown':
         performAction('delete');
         break;
+        
+      // New WASD keyboard controls
+      case 'a':
+      case 'A':
+        performAction('archive');
+        break;
+      case 'd':
+      case 'D':
+        performAction('saved');
+        break;
+      case 'w':
+      case 'W':
+        performAction('best_complete');
+        break;
+      case 's':
+      case 'S':
+        performAction('delete');
+        break;
+        
+      // Corner keys
+      case 'q':
+      case 'Q':
+        performAction('archive_good');
+        break;
+      case 'e':
+      case 'E':
+        performAction('best_wip');
+        break;
+      case 'z':
+      case 'Z':
+        performAction('archive_bad');
+        break;
+      case 'c':
+      case 'C':
+        performAction('saved_wip');
+        break;
+      case 'x':
+      case 'X':
+        performAction('delete');
+        break;
+        
+      // Command key combinations
+      case 'z':
+        if (e.metaKey) {
+          e.preventDefault();
+          undoLastAction();
+        }
+        break;
+      case 'o':
+        if (e.metaKey) {
+          e.preventDefault();
+          toggleOptionsDropdown();
+        }
+        break;
+      case 'n':
+        if (e.metaKey) {
+          e.preventDefault();
+          openFilenameModal();
+          // Focus and select the input text
+          setTimeout(() => {
+            filenameInput.focus();
+            filenameInput.select();
+          }, 50);
+        }
+        break;
+      case 's':
+        if (e.metaKey) {
+          e.preventDefault();
+          downloadCurrentImage();
+        }
+        break;
+      case 'r':
+        if (e.metaKey) {
+          e.preventDefault();
+          fetchMediaFiles();
+        }
+        break;
+    }
+    
+    // Navigation with Command + Left/Right or Command + A/D
+    if (e.metaKey) {
+      if (e.key === 'ArrowLeft' || (e.key.toLowerCase() === 'a')) {
+        e.preventDefault();
+        showPreviousImage();
+      } else if (e.key === 'ArrowRight' || (e.key.toLowerCase() === 'd')) {
+        e.preventDefault();
+        showNextImage();
+      }
     }
   }
   
@@ -404,10 +496,35 @@ document.addEventListener('DOMContentLoaded', () => {
           item.classList.add('landscape');
         }
       };
-    } else {
+    } else if (/\.(mp4|webm)$/i.test(file.name)) {
       mediaContent = document.createElement('video');
       mediaContent.src = `${API_URL}${file.path}`;
       mediaContent.controls = true;
+      mediaContent.autoplay = false;
+      mediaContent.muted = false;
+      mediaContent.loop = false;
+      mediaContent.playsInline = true;
+      mediaContent.preload = 'metadata';
+      
+      // Fix for video playback issues
+      mediaContent.addEventListener('click', function() {
+        if (this.paused) {
+          this.play();
+        } else {
+          this.pause();
+        }
+      });
+      
+      // Add double-click to fullscreen
+      mediaContent.addEventListener('dblclick', function() {
+        if (this.requestFullscreen) {
+          this.requestFullscreen();
+        } else if (this.webkitRequestFullscreen) { /* Safari */
+          this.webkitRequestFullscreen();
+        } else if (this.msRequestFullscreen) { /* IE11 */
+          this.msRequestFullscreen();
+        }
+      });
     }
     
     mediaContent.className = 'media-content';
@@ -441,18 +558,15 @@ document.addEventListener('DOMContentLoaded', () => {
     const swipeInstruction = document.createElement('div');
     swipeInstruction.className = 'swipe-instruction';
     
-    const info = document.createElement('div');
-    info.className = 'media-info';
+    // Create filename overlay that appears on top of image
+    const filenameOverlay = document.createElement('div');
+    filenameOverlay.className = 'filename-overlay';
+    filenameOverlay.textContent = customFilename || file.name;
     
-    const name = document.createElement('div');
-    name.className = 'media-name';
-    name.textContent = customFilename || file.name;
-    
-    info.appendChild(name);
     item.appendChild(mediaContent);
     item.appendChild(tapZones);
     item.appendChild(swipeInstruction);
-    item.appendChild(info);
+    item.appendChild(filenameOverlay);
     
     return item;
   }
