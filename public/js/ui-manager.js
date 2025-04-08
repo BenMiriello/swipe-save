@@ -1,5 +1,3 @@
-import config from './config.js';
-
 /**
  * Manages UI components and DOM interactions
  */
@@ -49,7 +47,7 @@ const uiManager = {
         <span class="close-modal" id="closeInfoModal">&times;</span>
         <h2>Instructions</h2>
         <div class="instructions-content">
-          ${config.instructionsContent}
+          ${window.appConfig.instructionsContent}
         </div>
       </div>
     `;
@@ -251,14 +249,15 @@ const uiManager = {
     const filenameContainer = document.createElement('div');
     filenameContainer.className = 'filename-container overlay';
     
-    // Extract path and filename
-    const path = file.path.substring(0, file.path.lastIndexOf('/') + 1);
-    const filename = file.name;
+    // Extract path and actual filesystem path instead of browser URL
+    // Get the original path from file (which should be the filesystem path)
+    // This assumes 'file' contains the original path somewhere, either in name or as a property
+    const fsPath = file.originalPath || file.name; // Using file.name as fallback
     
     // Create path + bold filename
     const filenamePath = document.createElement('div');
     filenamePath.className = 'filename-path';
-    filenamePath.innerHTML = `${path}<strong>${customFilename || filename}</strong>`;
+    filenamePath.innerHTML = `<strong>${customFilename || file.name}</strong>`;
     filenameContainer.appendChild(filenamePath);
     
     // Create 9-zone grid for taps
@@ -266,7 +265,7 @@ const uiManager = {
     tapZones.className = 'tap-zones';
     
     // Create zones according to config
-    config.zoneConfig.forEach(zone => {
+    window.appConfig.zoneConfig.forEach(zone => {
       const zoneElement = document.createElement('div');
       zoneElement.className = `tap-zone ${zone.className}`;
       if (zone.action) {
@@ -365,20 +364,28 @@ const uiManager = {
     if (mediaContent && mediaContent.tagName === 'IMG') {
       const container = mediaContent.parentElement;
       
-      // Create a wrapper for pinch zoom
-      const wrapper = document.createElement('div');
-      wrapper.className = 'pinch-zoom-container';
+      // Check if we have a PinchZoom library available
+      if (typeof PinchZoom === 'undefined') {
+        console.log('PinchZoom library not available');
+        return;
+      }
       
-      // Move the image into the wrapper
-      container.insertBefore(wrapper, mediaContent);
-      wrapper.appendChild(mediaContent);
-      
-      // Initialize pinch zoom if the library is available
-      if (typeof PinchZoom !== 'undefined') {
+      try {
+        // Create a wrapper for pinch zoom
+        const wrapper = document.createElement('div');
+        wrapper.className = 'pinch-zoom-container';
+        
+        // Move the image into the wrapper
+        container.insertBefore(wrapper, mediaContent);
+        wrapper.appendChild(mediaContent);
+        
+        // Initialize pinch zoom
         new PinchZoom(wrapper, {
           draggable: true,
           maxZoom: 5
         });
+      } catch (error) {
+        console.error('Error initializing PinchZoom:', error);
       }
     }
   },
@@ -470,4 +477,5 @@ const uiManager = {
   }
 };
 
-export default uiManager;
+// Export as a global variable
+window.uiManager = uiManager;
