@@ -1,8 +1,3 @@
-import config from './config.js';
-import apiService from './api-service.js';
-import uiManager from './ui-manager.js';
-import interactionHandler from './interaction-handler.js';
-
 /**
  * Main application controller, coordinates between modules
  */
@@ -17,10 +12,10 @@ class AppController {
     };
     
     // Initialize UI manager
-    uiManager.initializeUI();
+    window.uiManager.initializeUI();
     
     // Setup interaction handlers with callback functions
-    interactionHandler.init({
+    window.interactionHandler.init({
       showPrevious: this.showPreviousImage.bind(this),
       showNext: this.showNextImage.bind(this),
       performAction: this.performAction.bind(this),
@@ -34,7 +29,7 @@ class AppController {
     });
     
     // Setup UI event handlers
-    uiManager.setupEventHandlers({
+    window.uiManager.setupEventHandlers({
       openFilenameModal: this.openFilenameModal.bind(this),
       saveCustomFilename: this.saveCustomFilename.bind(this)
     });
@@ -89,13 +84,13 @@ class AppController {
   async fetchMediaFiles() {
     try {
       this.state.isLoading = true;
-      uiManager.showLoading();
+      window.uiManager.showLoading();
       
-      this.state.allFiles = await apiService.fetchMediaFiles();
+      this.state.allFiles = await window.apiService.fetchMediaFiles();
       
       if (this.state.allFiles.length === 0) {
-        uiManager.showEmptyState();
-        uiManager.updateImageCounter(0, 0);
+        window.uiManager.showEmptyState();
+        window.uiManager.updateImageCounter(0, 0);
         return;
       }
       
@@ -105,7 +100,7 @@ class AppController {
       this.displayCurrentImage();
     } catch (error) {
       console.error('Error fetching media files:', error);
-      uiManager.showError(error.message);
+      window.uiManager.showError(error.message || 'Failed to load media files');
     } finally {
       this.state.isLoading = false;
     }
@@ -116,8 +111,8 @@ class AppController {
    */
   displayCurrentImage() {
     if (this.state.allFiles.length === 0) {
-      uiManager.showEmptyState();
-      uiManager.updateImageCounter(0, 0);
+      window.uiManager.showEmptyState();
+      window.uiManager.updateImageCounter(0, 0);
       return;
     }
     
@@ -126,22 +121,22 @@ class AppController {
     mediaList.innerHTML = '';
     
     // Create and add the media item
-    const mediaItem = uiManager.createMediaItem(
+    const mediaItem = window.uiManager.createMediaItem(
       file, 
       this.state.customFilename, 
-      config.getApiUrl()
+      window.appConfig.getApiUrl()
     );
     mediaList.appendChild(mediaItem);
     
     // Setup interactions
-    interactionHandler.setupSwipeHandlers();
-    interactionHandler.setupTapHandlers();
+    window.interactionHandler.setupSwipeHandlers();
+    window.interactionHandler.setupTapHandlers();
     
     // Setup pinch zoom for images
-    uiManager.setupPinchZoom();
+    window.uiManager.setupPinchZoom();
     
     // Update counter
-    uiManager.updateImageCounter(
+    window.uiManager.updateImageCounter(
       this.state.currentIndex, 
       this.state.allFiles.length
     );
@@ -183,11 +178,11 @@ class AppController {
     if (!mediaItem) return;
     
     // Show visual feedback
-    uiManager.showActionFeedback(mediaItem, action);
+    window.uiManager.showActionFeedback(mediaItem, action);
     
     try {
       // Call API to perform the action
-      await apiService.performAction(filename, action, this.state.customFilename);
+      await window.apiService.performAction(filename, action, this.state.customFilename);
       
       // Move to next image after successful action
       setTimeout(() => {
@@ -199,8 +194,8 @@ class AppController {
         
         // If there are no more files, show empty state
         if (this.state.allFiles.length === 0) {
-          uiManager.showEmptyState();
-          uiManager.updateImageCounter(0, 0);
+          window.uiManager.showEmptyState();
+          window.uiManager.updateImageCounter(0, 0);
           return;
         }
         
@@ -215,7 +210,7 @@ class AppController {
     } catch (error) {
       console.error('Error performing action:', error);
       // Remove visual feedback on error
-      uiManager.hideActionFeedback(mediaItem, action);
+      window.uiManager.hideActionFeedback(mediaItem, action);
     }
   }
   
@@ -225,7 +220,7 @@ class AppController {
   async undoLastAction() {
     try {
       // Call API to undo last action
-      const result = await apiService.undoLastAction();
+      const result = await window.apiService.undoLastAction();
       
       if (result.undoneAction) {
         // Refresh the media files and try to show the image that was restored
@@ -235,11 +230,11 @@ class AppController {
         const currentFilename = this.state.allFiles[this.state.currentIndex]?.name;
         
         // Fetch updated files
-        this.state.allFiles = await apiService.fetchMediaFiles();
+        this.state.allFiles = await window.apiService.fetchMediaFiles();
         
         if (this.state.allFiles.length === 0) {
-          uiManager.showEmptyState();
-          uiManager.updateImageCounter(0, 0);
+          window.uiManager.showEmptyState();
+          window.uiManager.updateImageCounter(0, 0);
           return;
         }
         
@@ -277,7 +272,7 @@ class AppController {
     if (this.state.allFiles.length === 0) return;
     
     const currentFile = this.state.allFiles[this.state.currentIndex];
-    uiManager.showFilenameModal(currentFile.name, this.state.customFilename);
+    window.uiManager.showFilenameModal(currentFile.name, this.state.customFilename);
   }
   
   /**
@@ -297,7 +292,7 @@ class AppController {
     if (this.state.allFiles.length === 0) return;
     
     const currentFile = this.state.allFiles[this.state.currentIndex];
-    apiService.downloadFile(currentFile, this.state.customFilename);
+    window.apiService.downloadFile(currentFile, this.state.customFilename);
   }
   
   /**
@@ -307,14 +302,14 @@ class AppController {
     if (this.state.allFiles.length === 0) return;
     
     const currentFile = this.state.allFiles[this.state.currentIndex];
-    apiService.openFileInNewView(currentFile);
+    window.apiService.openFileInNewView(currentFile);
   }
   
   /**
    * Toggle options menu
    */
   toggleOptionsMenu() {
-    uiManager.toggleOptionsDropdown();
+    window.uiManager.toggleOptionsDropdown();
   }
   
   /**
@@ -323,8 +318,9 @@ class AppController {
    * @param {DOMRect} rect - Position of the tap zone
    */
   showActionLabel(actionName, rect) {
-    uiManager.showActionLabel(actionName, rect);
+    window.uiManager.showActionLabel(actionName, rect);
   }
 }
 
-export default AppController;
+// Export as a global variable
+window.AppController = AppController;
