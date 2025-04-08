@@ -8,11 +8,28 @@ const apiService = {
    */
   async fetchMediaFiles() {
     try {
-      const response = await fetch(`${window.appConfig.getApiUrl()}/api/files`);
+      const response = await fetch(`${window.appConfig.getApiUrl()}/api/files`, {
+        headers: {
+          'Cache-Control': 'no-cache',
+          'Pragma': 'no-cache'
+        }
+      });
+      
       if (!response.ok) {
         throw new Error(`Failed to fetch media files: ${response.status}`);
       }
-      return await response.json();
+      
+      const data = await response.json();
+      
+      // Add original filesystem path (not just browser URL) to each file
+      // This is for display purposes in the UI
+      data.forEach(file => {
+        if (file.name) {
+          file.originalPath = file.name; // Store the original filename as the path
+        }
+      });
+      
+      return data;
     } catch (error) {
       console.error('Error fetching media files:', error);
       throw error;
@@ -27,17 +44,22 @@ const apiService = {
   downloadFile(file, filename) {
     if (!file) return;
     
-    const imageUrl = `${window.appConfig.getApiUrl()}${file.path}`;
-    
-    // Create a temporary link element
-    const downloadLink = document.createElement('a');
-    downloadLink.href = imageUrl;
-    downloadLink.download = filename || file.name; 
-    
-    // Append to the body, click and remove
-    document.body.appendChild(downloadLink);
-    downloadLink.click();
-    document.body.removeChild(downloadLink);
+    try {
+      const imageUrl = `${window.appConfig.getApiUrl()}${file.path}`;
+      
+      // Create a temporary link element
+      const downloadLink = document.createElement('a');
+      downloadLink.href = imageUrl;
+      downloadLink.download = filename || file.name; 
+      
+      // Append to the body, click and remove
+      document.body.appendChild(downloadLink);
+      downloadLink.click();
+      document.body.removeChild(downloadLink);
+    } catch (error) {
+      console.error('Error downloading file:', error);
+      alert('Failed to download file: ' + error.message);
+    }
   },
 
   /**
@@ -47,8 +69,12 @@ const apiService = {
   openFileInNewView(file) {
     if (!file) return;
     
-    const fileUrl = `${window.appConfig.getApiUrl()}${file.path}`;
-    window.open(fileUrl, '_blank');
+    try {
+      const fileUrl = `${window.appConfig.getApiUrl()}${file.path}`;
+      window.open(fileUrl, '_blank');
+    } catch (error) {
+      console.error('Error opening file in new view:', error);
+    }
   },
 
   /**
@@ -60,6 +86,15 @@ const apiService = {
    */
   async performAction(filename, action, customFilename = null) {
     try {
+      // Verify file still exists before taking action
+      const allFiles = await this.fetchMediaFiles();
+      const fileExists = allFiles.some(file => file.name === filename);
+      
+      if (!fileExists) {
+        console.warn(`File ${filename} no longer exists or is not in the current directory`);
+        throw new Error(`File ${filename} not found. It may have been moved or deleted.`);
+      }
+      
       // Add custom filename if set
       const requestData = { 
         filename,
