@@ -10,17 +10,11 @@
   <script>
     // Basic error logging before the full error handler loads
     window.addEventListener('error', function(e) {
-      console.error('Early error:', e.message, e.filename, e.lineno);
+      // Only log critical errors, not minor ones
+      if (e.message.indexOf('favicon.ico') === -1) {
+        console.error('Error:', e.message);
+      }
     });
-    
-    // Define a simple PinchZoom implementation to avoid external dependency
-    window.PinchZoom = function(el, options) {
-      // This is a simplified version that doesn't actually implement pinch zoom
-      // but prevents errors from occurring when the library is missing
-      this.el = el;
-      this.options = options || {};
-      console.log('Simple PinchZoom polyfill initialized (no actual zoom)');
-    };
   </script>
 </head>
 <body>
@@ -43,6 +37,16 @@
       <!-- Media items will be loaded here -->
       <div id="mediaList" class="media-list"></div>
     </div>
+    
+    <!-- Navigation controls container -->
+    <div class="controls-container">
+      <div class="counter-container">No images</div>
+      <div class="controls">
+        <button class="btn btn-secondary">Previous</button>
+        <button class="btn btn-undo">Undo</button>
+        <button class="btn btn-secondary">Next</button>
+      </div>
+    </div>
   </div>
 
   <!-- Modal for custom filename -->
@@ -57,7 +61,6 @@
 
   <!-- External libraries -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/hammer.js/2.0.8/hammer.min.js"></script>
-  <!-- We're not using pinch-zoom-js anymore, using our own implementation -->
   
   <!-- Application scripts (using regular scripts instead of modules) -->
   <script src="js/error-handler.js"></script>
