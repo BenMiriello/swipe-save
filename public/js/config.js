@@ -35,10 +35,8 @@ const config = {
     'E': 'best_wip',
     'z': 'archive_bad',
     'Z': 'archive_bad',
-    'x': 'delete',
-    'X': 'delete',
-    'c': 'saved_wip',
-    'C': 'saved_wip',
+    'x': 'saved_wip',
+    'X': 'saved_wip',
     
     // Right side keyboard layout
     'j': 'archive',

@@ -152,6 +152,7 @@ const interactionHandler = {
     
     // Handle Command/Ctrl key combinations
     if (e.metaKey) {
+      console.log(e.key);
       switch(e.key) {
         // Command+Z for undo
         case 'z':
@@ -163,12 +164,6 @@ const interactionHandler = {
         case 'o':
           e.preventDefault();
           this.callbacks.toggleOptions();
-          return;
-          
-        // Command+N for custom filename dialog
-        case 'n':
-          e.preventDefault();
-          this.callbacks.openFilenameModal();
           return;
           
         // Command+S for download
@@ -186,7 +181,7 @@ const interactionHandler = {
         // Command+Left or Command+A/J for previous image
         case 'ArrowLeft':
           e.preventDefault();
-          this.callbacks.performAction('best_complete');
+          this.callbacks.performAction('archive');
           return;
           
         // Command+Down for delete
@@ -194,11 +189,17 @@ const interactionHandler = {
           e.preventDefault();
           this.callbacks.performAction('delete');
           return;
+
+        // Command+Left or Command+A/J for previous image
+        case 'ArrowUp':
+          e.preventDefault();
+          this.callbacks.performAction('best_complete');
+          return;
           
         // Command+Right for next image
         case 'ArrowRight':
           e.preventDefault();
-          this.callbacks.showNext();
+          this.callbacks.performAction('saved');
           return;
       }
       
