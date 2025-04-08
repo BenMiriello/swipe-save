@@ -1,5 +1,3 @@
-import config from './config.js';
-
 /**
  * Service for handling API communications
  */
@@ -10,7 +8,7 @@ const apiService = {
    */
   async fetchMediaFiles() {
     try {
-      const response = await fetch(`${config.getApiUrl()}/api/files`);
+      const response = await fetch(`${window.appConfig.getApiUrl()}/api/files`);
       if (!response.ok) {
         throw new Error(`Failed to fetch media files: ${response.status}`);
       }
@@ -29,7 +27,7 @@ const apiService = {
   downloadFile(file, filename) {
     if (!file) return;
     
-    const imageUrl = `${config.getApiUrl()}${file.path}`;
+    const imageUrl = `${window.appConfig.getApiUrl()}${file.path}`;
     
     // Create a temporary link element
     const downloadLink = document.createElement('a');
@@ -49,7 +47,7 @@ const apiService = {
   openFileInNewView(file) {
     if (!file) return;
     
-    const fileUrl = `${config.getApiUrl()}${file.path}`;
+    const fileUrl = `${window.appConfig.getApiUrl()}${file.path}`;
     window.open(fileUrl, '_blank');
   },
 
@@ -69,7 +67,7 @@ const apiService = {
         ...(customFilename && { customFilename })
       };
       
-      const response = await fetch(`${config.getApiUrl()}/api/files/action`, {
+      const response = await fetch(`${window.appConfig.getApiUrl()}/api/files/action`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -95,7 +93,7 @@ const apiService = {
    */
   async undoLastAction() {
     try {
-      const response = await fetch(`${config.getApiUrl()}/api/undo`, {
+      const response = await fetch(`${window.appConfig.getApiUrl()}/api/undo`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -115,4 +113,5 @@ const apiService = {
   }
 };
 
-export default apiService;
+// Export as a global variable
+window.apiService = apiService;
