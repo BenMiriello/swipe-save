@@ -132,6 +132,20 @@ h1 {
   text-overflow: ellipsis;
 }
 
+/* Improved filename overlay style */
+.filename-container.overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  background-color: rgba(0, 0, 0, 0.6);
+  color: white;
+  border-radius: 0;
+  z-index: 10;
+  padding: 8px 12px;
+  border: none;
+}
+
 .filename-path {
   font-size: 0.85rem;
   color: #666;
@@ -139,8 +153,18 @@ h1 {
   text-overflow: ellipsis;
 }
 
+/* Adjust filename text color for overlay */
+.overlay .filename-path {
+  color: rgba(255, 255, 255, 0.8);
+}
+
 .filename-path strong {
   color: #333;
+  font-weight: 600;
+}
+
+.overlay .filename-path strong {
+  color: white;
   font-weight: 600;
 }
 
