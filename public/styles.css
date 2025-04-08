@@ -116,6 +116,29 @@ h1 {
   flex: 1;
 }
 
+/* Enhanced video player styling */
+video.media-content {
+  width: 100%;
+  height: 100%;
+  min-height: 240px;
+  background: #000;
+  cursor: pointer;
+}
+
+video.media-content::-webkit-media-controls-play-button,
+video.media-content::-webkit-media-controls-volume-slider,
+video.media-content::-webkit-media-controls-timeline {
+  cursor: pointer;
+  opacity: 0.8;
+  transition: opacity 0.2s;
+}
+
+video.media-content::-webkit-media-controls-play-button:hover,
+video.media-content::-webkit-media-controls-volume-slider:hover,
+video.media-content::-webkit-media-controls-timeline:hover {
+  opacity: 1;
+}
+
 .tap-zones {
   position: absolute;
   top: 0;
@@ -147,20 +170,32 @@ h1 {
   opacity: 0;
 }
 
-.media-info {
-  padding: 0.5rem;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  background-color: #fff;
+/* Semi-opaque filename overlay on image */
+.filename-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  padding: 8px 12px;
+  background-color: rgba(0, 0, 0, 0.5);
+  color: white;
+  font-size: 0.9rem;
+  text-overflow: ellipsis;
+  overflow: hidden;
+  white-space: nowrap;
+  z-index: 5;
+  transition: opacity 0.3s ease;
+  opacity: 0.7;
 }
 
-.media-name {
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  font-size: 0.8rem;
-  flex: 1;
+.filename-overlay:hover {
+  opacity: 1;
+}
+
+/* Keep the original media-info section for backward compatibility,
+   but hide it since we now have the overlay */
+.media-info {
+  display: none;
 }
 
 .swipe-instruction {
