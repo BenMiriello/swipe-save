@@ -11,5 +11,16 @@
     "express": "^4.17.3",
     "fs-extra": "^10.0.1",
     "moment": "^2.29.1"
+  },
+  "config": {
+    "paths": {
+      "source": "~/Documents/ComfyUI/output",
+      "archive": "~/Documents/ComfyUI/output",
+      "sorted": "~/Documents/ComfyUI/output/swipe-save"
+    },
+    "fileBrowser": {
+      "port": 3002,
+      "url_overwrites_port": null
+    }
   }
 }
