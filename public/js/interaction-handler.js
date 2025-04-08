@@ -1,5 +1,3 @@
-import config from './config.js';
-
 /**
  * Handles user interactions like keyboard, swipe, and tap events
  */
@@ -51,7 +49,8 @@ const interactionHandler = {
   setupSwipeHandlers() {
     const mediaItems = document.querySelectorAll('.media-item');
     
-    if (!window.Hammer) {
+    // Check if Hammer.js is available
+    if (typeof Hammer === 'undefined') {
       console.error('Hammer.js not available for swipe gestures');
       return;
     }
@@ -145,8 +144,8 @@ const interactionHandler = {
     }
     
     // Handle action keys (from the keyboardMap in config)
-    if (config.keyboardMap[e.key] && !e.metaKey) {
-      const action = config.keyboardMap[e.key];
+    if (window.appConfig.keyboardMap[e.key] && !e.metaKey) {
+      const action = window.appConfig.keyboardMap[e.key];
       this.callbacks.performAction(action);
       return;
     }
@@ -220,4 +219,5 @@ const interactionHandler = {
   }
 };
 
-export default interactionHandler;
+// Export as a global variable
+window.interactionHandler = interactionHandler;
