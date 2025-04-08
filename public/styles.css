@@ -27,7 +27,8 @@ body {
   justify-content: center;
   align-items: center;
   position: relative;
-  margin-bottom: 1rem;
+  margin-bottom: 0.5rem;
+  z-index: 20; /* Higher z-index than filename container */
 }
 
 h1 {
@@ -75,7 +76,7 @@ h1 {
 .options-container {
   position: absolute;
   left: 0;
-  z-index: 10;
+  z-index: 20;
 }
 
 .options-container .btn-options {
@@ -120,52 +121,62 @@ h1 {
   background-color: #f5f5f5;
 }
 
-/* Filename path container */
-.filename-container {
-  padding: 8px;
-  background-color: #f5f5f5;
+/* Path display above image */
+.path-container {
+  padding: 10px;
+  background-color: #f0f0f0;
+  border-bottom: 1px solid #ddd;
   border-radius: 8px 8px 0 0;
   margin-bottom: 0;
-  border-bottom: 1px solid #ddd;
+  cursor: pointer;
+  width: 100%;
   overflow: hidden;
+  z-index: 10;
+}
+
+.path-display {
+  font-size: 0.85rem;
+  color: #666;
   white-space: nowrap;
+  overflow: hidden;
   text-overflow: ellipsis;
 }
 
-/* Improved filename overlay style */
-.filename-container.overlay {
+.path-display strong {
+  color: #333;
+  font-weight: 600;
+}
+
+/* Filename overlay styles */
+.filename-container {
   position: absolute;
   top: 0;
   left: 0;
   right: 0;
   background-color: rgba(0, 0, 0, 0.6);
   color: white;
-  border-radius: 0;
-  z-index: 10;
   padding: 8px 12px;
-  border: none;
+  z-index: 10;
+  cursor: pointer;
 }
 
 .filename-path {
+  color: rgba(255, 255, 255, 0.8);
   font-size: 0.85rem;
-  color: #666;
   overflow: hidden;
   text-overflow: ellipsis;
-}
-
-/* Adjust filename text color for overlay */
-.overlay .filename-path {
-  color: rgba(255, 255, 255, 0.8);
+  white-space: nowrap;
 }
 
 .filename-path strong {
-  color: #333;
+  color: white;
   font-weight: 600;
 }
 
-.overlay .filename-path strong {
-  color: white;
-  font-weight: 600;
+.media-container {
+  flex: 1;
+  position: relative;
+  overflow: hidden;
 }
 
 .media-list {
@@ -173,27 +184,26 @@ h1 {
   flex-direction: column;
   justify-content: flex-start;
   align-items: center;
-  flex: 1;
-  margin-bottom: 10px;
+  height: 100%;
 }
 
 .media-item {
   background-color: #fff;
-  border-radius: 0 0 8px 8px;
+  border-radius: 8px;
   overflow: hidden;
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
   position: relative;
   touch-action: pan-y pan-x;
   transition: transform 0.3s ease, opacity 0.3s ease;
   width: 100%;
-  max-height: calc(100vh - 180px);
+  height: 100%;
   display: flex;
   flex-direction: column;
 }
 
 .media-item.portrait .media-content {
   height: auto;
-  max-height: calc(100vh - 180px);
+  max-height: calc(100vh - 140px);
   width: auto;
   max-width: 100%;
   margin: 0 auto;
@@ -202,7 +212,7 @@ h1 {
 .media-item.landscape .media-content {
   width: 100%;
   height: auto;
-  max-height: calc(100vh - 180px);
+  max-height: calc(100vh - 140px);
 }
 
 .media-content {
@@ -307,16 +317,20 @@ video.media-content::-webkit-media-controls-timeline:hover {
   transition: all 0.3s ease; /* Faster transition */
 }
 
-.bottom-controls {
+/* Controls container at bottom */
+.controls-container {
   display: flex;
+  flex-direction: column;
   align-items: center;
-  justify-content: space-between;
+  justify-content: center;
   margin: 10px 0;
 }
 
 .counter-container {
   font-size: 0.9rem;
   color: #666;
+  margin-bottom: 10px;
+  text-align: center;
 }
 
 .controls {
@@ -454,13 +468,6 @@ video.media-content::-webkit-media-controls-timeline:hover {
 .instructions-content {
   max-height: 70vh;
   overflow-y: auto;
-}
-
-/* Pinch zoom */
-.pinch-zoom-container {
-  overflow: hidden;
-  touch-action: none;
-  flex: 1;
 }
 
 /* Responsive styling */
