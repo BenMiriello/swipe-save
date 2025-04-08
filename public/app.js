@@ -13,6 +13,67 @@ document.addEventListener('DOMContentLoaded', () => {
   const filenameInput = document.getElementById('customFilename');
   const saveFilenameBtn = document.getElementById('saveFilename');
   
+  // Create info modal
+  const infoModal = document.createElement('div');
+  infoModal.id = 'infoModal';
+  infoModal.className = 'modal';
+  infoModal.innerHTML = `
+    <div class="modal-content">
+      <span class="close-modal" id="closeInfoModal">&times;</span>
+      <h2>Instructions</h2>
+      <div class="instructions-content">
+        <h3>Keyboard Controls</h3>
+        <ul>
+          <li><strong>Left/Right Arrows:</strong> Previous/Next image</li>
+          <li><strong>W:</strong> Top middle (best_complete)</li>
+          <li><strong>E:</strong> Top right (best_wip)</li>
+          <li><strong>Q:</strong> Top left (archive_good)</li>
+          <li><strong>A:</strong> Middle left (archive)</li>
+          <li><strong>D:</strong> Middle right (saved)</li>
+          <li><strong>Z:</strong> Bottom left (archive_bad)</li>
+          <li><strong>X:</strong> Bottom middle (delete)</li>
+          <li><strong>C:</strong> Bottom right (saved_wip)</li>
+          <li><strong>Down Arrow:</strong> Undo</li>
+          <li><strong>Command+Z:</strong> Undo</li>
+          <li><strong>Command+Left/Right:</strong> Previous/Next image</li>
+          <li><strong>Command+O:</strong> Open options menu</li>
+          <li><strong>Command+N:</strong> Open custom name dialog</li>
+          <li><strong>Command+S:</strong> Download current image</li>
+          <li><strong>Command+R:</strong> Refresh</li>
+        </ul>
+        
+        <h3>Tap Zones</h3>
+        <p>The image is divided into a 3x3 grid:</p>
+        <div class="grid-explanation">
+          <div>Archive Good</div><div>Super Save Complete</div><div>Super Save WIP</div>
+          <div>Archive</div><div>Open File</div><div>Save</div>
+          <div>Archive Bad</div><div>Delete</div><div>Save WIP</div>
+        </div>
+        
+        <h3>Swipe Actions</h3>
+        <ul>
+          <li><strong>Left swipe:</strong> Archive</li>
+          <li><strong>Right swipe:</strong> Save</li>
+          <li><strong>Up swipe:</strong> Super Save - Complete</li>
+          <li><strong>Down swipe:</strong> Delete</li>
+        </ul>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(infoModal);
+  
+  // Close info modal when clicking X
+  document.getElementById('closeInfoModal').addEventListener('click', function() {
+    infoModal.style.display = "none";
+  });
+  
+  // Close info modal when clicking outside
+  window.addEventListener('click', function(event) {
+    if (event.target === infoModal) {
+      infoModal.style.display = "none";
+    }
+  });
+  
   // Add bottom controls container
   const bottomControls = document.createElement('div');
   bottomControls.className = 'bottom-controls';
@@ -46,7 +107,7 @@ document.addEventListener('DOMContentLoaded', () => {
   controls.appendChild(undoButton);
   controls.appendChild(nextButton);
   
-  // Add options dropdown to the right
+  // Add options button to the left of the header
   const optionsContainer = document.createElement('div');
   optionsContainer.className = 'options-container';
   
@@ -60,16 +121,20 @@ document.addEventListener('DOMContentLoaded', () => {
   optionsDropdown.innerHTML = `
     <ul>
       <li id="customName">Custom Name</li>
+      <li id="showInfo">Show Instructions</li>
     </ul>
   `;
   
   optionsContainer.appendChild(optionsButton);
   optionsContainer.appendChild(optionsDropdown);
   
-  // Add all elements to the bottom controls
+  // Move options to the header left side
+  const headerContainer = document.querySelector('.header-container');
+  headerContainer.insertBefore(optionsContainer, headerContainer.firstChild);
+  
+  // Add bottom controls to container
   bottomControls.appendChild(counterContainer);
   bottomControls.appendChild(controls);
-  bottomControls.appendChild(optionsContainer);
   
   const container = document.querySelector('.container');
   container.appendChild(bottomControls);
@@ -99,6 +164,16 @@ document.addEventListener('DOMContentLoaded', () => {
     document.body.removeChild(downloadLink);
   }
   
+  // Open file in its own view/tab
+  function openFileInNewView() {
+    if (allFiles.length === 0) return;
+    
+    const currentFile = allFiles[currentIndex];
+    const fileUrl = `${API_URL}${currentFile.path}`;
+    
+    window.open(fileUrl, '_blank');
+  }
+  
   // Function to toggle options dropdown
   function toggleOptionsDropdown() {
     optionsDropdown.classList.toggle('show');
@@ -114,6 +189,12 @@ document.addEventListener('DOMContentLoaded', () => {
   // Custom name option
   document.getElementById('customName').addEventListener('click', function() {
     openFilenameModal();
+    optionsDropdown.classList.remove('show');
+  });
+  
+  // Show info option
+  document.getElementById('showInfo').addEventListener('click', function() {
+    infoModal.style.display = "block";
     optionsDropdown.classList.remove('show');
   });
   
@@ -141,18 +222,15 @@ document.addEventListener('DOMContentLoaded', () => {
   });
   
   function updateFilenameDisplay() {
-    const nameElement = document.querySelector('.media-name');
+    const nameElement = document.querySelector('.filename-path');
     if (nameElement && customFilename) {
-      nameElement.textContent = customFilename;
+      // Extract path and filename
+      const file = allFiles[currentIndex];
+      const path = file.path.substring(0, file.path.lastIndexOf('/') + 1);
+      
+      // Update with path and bold filename
+      nameElement.innerHTML = `${path}<strong>${customFilename}</strong>`;
     }
-  }
-  
-  // Save current file (placeholder function)
-  function saveCurrentFile() {
-    if (allFiles.length === 0) return;
-    
-    // Default to "saved" action (right)
-    performAction('right');
   }
   
   // Function to update the image counter display
@@ -275,21 +353,21 @@ document.addEventListener('DOMContentLoaded', () => {
     if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
     
     switch(e.key) {
-      // Original arrow key controls
+      // Revised arrow key controls
       case 'ArrowLeft':
-        performAction('archive');
+        e.preventDefault();
+        showPreviousImage();
         break;
       case 'ArrowRight':
-        performAction('saved');
-        break;
-      case 'ArrowUp':
-        performAction('best_complete');
+        e.preventDefault();
+        showNextImage();
         break;
       case 'ArrowDown':
-        performAction('delete');
+        e.preventDefault();
+        undoLastAction();
         break;
         
-      // New WASD keyboard controls
+      // Revised WASD and corner key controls
       case 'a':
       case 'A':
         performAction('archive');
@@ -304,7 +382,7 @@ document.addEventListener('DOMContentLoaded', () => {
         break;
       case 's':
       case 'S':
-        performAction('delete');
+        performAction('delete'); // S is now delete/down
         break;
         
       // Corner keys
@@ -393,6 +471,23 @@ document.addEventListener('DOMContentLoaded', () => {
     const file = allFiles[currentIndex];
     mediaList.innerHTML = '';
     
+    // Add filename path container above the media item
+    const filenameContainer = document.createElement('div');
+    filenameContainer.className = 'filename-container';
+    
+    // Extract path and filename
+    const path = file.path.substring(0, file.path.lastIndexOf('/') + 1);
+    const filename = file.name;
+    
+    // Create path + bold filename
+    const filenamePath = document.createElement('div');
+    filenamePath.className = 'filename-path';
+    filenamePath.innerHTML = `${path}<strong>${customFilename || filename}</strong>`;
+    
+    filenameContainer.appendChild(filenamePath);
+    mediaList.appendChild(filenameContainer);
+    
+    // Create and add the media item
     const mediaItem = createMediaItem(file);
     mediaList.appendChild(mediaItem);
     
@@ -514,17 +609,6 @@ document.addEventListener('DOMContentLoaded', () => {
           this.pause();
         }
       });
-      
-      // Add double-click to fullscreen
-      mediaContent.addEventListener('dblclick', function() {
-        if (this.requestFullscreen) {
-          this.requestFullscreen();
-        } else if (this.webkitRequestFullscreen) { /* Safari */
-          this.webkitRequestFullscreen();
-        } else if (this.msRequestFullscreen) { /* IE11 */
-          this.msRequestFullscreen();
-        }
-      });
     }
     
     mediaContent.className = 'media-content';
@@ -539,7 +623,7 @@ document.addEventListener('DOMContentLoaded', () => {
       { className: 'top-middle', action: 'best_complete' },
       { className: 'top-right', action: 'best_wip' },
       { className: 'middle-left', action: 'archive' },
-      { className: 'middle-center', action: null },
+      { className: 'middle-center', action: 'open_file' }, // Changed to open file
       { className: 'middle-right', action: 'saved' },
       { className: 'bottom-left', action: 'archive_bad' },
       { className: 'bottom-middle', action: 'delete' },
@@ -558,15 +642,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const swipeInstruction = document.createElement('div');
     swipeInstruction.className = 'swipe-instruction';
     
-    // Create filename overlay that appears on top of image
-    const filenameOverlay = document.createElement('div');
-    filenameOverlay.className = 'filename-overlay';
-    filenameOverlay.textContent = customFilename || file.name;
-    
     item.appendChild(mediaContent);
     item.appendChild(tapZones);
     item.appendChild(swipeInstruction);
-    item.appendChild(filenameOverlay);
     
     return item;
   }
@@ -579,6 +657,12 @@ document.addEventListener('DOMContentLoaded', () => {
       if (zone.dataset.action) {
         // Show action label on tap
         zone.addEventListener('click', () => {
+          // Special case for middle center zone (open file)
+          if (zone.dataset.action === 'open_file') {
+            openFileInNewView();
+            return;
+          }
+          
           // Show action label
           const actionName = zone.dataset.action;
           const actionLabel = document.createElement('div');
@@ -593,6 +677,7 @@ document.addEventListener('DOMContentLoaded', () => {
             case 'best_complete': actionLabel.textContent = 'Super Save - Complete'; break;
             case 'best_wip': actionLabel.textContent = 'Super Save - WIP'; break;
             case 'delete': actionLabel.textContent = 'Deleted'; break;
+            case 'open_file': actionLabel.textContent = 'Opening File'; break;
           }
           
           document.body.appendChild(actionLabel);
