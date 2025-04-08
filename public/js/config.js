@@ -1,4 +1,6 @@
-// Configuration and constants
+/**
+ * Configuration and constants
+ */
 const config = {
   // API endpoint handling
   getApiUrl: () => `${window.location.protocol}//${window.location.host}`,
@@ -112,5 +114,5 @@ const config = {
   `
 };
 
-// Export for ES modules
-export default config;
+// Export as a global variable instead of using ES6 modules
+window.appConfig = config;
