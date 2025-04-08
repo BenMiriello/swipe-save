@@ -17,6 +17,10 @@ const uiManager = {
    * Initialize UI elements
    */
   initializeUI() {
+    // Create needed DOM elements if they don't exist
+    this.createInitialElements();
+    
+    // Get references to DOM elements
     this.elements.mediaList = document.getElementById('mediaList');
     this.elements.modal = document.getElementById('filenameModal');
     this.elements.filenameInput = document.getElementById('customFilename');
@@ -27,6 +31,51 @@ const uiManager = {
     
     // Initialize options menu
     this.initializeOptionsMenu();
+  },
+  
+  /**
+   * Create initial elements needed by the application
+   */
+  createInitialElements() {
+    // Add bottom controls container if it doesn't exist
+    if (!document.querySelector('.bottom-controls')) {
+      const bottomControls = document.createElement('div');
+      bottomControls.className = 'bottom-controls';
+      
+      // Add counter to the left
+      const counterContainer = document.createElement('div');
+      counterContainer.className = 'counter-container';
+      counterContainer.textContent = 'No images';
+      
+      // Add controls in the center
+      const controls = document.createElement('div');
+      controls.className = 'controls';
+      
+      // Add navigation buttons
+      const prevButton = document.createElement('button');
+      prevButton.className = 'btn btn-secondary';
+      prevButton.textContent = 'Previous';
+      
+      const nextButton = document.createElement('button');
+      nextButton.className = 'btn btn-secondary';
+      nextButton.textContent = 'Next';
+      
+      // Add undo button
+      const undoButton = document.createElement('button');
+      undoButton.className = 'btn btn-undo';
+      undoButton.textContent = 'Undo';
+      
+      controls.appendChild(prevButton);
+      controls.appendChild(undoButton);
+      controls.appendChild(nextButton);
+      
+      // Add bottom controls to container
+      bottomControls.appendChild(counterContainer);
+      bottomControls.appendChild(controls);
+      
+      const container = document.querySelector('.container');
+      container.appendChild(bottomControls);
+    }
   },
   
   /**
@@ -113,6 +162,9 @@ const uiManager = {
    * @param {Object} handlers - Object containing handler functions
    */
   setupEventHandlers(handlers) {
+    // Ensure elements exist before attaching handlers
+    if (!this.elements.optionsButton) return;
+    
     // Options button toggle
     this.elements.optionsButton.addEventListener('click', () => {
       this.toggleOptionsDropdown();
@@ -127,16 +179,22 @@ const uiManager = {
     });
     
     // Custom name option
-    document.getElementById('customName').addEventListener('click', () => {
-      handlers.openFilenameModal();
-      this.elements.optionsDropdown.classList.remove('show');
-    });
+    const customNameEl = document.getElementById('customName');
+    if (customNameEl) {
+      customNameEl.addEventListener('click', () => {
+        handlers.openFilenameModal();
+        this.elements.optionsDropdown.classList.remove('show');
+      });
+    }
     
     // Show info option
-    document.getElementById('showInfo').addEventListener('click', () => {
-      this.elements.infoModal.style.display = "block";
-      this.elements.optionsDropdown.classList.remove('show');
-    });
+    const showInfoEl = document.getElementById('showInfo');
+    if (showInfoEl) {
+      showInfoEl.addEventListener('click', () => {
+        this.elements.infoModal.style.display = "block";
+        this.elements.optionsDropdown.classList.remove('show');
+      });
+    }
     
     // Modal close button
     const closeModal = document.querySelector('.close-modal');
@@ -162,13 +220,43 @@ const uiManager = {
         handlers.saveCustomFilename(customFilename);
       });
     }
+    
+    // Navigation buttons
+    const prevButton = document.querySelector('.btn-secondary:first-child');
+    if (prevButton) {
+      prevButton.addEventListener('click', handlers.showPrevious);
+    }
+    
+    const nextButton = document.querySelector('.btn-secondary:last-of-type');
+    if (nextButton) {
+      nextButton.addEventListener('click', handlers.showNext);
+    }
+    
+    // Undo button
+    const undoButton = document.querySelector('.btn-undo');
+    if (undoButton) {
+      undoButton.addEventListener('click', handlers.undoLastAction);
+    }
+    
+    // Header buttons
+    const refreshIcon = document.querySelector('.refresh-icon');
+    if (refreshIcon) {
+      refreshIcon.addEventListener('click', handlers.refreshFiles);
+    }
+    
+    const saveIcon = document.querySelector('.save-icon');
+    if (saveIcon) {
+      saveIcon.addEventListener('click', handlers.downloadCurrentFile);
+    }
   },
   
   /**
    * Toggle options dropdown visibility
    */
   toggleOptionsDropdown() {
-    this.elements.optionsDropdown.classList.toggle('show');
+    if (this.elements.optionsDropdown) {
+      this.elements.optionsDropdown.classList.toggle('show');
+    }
   },
   
   /**
@@ -177,6 +265,8 @@ const uiManager = {
    * @param {string} customFilename - Custom filename if available
    */
   showFilenameModal(currentFilename, customFilename) {
+    if (!this.elements.filenameInput || !this.elements.modal) return;
+    
     this.elements.filenameInput.value = customFilename || currentFilename;
     this.elements.modal.style.display = "block";
     
@@ -193,6 +283,12 @@ const uiManager = {
    * @param {number} totalFiles - Total number of files
    */
   updateImageCounter(currentIndex, totalFiles) {
+    if (!this.elements.counterContainer) {
+      // Try to find it again
+      this.elements.counterContainer = document.querySelector('.counter-container');
+      if (!this.elements.counterContainer) return;
+    }
+    
     if (totalFiles === 0) {
       this.elements.counterContainer.textContent = 'No images';
     } else {
@@ -204,7 +300,9 @@ const uiManager = {
    * Show loading indicator
    */
   showLoading() {
-    this.elements.mediaList.innerHTML = '<div style="text-align:center;">Loading...</div>';
+    if (this.elements.mediaList) {
+      this.elements.mediaList.innerHTML = '<div style="text-align:center;">Loading...</div>';
+    }
   },
   
   /**
@@ -212,16 +310,20 @@ const uiManager = {
    * @param {string} message - Error message
    */
   showError(message) {
-    this.elements.mediaList.innerHTML = `<div style="color:red;text-align:center;">
-      Error: ${message}
-    </div>`;
+    if (this.elements.mediaList) {
+      this.elements.mediaList.innerHTML = `<div style="color:red;text-align:center;">
+        Error: ${message}
+      </div>`;
+    }
   },
   
   /**
    * Show empty state when no files are available
    */
   showEmptyState() {
-    this.elements.mediaList.innerHTML = '<div class="no-media">No media files found</div>';
+    if (this.elements.mediaList) {
+      this.elements.mediaList.innerHTML = '<div class="no-media">No media files found</div>';
+    }
   },
   
   /**
@@ -361,32 +463,32 @@ const uiManager = {
    */
   setupPinchZoom() {
     const mediaContent = document.querySelector('.media-content');
-    if (mediaContent && mediaContent.tagName === 'IMG') {
+    if (!mediaContent || mediaContent.tagName !== 'IMG') return;
+    
+    // Check if PinchZoom is available
+    if (typeof window.PinchZoom === 'undefined') {
+      console.log('PinchZoom library not available');
+      return;
+    }
+    
+    try {
       const container = mediaContent.parentElement;
       
-      // Check if we have a PinchZoom library available
-      if (typeof PinchZoom === 'undefined') {
-        console.log('PinchZoom library not available');
-        return;
-      }
+      // Create a wrapper for pinch zoom
+      const wrapper = document.createElement('div');
+      wrapper.className = 'pinch-zoom-container';
       
-      try {
-        // Create a wrapper for pinch zoom
-        const wrapper = document.createElement('div');
-        wrapper.className = 'pinch-zoom-container';
-        
-        // Move the image into the wrapper
-        container.insertBefore(wrapper, mediaContent);
-        wrapper.appendChild(mediaContent);
-        
-        // Initialize pinch zoom
-        new PinchZoom(wrapper, {
-          draggable: true,
-          maxZoom: 5
-        });
-      } catch (error) {
-        console.error('Error initializing PinchZoom:', error);
-      }
+      // Move the image into the wrapper
+      container.insertBefore(wrapper, mediaContent);
+      wrapper.appendChild(mediaContent);
+      
+      // Initialize pinch zoom
+      new window.PinchZoom(wrapper, {
+        draggable: true,
+        maxZoom: 5
+      });
+    } catch (error) {
+      console.error('Error initializing PinchZoom:', error);
     }
   },
 
