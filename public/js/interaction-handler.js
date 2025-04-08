@@ -143,6 +143,13 @@ const interactionHandler = {
       return;
     }
     
+    // Map 'n' key to filename modal (for renaming)
+    if (e.key.toLowerCase() === 'n') {
+      e.preventDefault();
+      this.callbacks.openFilenameModal();
+      return;
+    }
+    
     // Handle action keys (from the keyboardMap in config)
     if (window.appConfig.keyboardMap[e.key] && !e.metaKey) {
       const action = window.appConfig.keyboardMap[e.key];
@@ -152,7 +159,6 @@ const interactionHandler = {
     
     // Handle Command/Ctrl key combinations
     if (e.metaKey) {
-      console.log(e.key);
       switch(e.key) {
         // Command+Z for undo
         case 'z':
@@ -181,7 +187,7 @@ const interactionHandler = {
         // Command+Left or Command+A/J for previous image
         case 'ArrowLeft':
           e.preventDefault();
-          this.callbacks.performAction('archive');
+          this.callbacks.performAction('best_complete');
           return;
           
         // Command+Down for delete
@@ -189,17 +195,11 @@ const interactionHandler = {
           e.preventDefault();
           this.callbacks.performAction('delete');
           return;
-
-        // Command+Left or Command+A/J for previous image
-        case 'ArrowUp':
-          e.preventDefault();
-          this.callbacks.performAction('best_complete');
-          return;
           
         // Command+Right for next image
         case 'ArrowRight':
           e.preventDefault();
-          this.callbacks.performAction('saved');
+          this.callbacks.showNext();
           return;
       }
       
