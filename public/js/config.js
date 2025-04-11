@@ -21,12 +21,110 @@ const config = {
         this.toPath = data.toPath;
         this.defaultFromPath = data.defaultFromPath;
         this.defaultToPath = data.defaultToPath;
+
+        // Add path parameters to URL if not already present
+        this.updateUrlWithPaths();
+        
         return data;
       }
     } catch (error) {
       console.error('Error fetching paths:', error);
     }
     return null;
+  },
+  
+  // Update URL with path parameters
+  updateUrlWithPaths: function() {
+    try {
+      const url = new URL(window.location.href);
+      const currentFromPath = url.searchParams.get('fromPath');
+      const currentToPath = url.searchParams.get('toPath');
+      
+      let shouldUpdateUrl = false;
+      
+      // Only set parameters if they're not already in the URL
+      if (this.fromPath && !currentFromPath && this.fromPath !== this.defaultFromPath) {
+        url.searchParams.set('fromPath', this.fromPath);
+        shouldUpdateUrl = true;
+      }
+      
+      if (this.toPath && !currentToPath && this.toPath !== this.defaultToPath) {
+        url.searchParams.set('toPath', this.toPath);
+        shouldUpdateUrl = true;
+      }
+      
+      // Update URL without reloading the page
+      if (shouldUpdateUrl) {
+        window.history.replaceState({}, '', url.toString());
+      }
+    } catch (error) {
+      console.error('Error updating URL with paths:', error);
+    }
+  },
+  
+  // Update path settings on server and in URL
+  updatePaths: async function(fromPath, toPath) {
+    try {
+      const requestBody = {};
+      
+      if (fromPath) {
+        requestBody.fromPath = fromPath;
+      }
+      
+      if (toPath) {
+        requestBody.toPath = toPath;
+      }
+      
+      const response = await fetch(`${this.getApiUrl()}/api/config/paths`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(requestBody)
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        this.fromPath = data.fromPath;
+        this.toPath = data.toPath;
+        
+        // Update URL with new paths
+        const url = new URL(window.location.href);
+        
+        if (fromPath) {
+          url.searchParams.set('fromPath', fromPath);
+        }
+        
+        if (toPath) {
+          url.searchParams.set('toPath', toPath);
+        }
+        
+        // Replace current URL without reload
+        window.history.replaceState({}, '', url.toString());
+        
+        return data;
+      }
+    } catch (error) {
+      console.error('Error updating paths:', error);
+    }
+    return null;
+  },
+  
+  // Get display path (converts back to ~ format for display)
+  getDisplayPath: function(fullPath) {
+    if (!fullPath) return '';
+    
+    // Try to replace the home directory with ~
+    try {
+      const homeDir = this.defaultFromPath.split('Documents')[0];
+      if (homeDir && fullPath.startsWith(homeDir)) {
+        return fullPath.replace(homeDir, '~');
+      }
+    } catch (e) {
+      console.error('Error formatting path for display:', e);
+    }
+    
+    return fullPath;
   },
   
   // Action types
@@ -143,5 +241,5 @@ const config = {
   `
 };
 
-// Export as a global variable instead of using ES6 modules
+// Export as a global variable
 window.appConfig = config;
