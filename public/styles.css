@@ -24,10 +24,10 @@ body {
 
 .header-container {
   display: flex;
-  justify-content: center;
-  align-items: center;
+  justify-content: space-between;
+  align-items: flex-start;
   position: relative;
-  margin-bottom: 1rem;
+  margin-bottom: 0.5rem;
 }
 
 h1 {
@@ -37,8 +37,6 @@ h1 {
 }
 
 .header-icons {
-  position: absolute;
-  right: 0;
   display: flex;
   gap: 10px;
 }
@@ -71,11 +69,131 @@ h1 {
   height: 1.5rem;
 }
 
+/* New file header with caret */
+.file-header {
+  display: flex;
+  align-items: center;
+  background-color: #f8f8f8;
+  padding: 8px 12px;
+  border-radius: 4px;
+  border: 1px solid #ddd;
+  cursor: pointer;
+  flex: 1;
+  margin-right: 10px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  position: relative;
+}
+
+.file-header:hover {
+  background-color: #f0f0f0;
+}
+
+.caret {
+  margin-right: 8px;
+  font-size: 12px;
+  color: #666;
+  transition: transform 0.2s;
+}
+
+.filename {
+  flex: 1;
+  font-size: 14px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  direction: rtl;
+  text-align: left;
+  padding-right: 30px; /* Make room for edit icon */
+}
+
+.edit-icon {
+  position: absolute;
+  right: 10px;
+  font-size: 16px;
+  color: #888;
+  cursor: pointer;
+  transition: color 0.2s;
+}
+
+.edit-icon:hover {
+  color: #333;
+}
+
+/* Path overlay styling */
+.path-overlay {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background-color: #fff;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  z-index: 10;
+  margin-top: 2px;
+  border-radius: 4px;
+  border: 1px solid #ddd;
+}
+
+.overlay-content {
+  padding: 12px;
+}
+
+.path-section {
+  margin-bottom: 12px;
+  border-bottom: 1px solid #eee;
+  padding-bottom: 12px;
+}
+
+.path-section:last-child {
+  margin-bottom: 0;
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.path-label {
+  font-weight: bold;
+  font-size: 13px;
+  color: #555;
+  margin-bottom: 4px;
+}
+
+.path-value {
+  font-size: 14px;
+  word-wrap: break-word;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 3px;
+  transition: background-color 0.2s;
+}
+
+.path-value:hover {
+  background-color: #f0f0f0;
+}
+
+.filename-section {
+  display: none; /* Hidden by default, shown when custom filename is set */
+}
+
+.btn-info {
+  background-color: #6c757d;
+  color: white;
+  padding: 6px 12px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 13px;
+}
+
+.btn-info:hover {
+  background-color: #5a6268;
+}
+
 /* New Options styling (top left) */
 .options-container {
   position: absolute;
   left: 0;
   z-index: 10;
+  display: none; /* Hide the options menu since we now use the path overlay */
 }
 
 .options-container .btn-options {
@@ -179,7 +297,7 @@ h1 {
 
 .media-item {
   background-color: #fff;
-  border-radius: 0 0 8px 8px;
+  border-radius: 8px;
   overflow: hidden;
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
   position: relative;
@@ -310,13 +428,15 @@ video.media-content::-webkit-media-controls-timeline:hover {
 .bottom-controls {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: center;
   margin: 10px 0;
+  flex-direction: column-reverse;
 }
 
 .counter-container {
   font-size: 0.9rem;
   color: #666;
+  margin-top: 5px;
 }
 
 .controls {
@@ -481,5 +601,14 @@ video.media-content::-webkit-media-controls-timeline:hover {
   .grid-explanation {
     max-width: 600px;
     margin: 15px auto;
+  }
+  
+  .bottom-controls {
+    flex-direction: row;
+    justify-content: space-between;
+  }
+  
+  .counter-container {
+    margin-top: 0;
   }
 }
