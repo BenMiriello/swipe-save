@@ -315,7 +315,7 @@ const uiManager = {
         <span class="close-modal" id="closeInfoModal">&times;</span>
         <h2>Instructions</h2>
         <div class="info-content">
-          ${window.appConfig.helpText}
+          ${window.appConfig ? window.appConfig.helpText : 'Loading help...'}
         </div>
       </div>
     `;
@@ -474,9 +474,8 @@ const uiManager = {
    * Show the path editing modal
    * @param {string} pathType - Type of path (FROM or TO)
    * @param {string} currentPath - Current path value
-   * @param {Function} saveCallback - Function to call when saving
    */
-  showPathModal(pathType, currentPath, saveCallback) {
+  showPathModal(pathType, currentPath) {
     if (!this.elements.pathModal) return;
     
     // Update modal title and input value
@@ -595,6 +594,10 @@ const uiManager = {
    * Show empty state when no files are found
    */
   showEmptyState() {
+    if (!this.elements.mediaList) {
+      this.showLoading(); // This will create the mediaList if it doesn't exist
+    }
+    
     if (this.elements.mediaList) {
       this.elements.mediaList.innerHTML = `
         <div class="empty-state">
@@ -607,7 +610,10 @@ const uiManager = {
       const refreshBtn = this.elements.mediaList.querySelector('.refresh-btn');
       if (refreshBtn) {
         refreshBtn.addEventListener('click', () => {
-          window.appController.fetchMediaFiles();
+          // Use a safer way to call the refresh function
+          if (window.appController && typeof window.appController.fetchMediaFiles === 'function') {
+            window.appController.fetchMediaFiles();
+          }
         });
       }
     }
@@ -618,6 +624,10 @@ const uiManager = {
    * @param {string} message - Error message to display
    */
   showError(message) {
+    if (!this.elements.mediaList) {
+      this.showLoading(); // This will create the mediaList if it doesn't exist
+    }
+    
     if (this.elements.mediaList) {
       this.elements.mediaList.innerHTML = `
         <div class="error-state">
@@ -630,7 +640,13 @@ const uiManager = {
       const refreshBtn = this.elements.mediaList.querySelector('.refresh-btn');
       if (refreshBtn) {
         refreshBtn.addEventListener('click', () => {
-          window.appController.fetchMediaFiles();
+          // Use a safer way to call the refresh function
+          if (window.appController && typeof window.appController.fetchMediaFiles === 'function') {
+            window.appController.fetchMediaFiles();
+          } else {
+            console.warn('appController not available yet, refresh button disabled');
+            alert('Please reload the page to refresh.');
+          }
         });
       }
     } else {
@@ -651,211 +667,6 @@ const uiManager = {
         this.elements.counterContainer.textContent = `${current + 1} / ${total}`;
       }
     }
-  },
-  
-  /**
-   * Create a media item element
-   * @param {Object} file - File information
-   * @param {string} customFilename - Custom filename if available
-   * @param {string} apiUrl - API URL for fetching media
-   * @returns {HTMLElement} - Media item element
-   */
-  createMediaItem(file, customFilename, apiUrl) {
-    const item = document.createElement('div');
-    item.className = 'media-item';
-    
-    // Create the appropriate media content element
-    let mediaContent;
-    if (file.type.startsWith('image/')) {
-      mediaContent = this.createImageElement(file, apiUrl);
-    } else if (file.type.startsWith('video/')) {
-      mediaContent = this.createVideoElement(file, apiUrl);
-    }
-    
-    // Update header filename - now removed from the item itself
-    const filenameEl = document.querySelector('.filename');
-    if (filenameEl) {
-      filenameEl.textContent = customFilename || file.name;
-      
-      // Show/hide the custom filename section in the overlay
-      const filenameSection = document.querySelector('.filename-section');
-      const savingAsName = document.querySelector('.saving-as-name');
-      
-      if (filenameSection && savingAsName) {
-        if (customFilename) {
-          filenameSection.style.display = 'block';
-          savingAsName.textContent = customFilename;
-        } else {
-          filenameSection.style.display = 'none';
-        }
-      }
-    }
-    
-    // Create swipe instruction element
-    const swipeInstruction = document.createElement('div');
-    swipeInstruction.className = 'swipe-instruction';
-    
-    // Create 9-zone grid for taps
-    const tapZones = document.createElement('div');
-    tapZones.className = 'tap-zones';
-    
-    // Create 9 tap zones (3x3 grid)
-    Array(9).fill(0).forEach((_, index) => {
-      const zoneElement = document.createElement('div');
-      zoneElement.className = 'tap-zone';
-      zoneElement.dataset.index = index;
-      tapZones.appendChild(zoneElement);
-    });
-    
-    // Assemble the media item
-    item.appendChild(mediaContent);
-    item.appendChild(tapZones);
-    item.appendChild(swipeInstruction);
-    
-    return item;
-  },
-  
-  /**
-   * Create an image element
-   * @param {Object} file - Image file information
-   * @param {string} apiUrl - API URL for fetching media
-   * @returns {HTMLElement} - Image element
-   */
-  createImageElement(file, apiUrl) {
-    const img = document.createElement('img');
-    img.className = 'media-content';
-    img.src = `${apiUrl}/media/${encodeURIComponent(file.name)}`;
-    img.alt = file.name;
-    img.onerror = () => {
-      img.src = 'img/error.svg';
-      img.alt = 'Error loading image';
-    };
-    return img;
-  },
-  
-  /**
-   * Create a video element
-   * @param {Object} file - Video file information
-   * @param {string} apiUrl - API URL for fetching media
-   * @returns {HTMLElement} - Video element
-   */
-  createVideoElement(file, apiUrl) {
-    const video = document.createElement('video');
-    video.className = 'media-content';
-    video.src = `${apiUrl}/media/${encodeURIComponent(file.name)}`;
-    video.controls = true;
-    video.autoplay = false;
-    video.onerror = () => {
-      console.error('Video error:', file.name);
-      video.innerHTML = 'Error loading video';
-    };
-    return video;
-  },
-  
-  /**
-   * Show visual feedback for actions
-   * @param {HTMLElement} container - Container element
-   * @param {string} action - Action type
-   */
-  showActionFeedback(container, action) {
-    // Add the appropriate class for the action
-    const actionClass = this.getActionClass(action);
-    container.classList.add(actionClass);
-    
-    // Show action label
-    const swipeInstruction = container.querySelector('.swipe-instruction');
-    if (swipeInstruction) {
-      swipeInstruction.textContent = this.getActionLabel(action);
-      swipeInstruction.style.display = 'flex';
-    }
-  },
-  
-  /**
-   * Hide visual feedback for actions
-   * @param {HTMLElement} container - Container element
-   * @param {string} action - Action type
-   */
-  hideActionFeedback(container, action) {
-    // Remove the appropriate class for the action
-    const actionClass = this.getActionClass(action);
-    container.classList.remove(actionClass);
-    
-    // Hide action label
-    const swipeInstruction = container.querySelector('.swipe-instruction');
-    if (swipeInstruction) {
-      swipeInstruction.style.display = 'none';
-    }
-  },
-  
-  /**
-   * Get the CSS class for an action
-   * @param {string} action - Action type
-   * @returns {string} - CSS class
-   */
-  getActionClass(action) {
-    const actionMap = {
-      [window.appConfig.actions.ARCHIVE]: 'action-archive',
-      [window.appConfig.actions.SAVE]: 'action-save',
-      [window.appConfig.actions.SUPERSAVE]: 'action-supersave',
-      [window.appConfig.actions.DELETE]: 'action-delete'
-    };
-    
-    return actionMap[action] || '';
-  },
-  
-  /**
-   * Get the label for an action
-   * @param {string} action - Action type
-   * @returns {string} - Action label
-   */
-  getActionLabel(action) {
-    const labelMap = {
-      [window.appConfig.actions.ARCHIVE]: 'Archiving...',
-      [window.appConfig.actions.SAVE]: 'Saving...',
-      [window.appConfig.actions.SUPERSAVE]: 'Super Save...',
-      [window.appConfig.actions.DELETE]: 'Deleting...'
-    };
-    
-    return labelMap[action] || '';
-  },
-  
-  /**
-   * Show action label for tap zones
-   * @param {string} actionName - Action name
-   * @param {DOMRect} rect - Rectangle position
-   */
-  showActionLabel(actionName, rect) {
-    // Remove existing label if any
-    const existingLabel = document.querySelector('.action-label');
-    if (existingLabel) {
-      existingLabel.remove();
-    }
-    
-    // Create label element
-    const label = document.createElement('div');
-    label.className = 'action-label';
-    label.textContent = actionName;
-    
-    // Position centered over the tap zone
-    if (rect) {
-      label.style.top = `${rect.top + rect.height / 2 - 20}px`;
-      label.style.left = `${rect.left + rect.width / 2 - 60}px`;
-    } else {
-      // Center in viewport if no rect provided
-      label.style.top = '50%';
-      label.style.left = '50%';
-      label.style.transform = 'translate(-50%, -50%)';
-    }
-    
-    // Add to body
-    document.body.appendChild(label);
-    
-    // Remove after delay
-    setTimeout(() => {
-      if (label.parentNode) {
-        label.parentNode.removeChild(label);
-      }
-    }, 1000);
   }
 };
 
