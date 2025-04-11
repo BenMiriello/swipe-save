@@ -1,5 +1,5 @@
 /**
- * Manages UI components and DOM interactions
+ * UI Manager for the application
  */
 const uiManager = {
   elements: {
@@ -19,7 +19,7 @@ const uiManager = {
    * Initialize UI elements
    */
   initializeUI() {
-    // Create needed DOM elements if they don't exist
+    // Create core UI elements
     this.createInitialElements();
     
     // Get references to DOM elements
@@ -156,8 +156,20 @@ const uiManager = {
       const container = existingHeaderContainer.parentNode;
       container.replaceChild(headerContainer, existingHeaderContainer);
       
+      // Create media container and list
+      const mediaContainer = document.createElement('div');
+      mediaContainer.className = 'media-container';
+      
+      const mediaList = document.createElement('div');
+      mediaList.id = 'mediaList';
+      mediaList.className = 'media-list';
+      
+      mediaContainer.appendChild(mediaList);
+      container.appendChild(mediaContainer);
+      
       this.elements.fileHeader = fileHeader;
       this.elements.pathOverlay = pathOverlay;
+      this.elements.mediaList = mediaList;
       
       // Create bottom controls if they don't exist
       if (!document.querySelector('.bottom-controls')) {
@@ -217,6 +229,34 @@ const uiManager = {
         this.elements.counterContainer = counterContainer;
         this.elements.controls = controls;
       }
+    } else {
+      // If there's no header container yet, create a minimal structure
+      const container = document.querySelector('.container');
+      if (container) {
+        // Create a basic header
+        const headerContainer = document.createElement('div');
+        headerContainer.className = 'header-container';
+        
+        const fileHeader = document.createElement('div');
+        fileHeader.className = 'file-header';
+        fileHeader.textContent = 'ComfyUI Media Viewer';
+        
+        headerContainer.appendChild(fileHeader);
+        container.appendChild(headerContainer);
+        
+        // Create media container and list
+        const mediaContainer = document.createElement('div');
+        mediaContainer.className = 'media-container';
+        
+        const mediaList = document.createElement('div');
+        mediaList.id = 'mediaList';
+        mediaList.className = 'media-list';
+        
+        mediaContainer.appendChild(mediaList);
+        container.appendChild(mediaContainer);
+        
+        this.elements.mediaList = mediaList;
+      }
     }
   },
   
@@ -258,7 +298,7 @@ const uiManager = {
   },
   
   /**
-   * Create info modal with instructions
+   * Create the information modal
    */
   createInfoModal() {
     // Check if the modal already exists
@@ -274,20 +314,20 @@ const uiManager = {
       <div class="modal-content">
         <span class="close-modal" id="closeInfoModal">&times;</span>
         <h2>Instructions</h2>
-        <div class="instructions-content">
-          ${window.appConfig.instructionsContent}
+        <div class="info-content">
+          ${window.appConfig.helpText}
         </div>
       </div>
     `;
     document.body.appendChild(infoModal);
     this.elements.infoModal = infoModal;
     
-    // Close info modal when clicking X
+    // Close modal when clicking X
     document.getElementById('closeInfoModal').addEventListener('click', () => {
       this.elements.infoModal.style.display = "none";
     });
     
-    // Close info modal when clicking outside
+    // Close modal when clicking outside
     window.addEventListener('click', (event) => {
       if (event.target === this.elements.infoModal) {
         this.elements.infoModal.style.display = "none";
@@ -373,7 +413,7 @@ const uiManager = {
       }
     });
     
-    // Save filename button
+    // Save button for filename modal
     const saveFilenameBtn = document.getElementById('saveFilename');
     if (saveFilenameBtn) {
       saveFilenameBtn.addEventListener('click', () => {
@@ -481,7 +521,7 @@ const uiManager = {
   },
   
   /**
-   * Show filename modal for renaming
+   * Show the filename modal for custom naming
    * @param {string} currentFilename - Current filename
    * @param {string} customFilename - Custom filename if available
    */
@@ -499,72 +539,136 @@ const uiManager = {
   },
   
   /**
-   * Update image counter display
-   * @param {number} currentIndex - Current image index
-   * @param {number} totalFiles - Total number of files
+   * Initialize or update the pinch-zoom functionality
    */
-  updateImageCounter(currentIndex, totalFiles) {
-    if (!this.elements.counterContainer) {
-      // Try to find it again
-      this.elements.counterContainer = document.querySelector('.counter-container');
-      if (!this.elements.counterContainer) return;
-    }
-    
-    if (totalFiles === 0) {
-      this.elements.counterContainer.textContent = 'No images';
-    } else {
-      this.elements.counterContainer.textContent = `${currentIndex + 1} of ${totalFiles}`;
+  setupPinchZoom() {
+    const mediaContent = document.querySelector('.media-content');
+    if (mediaContent && mediaContent.tagName === 'IMG' && window.PinchZoom) {
+      // Use setTimeout to ensure the element is fully rendered
+      setTimeout(() => {
+        // Don't initialize if video or not found
+        try {
+          new window.PinchZoom(mediaContent, {
+            tapZoomFactor: 2,
+            zoomOutFactor: 1.3,
+            animationDuration: 300,
+            maxZoom: 4,
+            minZoom: 0.5
+          });
+        } catch (error) {
+          console.error('Error initializing PinchZoom:', error);
+        }
+      }, 100);
     }
   },
   
   /**
-   * Show loading indicator
+   * Show loading state
    */
   showLoading() {
-    if (this.elements.mediaList) {
-      this.elements.mediaList.innerHTML = '<div style="text-align:center;">Loading...</div>';
+    // Get or create the media list
+    let mediaList = document.getElementById('mediaList');
+    if (!mediaList) {
+      // Create the media container and list if it doesn't exist
+      const container = document.querySelector('.container');
+      if (container) {
+        const mediaContainer = document.createElement('div');
+        mediaContainer.className = 'media-container';
+        
+        mediaList = document.createElement('div');
+        mediaList.id = 'mediaList';
+        mediaList.className = 'media-list';
+        
+        mediaContainer.appendChild(mediaList);
+        container.appendChild(mediaContainer);
+        
+        this.elements.mediaList = mediaList;
+      }
+    }
+    
+    if (mediaList) {
+      mediaList.innerHTML = '<div class="loading">Loading...</div>';
     }
   },
   
   /**
-   * Show error message
-   * @param {string} message - Error message
-   */
-  showError(message) {
-    if (this.elements.mediaList) {
-      this.elements.mediaList.innerHTML = `<div style="color:red;text-align:center;">
-        Error: ${message}
-      </div>`;
-    }
-  },
-  
-  /**
-   * Show empty state when no files are available
+   * Show empty state when no files are found
    */
   showEmptyState() {
     if (this.elements.mediaList) {
-      this.elements.mediaList.innerHTML = '<div class="no-media">No media files found</div>';
+      this.elements.mediaList.innerHTML = `
+        <div class="empty-state">
+          <p>No media files found</p>
+          <button class="btn btn-secondary refresh-btn">Refresh</button>
+        </div>
+      `;
+      
+      // Add click handler to the refresh button
+      const refreshBtn = this.elements.mediaList.querySelector('.refresh-btn');
+      if (refreshBtn) {
+        refreshBtn.addEventListener('click', () => {
+          window.appController.fetchMediaFiles();
+        });
+      }
     }
   },
   
   /**
-   * Create a media item element for display
-   * @param {Object} file - Media file object
-   * @param {string} customFilename - Optional custom filename
-   * @param {string} apiUrl - Base API URL
-   * @returns {HTMLElement} - Media item DOM element
+   * Show an error message
+   * @param {string} message - Error message to display
+   */
+  showError(message) {
+    if (this.elements.mediaList) {
+      this.elements.mediaList.innerHTML = `
+        <div class="error-state">
+          <p>Error: ${message}</p>
+          <button class="btn btn-secondary refresh-btn">Retry</button>
+        </div>
+      `;
+      
+      // Add click handler to the refresh button
+      const refreshBtn = this.elements.mediaList.querySelector('.refresh-btn');
+      if (refreshBtn) {
+        refreshBtn.addEventListener('click', () => {
+          window.appController.fetchMediaFiles();
+        });
+      }
+    } else {
+      alert(`Error: ${message}`);
+    }
+  },
+  
+  /**
+   * Update image counter display
+   * @param {number} current - Current image index
+   * @param {number} total - Total images
+   */
+  updateImageCounter(current, total) {
+    if (this.elements.counterContainer) {
+      if (total === 0) {
+        this.elements.counterContainer.textContent = 'No images';
+      } else {
+        this.elements.counterContainer.textContent = `${current + 1} / ${total}`;
+      }
+    }
+  },
+  
+  /**
+   * Create a media item element
+   * @param {Object} file - File information
+   * @param {string} customFilename - Custom filename if available
+   * @param {string} apiUrl - API URL for fetching media
+   * @returns {HTMLElement} - Media item element
    */
   createMediaItem(file, customFilename, apiUrl) {
     const item = document.createElement('div');
     item.className = 'media-item';
-    item.dataset.filename = file.name;
     
-    // Create content based on file type
+    // Create the appropriate media content element
     let mediaContent;
-    
-    if (/\.(png)$/i.test(file.name)) {
+    if (file.type.startsWith('image/')) {
       mediaContent = this.createImageElement(file, apiUrl);
-    } else if (/\.(mp4|webm)$/i.test(file.name)) {
+    } else if (file.type.startsWith('video/')) {
       mediaContent = this.createVideoElement(file, apiUrl);
     }
     
@@ -595,13 +699,11 @@ const uiManager = {
     const tapZones = document.createElement('div');
     tapZones.className = 'tap-zones';
     
-    // Create zones according to config
-    window.appConfig.zoneConfig.forEach(zone => {
+    // Create 9 tap zones (3x3 grid)
+    Array(9).fill(0).forEach((_, index) => {
       const zoneElement = document.createElement('div');
-      zoneElement.className = `tap-zone ${zone.className}`;
-      if (zone.action) {
-        zoneElement.dataset.action = zone.action;
-      }
+      zoneElement.className = 'tap-zone';
+      zoneElement.dataset.index = index;
       tapZones.appendChild(zoneElement);
     });
     
@@ -614,191 +716,145 @@ const uiManager = {
   },
   
   /**
-   * Create image element
-   * @param {Object} file - File object
-   * @param {string} apiUrl - Base API URL
+   * Create an image element
+   * @param {Object} file - Image file information
+   * @param {string} apiUrl - API URL for fetching media
    * @returns {HTMLElement} - Image element
    */
   createImageElement(file, apiUrl) {
     const img = document.createElement('img');
-    img.src = `${apiUrl}${file.path}`;
-    img.alt = file.name;
     img.className = 'media-content';
-    
-    // Check orientation after loading
-    img.onload = function() {
-      const parentItem = this.closest('.media-item');
-      if (parentItem) {
-        if (this.naturalHeight > this.naturalWidth) {
-          parentItem.classList.add('portrait');
-        } else {
-          parentItem.classList.add('landscape');
-        }
-      }
+    img.src = `${apiUrl}/media/${encodeURIComponent(file.name)}`;
+    img.alt = file.name;
+    img.onerror = () => {
+      img.src = 'img/error.svg';
+      img.alt = 'Error loading image';
     };
-    
     return img;
   },
   
   /**
-   * Create video element with improved playback
-   * @param {Object} file - File object
-   * @param {string} apiUrl - Base API URL
+   * Create a video element
+   * @param {Object} file - Video file information
+   * @param {string} apiUrl - API URL for fetching media
    * @returns {HTMLElement} - Video element
    */
   createVideoElement(file, apiUrl) {
     const video = document.createElement('video');
-    video.src = `${apiUrl}${file.path}`;
+    video.className = 'media-content';
+    video.src = `${apiUrl}/media/${encodeURIComponent(file.name)}`;
     video.controls = true;
     video.autoplay = false;
-    video.muted = false;
-    video.loop = false;
-    video.playsInline = true;
-    video.preload = 'auto'; // Changed from 'metadata' to 'auto' for better initial loading
-    video.className = 'media-content';
-    
-    // Improved video playback
-    video.addEventListener('loadedmetadata', function() {
-      // Try to autoplay once metadata is loaded
-      this.play().catch(e => console.log('Auto-play prevented:', e));
-    });
-    
-    // Handle click to play/pause (but don't interfere with controls)
-    video.addEventListener('click', function(e) {
-      // Only toggle play/pause if the user didn't click on the control area
-      const rect = this.getBoundingClientRect();
-      const y = e.clientY - rect.top;
-      
-      // Avoid conflicting with the video controls at the bottom
-      if (y < rect.height - 40) { 
-        if (this.paused) {
-          this.play();
-        } else {
-          this.pause();
-        }
-      }
-    });
-    
+    video.onerror = () => {
+      console.error('Video error:', file.name);
+      video.innerHTML = 'Error loading video';
+    };
     return video;
   },
   
   /**
-   * Setup pinch zoom for images
+   * Show visual feedback for actions
+   * @param {HTMLElement} container - Container element
+   * @param {string} action - Action type
    */
-  setupPinchZoom() {
-    const mediaContent = document.querySelector('.media-content');
-    if (!mediaContent || mediaContent.tagName !== 'IMG') return;
+  showActionFeedback(container, action) {
+    // Add the appropriate class for the action
+    const actionClass = this.getActionClass(action);
+    container.classList.add(actionClass);
     
-    // Check if PinchZoom is available
-    if (typeof window.PinchZoom === 'undefined') {
-      console.log('PinchZoom library not available');
-      return;
-    }
-    
-    try {
-      const container = mediaContent.parentElement;
-      
-      // Create a wrapper for pinch zoom
-      const wrapper = document.createElement('div');
-      wrapper.className = 'pinch-zoom-container';
-      
-      // Move the image into the wrapper
-      container.insertBefore(wrapper, mediaContent);
-      wrapper.appendChild(mediaContent);
-      
-      // Initialize pinch zoom
-      new window.PinchZoom(wrapper, {
-        draggable: true,
-        maxZoom: 5
-      });
-    } catch (error) {
-      console.error('Error initializing PinchZoom:', error);
-    }
-  },
-
-  /**
-   * Add visual feedback for a swipe action
-   * @param {HTMLElement} mediaItem - Media item element
-   * @param {string} action - Action being performed
-   */
-  showActionFeedback(mediaItem, action) {
-    if (!mediaItem) return;
-    
-    // Add swipe class for transition effect
-    mediaItem.classList.add(`swipe-${action}`);
-    
-    // Show instruction text
-    const instruction = mediaItem.querySelector('.swipe-instruction');
-    if (instruction) {
-      switch(action) {
-        case 'archive': 
-        case 'left': instruction.textContent = 'Archived'; break;
-        case 'archive_good': instruction.textContent = 'Archived - Good'; break;
-        case 'archive_bad': instruction.textContent = 'Archived - Bad'; break;
-        case 'saved':
-        case 'right': instruction.textContent = 'Saved'; break;
-        case 'saved_wip': instruction.textContent = 'Saved - WIP'; break;
-        case 'best_complete': 
-        case 'up': instruction.textContent = 'Super Save - Complete'; break;
-        case 'best_wip': instruction.textContent = 'Super Save - WIP'; break;
-        case 'delete':
-        case 'down': instruction.textContent = 'Deleted'; break;
-      }
-      instruction.style.opacity = 1;
+    // Show action label
+    const swipeInstruction = container.querySelector('.swipe-instruction');
+    if (swipeInstruction) {
+      swipeInstruction.textContent = this.getActionLabel(action);
+      swipeInstruction.style.display = 'flex';
     }
   },
   
   /**
-   * Hide action feedback (for error cases)
-   * @param {HTMLElement} mediaItem - Media item element
-   * @param {string} action - Action to remove feedback for
+   * Hide visual feedback for actions
+   * @param {HTMLElement} container - Container element
+   * @param {string} action - Action type
    */
-  hideActionFeedback(mediaItem, action) {
-    if (!mediaItem) return;
+  hideActionFeedback(container, action) {
+    // Remove the appropriate class for the action
+    const actionClass = this.getActionClass(action);
+    container.classList.remove(actionClass);
     
-    mediaItem.classList.remove(`swipe-${action}`);
-    
-    const instruction = mediaItem.querySelector('.swipe-instruction');
-    if (instruction) {
-      instruction.style.opacity = 0;
+    // Hide action label
+    const swipeInstruction = container.querySelector('.swipe-instruction');
+    if (swipeInstruction) {
+      swipeInstruction.style.display = 'none';
     }
   },
   
   /**
-   * Shows an action label when a tap zone is clicked
-   * @param {string} actionName - Name of the action
-   * @param {DOMRect} rect - Rectangle position of the tap zone
+   * Get the CSS class for an action
+   * @param {string} action - Action type
+   * @returns {string} - CSS class
+   */
+  getActionClass(action) {
+    const actionMap = {
+      [window.appConfig.actions.ARCHIVE]: 'action-archive',
+      [window.appConfig.actions.SAVE]: 'action-save',
+      [window.appConfig.actions.SUPERSAVE]: 'action-supersave',
+      [window.appConfig.actions.DELETE]: 'action-delete'
+    };
+    
+    return actionMap[action] || '';
+  },
+  
+  /**
+   * Get the label for an action
+   * @param {string} action - Action type
+   * @returns {string} - Action label
+   */
+  getActionLabel(action) {
+    const labelMap = {
+      [window.appConfig.actions.ARCHIVE]: 'Archiving...',
+      [window.appConfig.actions.SAVE]: 'Saving...',
+      [window.appConfig.actions.SUPERSAVE]: 'Super Save...',
+      [window.appConfig.actions.DELETE]: 'Deleting...'
+    };
+    
+    return labelMap[action] || '';
+  },
+  
+  /**
+   * Show action label for tap zones
+   * @param {string} actionName - Action name
+   * @param {DOMRect} rect - Rectangle position
    */
   showActionLabel(actionName, rect) {
-    const actionLabel = document.createElement('div');
-    actionLabel.className = 'action-label';
-    
-    switch(actionName) {
-      case 'archive': actionLabel.textContent = 'Archived'; break;
-      case 'archive_good': actionLabel.textContent = 'Archived - Good'; break;
-      case 'archive_bad': actionLabel.textContent = 'Archived - Bad'; break;
-      case 'saved': actionLabel.textContent = 'Saved'; break;
-      case 'saved_wip': actionLabel.textContent = 'Saved - WIP'; break;
-      case 'best_complete': actionLabel.textContent = 'Super Save - Complete'; break;
-      case 'best_wip': actionLabel.textContent = 'Super Save - WIP'; break;
-      case 'delete': actionLabel.textContent = 'Deleted'; break;
-      case 'open_file': actionLabel.textContent = 'Opening File'; break;
+    // Remove existing label if any
+    const existingLabel = document.querySelector('.action-label');
+    if (existingLabel) {
+      existingLabel.remove();
     }
     
-    document.body.appendChild(actionLabel);
+    // Create label element
+    const label = document.createElement('div');
+    label.className = 'action-label';
+    label.textContent = actionName;
     
-    // Position the label
-    actionLabel.style.top = rect.top + rect.height / 2 + 'px';
-    actionLabel.style.left = rect.left + rect.width / 2 + 'px';
+    // Position centered over the tap zone
+    if (rect) {
+      label.style.top = `${rect.top + rect.height / 2 - 20}px`;
+      label.style.left = `${rect.left + rect.width / 2 - 60}px`;
+    } else {
+      // Center in viewport if no rect provided
+      label.style.top = '50%';
+      label.style.left = '50%';
+      label.style.transform = 'translate(-50%, -50%)';
+    }
     
-    // Animate and remove after 1 second
+    // Add to body
+    document.body.appendChild(label);
+    
+    // Remove after delay
     setTimeout(() => {
-      actionLabel.classList.add('fade-out');
-      setTimeout(() => {
-        if (actionLabel.parentNode) {
-          actionLabel.parentNode.removeChild(actionLabel);
-        }
-      }, 300);
+      if (label.parentNode) {
+        label.parentNode.removeChild(label);
+      }
     }, 1000);
   }
 };
