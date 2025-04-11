@@ -21,14 +21,15 @@ class AppController {
       showNext: this.showNextImage.bind(this),
       performAction: this.performAction.bind(this),
       undoLastAction: this.undoLastAction.bind(this),
-      toggleOptions: this.toggleOptionsMenu.bind(this),
+      togglePathOverlay: this.togglePathOverlay.bind(this),
       openFilenameModal: this.openFilenameModal.bind(this),
       downloadCurrentFile: this.downloadCurrentFile.bind(this),
       refreshFiles: this.fetchMediaFiles.bind(this),
       openFile: this.openFileInNewView.bind(this),
       showActionLabel: this.showActionLabel.bind(this),
       editFromPath: this.editFromPath.bind(this),
-      editToPath: this.editToPath.bind(this)
+      editToPath: this.editToPath.bind(this),
+      showInstructions: this.showInstructions.bind(this)
     });
     
     // Setup UI event handlers
@@ -37,10 +38,13 @@ class AppController {
       saveCustomFilename: this.saveCustomFilename.bind(this),
       togglePathOverlay: this.togglePathOverlay.bind(this),
       editFromPath: this.editFromPath.bind(this),
-      editToPath: this.editToPath.bind(this)
+      editToPath: this.editToPath.bind(this),
+      saveFromPath: this.saveFromPath.bind(this),
+      saveToPath: this.saveToPath.bind(this),
+      showInstructions: this.showInstructions.bind(this)
     });
     
-    // Setup additional UI elements
+    // Setup additional UI controls
     this.setupUIControls();
   }
   
@@ -65,8 +69,8 @@ class AppController {
       
       // Update UI with paths
       window.uiManager.updatePathsDisplay(
-        window.appConfig.fromPath,
-        window.appConfig.toPath
+        window.appConfig.getDisplayPath(window.appConfig.fromPath),
+        window.appConfig.getDisplayPath(window.appConfig.toPath)
       );
       
       return true;
@@ -81,12 +85,12 @@ class AppController {
    */
   setupUIControls() {
     // Set up header buttons if they exist
-    const refreshIcon = document.querySelector('.refresh-icon');
+    const refreshIcon = document.querySelector('.refresh-btn');
     if (refreshIcon) {
       refreshIcon.addEventListener('click', this.fetchMediaFiles.bind(this));
     }
     
-    const saveIcon = document.querySelector('.save-icon');
+    const saveIcon = document.querySelector('.download-btn');
     if (saveIcon) {
       saveIcon.addEventListener('click', this.downloadCurrentFile.bind(this));
     }
@@ -117,32 +121,68 @@ class AppController {
   }
   
   /**
+   * Show instructions modal
+   */
+  showInstructions() {
+    window.uiManager.showInstructionsModal();
+  }
+  
+  /**
    * Edit 'from' path
    */
   editFromPath() {
-    const currentPath = window.appConfig.fromPath || window.appConfig.defaultFromPath;
-    const newPath = prompt('Edit FROM path:', currentPath);
-    
-    if (newPath && newPath !== currentPath) {
-      // Redirect with the new path parameter
-      const url = new URL(window.location.href);
-      url.searchParams.set('fromPath', newPath);
-      window.location.href = url.toString();
-    }
+    const currentPath = window.appConfig.getDisplayPath(window.appConfig.fromPath);
+    window.uiManager.showPathModal('FROM', currentPath, this.saveFromPath.bind(this));
   }
   
   /**
    * Edit 'to' path
    */
   editToPath() {
-    const currentPath = window.appConfig.toPath || window.appConfig.defaultToPath;
-    const newPath = prompt('Edit TO path:', currentPath);
+    const currentPath = window.appConfig.getDisplayPath(window.appConfig.toPath);
+    window.uiManager.showPathModal('TO', currentPath, this.saveToPath.bind(this));
+  }
+  
+  /**
+   * Save FROM path
+   */
+  async saveFromPath(newPath) {
+    if (!newPath) return;
     
-    if (newPath && newPath !== currentPath) {
-      // Redirect with the new path parameter
-      const url = new URL(window.location.href);
-      url.searchParams.set('toPath', newPath);
-      window.location.href = url.toString();
+    try {
+      await window.appConfig.updatePaths(newPath, null);
+      
+      // Update UI with new path
+      window.uiManager.updatePathsDisplay(
+        window.appConfig.getDisplayPath(window.appConfig.fromPath),
+        window.appConfig.getDisplayPath(window.appConfig.toPath)
+      );
+      
+      // Refresh files from new path
+      this.fetchMediaFiles();
+    } catch (error) {
+      console.error('Error saving FROM path:', error);
+      window.uiManager.showError('Failed to update FROM path: ' + error.message);
+    }
+  }
+  
+  /**
+   * Save TO path
+   */
+  async saveToPath(newPath) {
+    if (!newPath) return;
+    
+    try {
+      await window.appConfig.updatePaths(null, newPath);
+      
+      // Update UI with new path
+      window.uiManager.updatePathsDisplay(
+        window.appConfig.getDisplayPath(window.appConfig.fromPath),
+        window.appConfig.getDisplayPath(window.appConfig.toPath)
+      );
+    } catch (error) {
+      console.error('Error saving TO path:', error);
+      window.uiManager.showError('Failed to update TO path: ' + error.message);
     }
   }
   
@@ -376,13 +416,6 @@ class AppController {
     
     const currentFile = this.state.allFiles[this.state.currentIndex];
     window.apiService.openFileInNewView(currentFile);
-  }
-  
-  /**
-   * Toggle options menu
-   */
-  toggleOptionsMenu() {
-    window.uiManager.toggleOptionsDropdown();
   }
   
   /**
