@@ -1,85 +1,304 @@
 /**
- * Manages UI components and DOM interactions
+ * UI Manager for the application
  */
 const uiManager = {
   elements: {
     mediaList: null,
-    modal: null,
+    filenameModal: null,
+    pathModal: null,
     infoModal: null,
     filenameInput: null,
-    optionsButton: null,
-    optionsDropdown: null,
+    pathInput: null,
     counterContainer: null,
-    controls: null
+    controls: null,
+    fileHeader: null,
+    pathOverlay: null
   },
   
   /**
    * Initialize UI elements
    */
   initializeUI() {
-    // Create needed DOM elements if they don't exist
+    // Create core UI elements
     this.createInitialElements();
     
     // Get references to DOM elements
     this.elements.mediaList = document.getElementById('mediaList');
-    this.elements.modal = document.getElementById('filenameModal');
+    this.elements.filenameModal = document.getElementById('filenameModal');
+    this.elements.pathModal = document.getElementById('pathModal');
+    this.elements.infoModal = document.getElementById('infoModal');
     this.elements.filenameInput = document.getElementById('customFilename');
+    this.elements.pathInput = document.getElementById('pathInput');
     this.elements.counterContainer = document.querySelector('.counter-container');
+    this.elements.fileHeader = document.querySelector('.file-header');
+    this.elements.pathOverlay = document.querySelector('.path-overlay');
     
     // Create the info modal if not already present
     this.createInfoModal();
     
-    // Initialize options menu
-    this.initializeOptionsMenu();
+    // Create the path editing modal
+    this.createPathModal();
   },
   
   /**
    * Create initial elements needed by the application
    */
   createInitialElements() {
-    // Add bottom controls container if it doesn't exist
-    if (!document.querySelector('.bottom-controls')) {
-      const bottomControls = document.createElement('div');
-      bottomControls.className = 'bottom-controls';
+    // Replace header container with new one containing file header and path overlay
+    const existingHeaderContainer = document.querySelector('.header-container');
+    if (existingHeaderContainer) {
+      // Create new header structure
+      const headerContainer = document.createElement('div');
+      headerContainer.className = 'header-container';
       
-      // Add counter to the left
-      const counterContainer = document.createElement('div');
-      counterContainer.className = 'counter-container';
-      counterContainer.textContent = 'No images';
+      // Create file header (caret + filename)
+      const fileHeader = document.createElement('div');
+      fileHeader.className = 'file-header';
       
-      // Add controls in the center
-      const controls = document.createElement('div');
-      controls.className = 'controls';
+      const caret = document.createElement('span');
+      caret.className = 'caret';
+      caret.innerHTML = '&#9654;'; // Right-pointing triangle
       
-      // Add navigation buttons
-      const prevButton = document.createElement('button');
-      prevButton.className = 'btn btn-secondary';
-      prevButton.textContent = 'Previous';
+      const filename = document.createElement('span');
+      filename.className = 'filename';
+      filename.textContent = 'No file selected';
       
-      const nextButton = document.createElement('button');
-      nextButton.className = 'btn btn-secondary';
-      nextButton.textContent = 'Next';
+      const editIcon = document.createElement('span');
+      editIcon.className = 'edit-icon';
+      editIcon.innerHTML = '&#9998;'; // Pencil icon
       
-      // Add undo button
-      const undoButton = document.createElement('button');
-      undoButton.className = 'btn btn-undo';
-      undoButton.textContent = 'Undo';
+      fileHeader.appendChild(caret);
+      fileHeader.appendChild(filename);
+      fileHeader.appendChild(editIcon);
       
-      controls.appendChild(prevButton);
-      controls.appendChild(undoButton);
-      controls.appendChild(nextButton);
+      // Create path overlay (hidden by default)
+      const pathOverlay = document.createElement('div');
+      pathOverlay.className = 'path-overlay';
+      pathOverlay.style.display = 'none';
       
-      // Add bottom controls to container
-      bottomControls.appendChild(counterContainer);
-      bottomControls.appendChild(controls);
+      const overlayContent = document.createElement('div');
+      overlayContent.className = 'overlay-content';
       
+      // Saving As section (only shown when custom filename is set)
+      const filenameSection = document.createElement('div');
+      filenameSection.className = 'path-section filename-section';
+      filenameSection.style.display = 'none';
+      
+      // Only use "Saving As" without the "Original" line
+      const savingAsLabel = document.createElement('div');
+      savingAsLabel.className = 'path-label';
+      savingAsLabel.textContent = 'Saving As:';
+      
+      const savingAsName = document.createElement('div');
+      savingAsName.className = 'path-value saving-as-name';
+      
+      filenameSection.appendChild(savingAsLabel);
+      filenameSection.appendChild(savingAsName);
+      
+      // From path section
+      const fromSection = document.createElement('div');
+      fromSection.className = 'path-section from-section';
+      
+      const fromLabel = document.createElement('div');
+      fromLabel.className = 'path-label';
+      fromLabel.textContent = 'FROM:';
+      
+      const fromPath = document.createElement('div');
+      fromPath.className = 'path-value from-path';
+      fromPath.textContent = '~/Documents/ComfyUI/output';
+      
+      fromSection.appendChild(fromLabel);
+      fromSection.appendChild(fromPath);
+      
+      // To path section
+      const toSection = document.createElement('div');
+      toSection.className = 'path-section to-section';
+      
+      const toLabel = document.createElement('div');
+      toLabel.className = 'path-label';
+      toLabel.textContent = 'TO:';
+      
+      const toPath = document.createElement('div');
+      toPath.className = 'path-value to-path';
+      toPath.textContent = '~/Documents/sorted';
+      
+      toSection.appendChild(toLabel);
+      toSection.appendChild(toPath);
+      
+      // Show instructions button
+      const instructionsSection = document.createElement('div');
+      instructionsSection.className = 'path-section instructions-section';
+      
+      const showInstructionsButton = document.createElement('button');
+      showInstructionsButton.id = 'showInfo';
+      showInstructionsButton.className = 'btn btn-info';
+      showInstructionsButton.textContent = 'Show Instructions';
+      
+      instructionsSection.appendChild(showInstructionsButton);
+      
+      // Add sections to overlay content
+      overlayContent.appendChild(filenameSection);
+      overlayContent.appendChild(fromSection);
+      overlayContent.appendChild(toSection);
+      overlayContent.appendChild(instructionsSection);
+      
+      pathOverlay.appendChild(overlayContent);
+      
+      // Add components to the header container
+      headerContainer.appendChild(fileHeader);
+      headerContainer.appendChild(pathOverlay);
+      
+      // Create action buttons container (moved to bottom)
+      const actionButtons = document.createElement('div');
+      actionButtons.className = 'action-buttons';
+      
+      // Move to parent container and replace old header
+      const container = existingHeaderContainer.parentNode;
+      container.replaceChild(headerContainer, existingHeaderContainer);
+      
+      // Create media container and list
+      const mediaContainer = document.createElement('div');
+      mediaContainer.className = 'media-container';
+      
+      const mediaList = document.createElement('div');
+      mediaList.id = 'mediaList';
+      mediaList.className = 'media-list';
+      
+      mediaContainer.appendChild(mediaList);
+      container.appendChild(mediaContainer);
+      
+      this.elements.fileHeader = fileHeader;
+      this.elements.pathOverlay = pathOverlay;
+      this.elements.mediaList = mediaList;
+      
+      // Create bottom controls if they don't exist
+      if (!document.querySelector('.bottom-controls')) {
+        const bottomControls = document.createElement('div');
+        bottomControls.className = 'bottom-controls';
+        
+        // Add navigation buttons to the center
+        const controls = document.createElement('div');
+        controls.className = 'controls';
+        
+        const prevButton = document.createElement('button');
+        prevButton.className = 'btn btn-secondary';
+        prevButton.textContent = 'Previous';
+        
+        const undoButton = document.createElement('button');
+        undoButton.className = 'btn btn-undo';
+        undoButton.textContent = 'Undo';
+        
+        const nextButton = document.createElement('button');
+        nextButton.className = 'btn btn-secondary';
+        nextButton.textContent = 'Next';
+        
+        controls.appendChild(prevButton);
+        controls.appendChild(undoButton);
+        controls.appendChild(nextButton);
+        
+        // Add utility buttons to the left
+        const utilityButtons = document.createElement('div');
+        utilityButtons.className = 'utility-buttons';
+        
+        const refreshButton = document.createElement('button');
+        refreshButton.className = 'btn btn-utility refresh-btn';
+        refreshButton.innerHTML = '&#x21bb;'; // Refresh symbol
+        refreshButton.title = 'Refresh';
+        
+        const downloadButton = document.createElement('button');
+        downloadButton.className = 'btn btn-utility download-btn';
+        downloadButton.innerHTML = '&#x2193;'; // Down arrow
+        downloadButton.title = 'Download';
+        
+        utilityButtons.appendChild(refreshButton);
+        utilityButtons.appendChild(downloadButton);
+        
+        // Add counter to the right
+        const counterContainer = document.createElement('div');
+        counterContainer.className = 'counter-container';
+        counterContainer.textContent = 'No images';
+        
+        // Add everything to bottom controls
+        bottomControls.appendChild(utilityButtons);
+        bottomControls.appendChild(controls);
+        bottomControls.appendChild(counterContainer);
+        
+        // Add to container
+        container.appendChild(bottomControls);
+        
+        this.elements.counterContainer = counterContainer;
+        this.elements.controls = controls;
+      }
+    } else {
+      // If there's no header container yet, create a minimal structure
       const container = document.querySelector('.container');
-      container.appendChild(bottomControls);
+      if (container) {
+        // Create a basic header
+        const headerContainer = document.createElement('div');
+        headerContainer.className = 'header-container';
+        
+        const fileHeader = document.createElement('div');
+        fileHeader.className = 'file-header';
+        fileHeader.textContent = 'ComfyUI Media Viewer';
+        
+        headerContainer.appendChild(fileHeader);
+        container.appendChild(headerContainer);
+        
+        // Create media container and list
+        const mediaContainer = document.createElement('div');
+        mediaContainer.className = 'media-container';
+        
+        const mediaList = document.createElement('div');
+        mediaList.id = 'mediaList';
+        mediaList.className = 'media-list';
+        
+        mediaContainer.appendChild(mediaList);
+        container.appendChild(mediaContainer);
+        
+        this.elements.mediaList = mediaList;
+      }
     }
   },
   
   /**
-   * Create info modal with instructions
+   * Create path editing modal
+   */
+  createPathModal() {
+    // Check if the modal already exists
+    if (document.getElementById('pathModal')) {
+      this.elements.pathModal = document.getElementById('pathModal');
+      return;
+    }
+    
+    const pathModal = document.createElement('div');
+    pathModal.id = 'pathModal';
+    pathModal.className = 'modal';
+    pathModal.innerHTML = `
+      <div class="modal-content">
+        <span class="close-modal" id="closePathModal">&times;</span>
+        <h2>Edit <span id="pathType">Path</span></h2>
+        <input type="text" id="pathInput" placeholder="Enter path">
+        <button id="savePath">Save</button>
+      </div>
+    `;
+    document.body.appendChild(pathModal);
+    this.elements.pathModal = pathModal;
+    
+    // Close modal when clicking X
+    document.getElementById('closePathModal').addEventListener('click', () => {
+      this.elements.pathModal.style.display = "none";
+    });
+    
+    // Close modal when clicking outside
+    window.addEventListener('click', (event) => {
+      if (event.target === this.elements.pathModal) {
+        this.elements.pathModal.style.display = "none";
+      }
+    });
+  },
+  
+  /**
+   * Create the information modal
    */
   createInfoModal() {
     // Check if the modal already exists
@@ -95,20 +314,20 @@ const uiManager = {
       <div class="modal-content">
         <span class="close-modal" id="closeInfoModal">&times;</span>
         <h2>Instructions</h2>
-        <div class="instructions-content">
-          ${window.appConfig.instructionsContent}
+        <div class="info-content">
+          ${window.appConfig ? window.appConfig.helpText : 'Loading help...'}
         </div>
       </div>
     `;
     document.body.appendChild(infoModal);
     this.elements.infoModal = infoModal;
     
-    // Close info modal when clicking X
+    // Close modal when clicking X
     document.getElementById('closeInfoModal').addEventListener('click', () => {
       this.elements.infoModal.style.display = "none";
     });
     
-    // Close info modal when clicking outside
+    // Close modal when clicking outside
     window.addEventListener('click', (event) => {
       if (event.target === this.elements.infoModal) {
         this.elements.infoModal.style.display = "none";
@@ -117,117 +336,111 @@ const uiManager = {
   },
   
   /**
-   * Initialize options menu
-   */
-  initializeOptionsMenu() {
-    // Create options container if not present
-    const headerContainer = document.querySelector('.header-container');
-    const existingOptionsContainer = document.querySelector('.options-container');
-    
-    if (existingOptionsContainer) {
-      this.elements.optionsContainer = existingOptionsContainer;
-      this.elements.optionsButton = existingOptionsContainer.querySelector('.btn-options');
-      this.elements.optionsDropdown = existingOptionsContainer.querySelector('.options-dropdown');
-    } else {
-      const optionsContainer = document.createElement('div');
-      optionsContainer.className = 'options-container';
-      
-      const optionsButton = document.createElement('button');
-      optionsButton.className = 'btn btn-options';
-      optionsButton.textContent = 'Options';
-      
-      const optionsDropdown = document.createElement('div');
-      optionsDropdown.className = 'options-dropdown';
-      optionsDropdown.innerHTML = `
-        <ul>
-          <li id="customName">Custom Name</li>
-          <li id="showInfo">Show Instructions</li>
-        </ul>
-      `;
-      
-      optionsContainer.appendChild(optionsButton);
-      optionsContainer.appendChild(optionsDropdown);
-      
-      // Insert at the beginning of header
-      headerContainer.insertBefore(optionsContainer, headerContainer.firstChild);
-      
-      this.elements.optionsContainer = optionsContainer;
-      this.elements.optionsButton = optionsButton;
-      this.elements.optionsDropdown = optionsDropdown;
-    }
-  },
-  
-  /**
    * Set up event handlers for UI elements
    * @param {Object} handlers - Object containing handler functions
    */
   setupEventHandlers(handlers) {
-    // Ensure elements exist before attaching handlers
-    if (!this.elements.optionsButton) return;
+    // Set up file header click to toggle path overlay
+    if (this.elements.fileHeader) {
+      this.elements.fileHeader.addEventListener('click', handlers.togglePathOverlay);
+    }
     
-    // Options button toggle
-    this.elements.optionsButton.addEventListener('click', () => {
-      this.toggleOptionsDropdown();
-    });
-    
-    // Close dropdown when clicking outside
-    window.addEventListener('click', (event) => {
-      if (!this.elements.optionsButton.contains(event.target) && 
-          !this.elements.optionsDropdown.contains(event.target)) {
-        this.elements.optionsDropdown.classList.remove('show');
-      }
-    });
-    
-    // Custom name option
-    const customNameEl = document.getElementById('customName');
-    if (customNameEl) {
-      customNameEl.addEventListener('click', () => {
+    // Edit icon for custom filename
+    const editIcon = document.querySelector('.edit-icon');
+    if (editIcon) {
+      editIcon.addEventListener('click', (e) => {
+        e.stopPropagation(); // Prevent triggering the fileHeader click
         handlers.openFilenameModal();
-        this.elements.optionsDropdown.classList.remove('show');
       });
     }
     
-    // Show info option
-    const showInfoEl = document.getElementById('showInfo');
-    if (showInfoEl) {
-      showInfoEl.addEventListener('click', () => {
-        this.elements.infoModal.style.display = "block";
-        this.elements.optionsDropdown.classList.remove('show');
+    // FROM path click handler
+    const fromPath = document.querySelector('.from-path');
+    if (fromPath) {
+      fromPath.addEventListener('click', (e) => {
+        e.stopPropagation();
+        handlers.editFromPath();
       });
     }
     
-    // Modal close button
-    const closeModal = document.querySelector('.close-modal');
-    if (closeModal) {
-      closeModal.addEventListener('click', () => {
-        this.elements.modal.style.display = "none";
+    // TO path click handler
+    const toPath = document.querySelector('.to-path');
+    if (toPath) {
+      toPath.addEventListener('click', (e) => {
+        e.stopPropagation();
+        handlers.editToPath();
+      });
+    }
+    
+    // Show instructions button
+    const showInfoBtn = document.getElementById('showInfo');
+    if (showInfoBtn) {
+      showInfoBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        handlers.showInstructions();
+      });
+    }
+    
+    // Path modal save button
+    const savePathBtn = document.getElementById('savePath');
+    if (savePathBtn) {
+      savePathBtn.addEventListener('click', () => {
+        const pathType = document.getElementById('pathType').textContent;
+        const pathValue = this.elements.pathInput.value.trim();
+        
+        this.elements.pathModal.style.display = "none";
+        
+        if (pathType === 'FROM Path') {
+          handlers.saveFromPath(pathValue);
+        } else if (pathType === 'TO Path') {
+          handlers.saveToPath(pathValue);
+        }
+      });
+    }
+    
+    // Filename modal
+    const closeFilenameModal = document.querySelector('#filenameModal .close-modal');
+    if (closeFilenameModal) {
+      closeFilenameModal.addEventListener('click', () => {
+        this.elements.filenameModal.style.display = "none";
       });
     }
     
     // Click outside modal to close
     window.addEventListener('click', (event) => {
-      if (event.target === this.elements.modal) {
-        this.elements.modal.style.display = "none";
+      if (event.target === this.elements.filenameModal) {
+        this.elements.filenameModal.style.display = "none";
       }
     });
     
-    // Save filename button
+    // Save button for filename modal
     const saveFilenameBtn = document.getElementById('saveFilename');
     if (saveFilenameBtn) {
       saveFilenameBtn.addEventListener('click', () => {
         const customFilename = this.elements.filenameInput.value.trim();
-        this.elements.modal.style.display = "none";
+        this.elements.filenameModal.style.display = "none";
         handlers.saveCustomFilename(customFilename);
       });
     }
     
+    // Bottom utility buttons
+    const refreshBtn = document.querySelector('.refresh-btn');
+    if (refreshBtn) {
+      refreshBtn.addEventListener('click', handlers.refreshFiles);
+    }
+    
+    const downloadBtn = document.querySelector('.download-btn');
+    if (downloadBtn) {
+      downloadBtn.addEventListener('click', handlers.downloadCurrentFile);
+    }
+    
     // Navigation buttons
-    const prevButton = document.querySelector('.btn-secondary:first-child');
+    const prevButton = document.querySelector('.controls .btn-secondary:first-child');
     if (prevButton) {
       prevButton.addEventListener('click', handlers.showPrevious);
     }
     
-    const nextButton = document.querySelector('.btn-secondary:last-of-type');
+    const nextButton = document.querySelector('.controls .btn-secondary:last-child');
     if (nextButton) {
       nextButton.addEventListener('click', handlers.showNext);
     }
@@ -237,38 +450,85 @@ const uiManager = {
     if (undoButton) {
       undoButton.addEventListener('click', handlers.undoLastAction);
     }
-    
-    // Header buttons
-    const refreshIcon = document.querySelector('.refresh-icon');
-    if (refreshIcon) {
-      refreshIcon.addEventListener('click', handlers.refreshFiles);
-    }
-    
-    const saveIcon = document.querySelector('.save-icon');
-    if (saveIcon) {
-      saveIcon.addEventListener('click', handlers.downloadCurrentFile);
-    }
   },
   
   /**
-   * Toggle options dropdown visibility
+   * Toggle path overlay visibility
    */
-  toggleOptionsDropdown() {
-    if (this.elements.optionsDropdown) {
-      this.elements.optionsDropdown.classList.toggle('show');
+  togglePathOverlay() {
+    if (this.elements.pathOverlay) {
+      const isHidden = this.elements.pathOverlay.style.display === 'none';
+      
+      // Update caret icon
+      const caret = document.querySelector('.caret');
+      if (caret) {
+        caret.innerHTML = isHidden ? '&#9660;' : '&#9654;'; // Down or right arrow
+      }
+      
+      // Toggle visibility
+      this.elements.pathOverlay.style.display = isHidden ? 'block' : 'none';
     }
   },
   
   /**
-   * Show filename modal for renaming
+   * Show the path editing modal
+   * @param {string} pathType - Type of path (FROM or TO)
+   * @param {string} currentPath - Current path value
+   */
+  showPathModal(pathType, currentPath) {
+    if (!this.elements.pathModal) return;
+    
+    // Update modal title and input value
+    document.getElementById('pathType').textContent = `${pathType} Path`;
+    this.elements.pathInput.value = currentPath || '';
+    
+    // Show modal
+    this.elements.pathModal.style.display = "block";
+    
+    // Focus and select the input text
+    setTimeout(() => {
+      this.elements.pathInput.focus();
+      this.elements.pathInput.select();
+    }, 50);
+  },
+  
+  /**
+   * Show instructions modal
+   */
+  showInstructionsModal() {
+    if (this.elements.infoModal) {
+      this.elements.infoModal.style.display = "block";
+    }
+  },
+  
+  /**
+   * Update paths display in the UI
+   * @param {string} fromPath - FROM path to display
+   * @param {string} toPath - TO path to display
+   */
+  updatePathsDisplay(fromPath, toPath) {
+    const fromPathEl = document.querySelector('.from-path');
+    const toPathEl = document.querySelector('.to-path');
+    
+    if (fromPathEl && fromPath) {
+      fromPathEl.textContent = fromPath;
+    }
+    
+    if (toPathEl && toPath) {
+      toPathEl.textContent = toPath;
+    }
+  },
+  
+  /**
+   * Show the filename modal for custom naming
    * @param {string} currentFilename - Current filename
    * @param {string} customFilename - Custom filename if available
    */
   showFilenameModal(currentFilename, customFilename) {
-    if (!this.elements.filenameInput || !this.elements.modal) return;
+    if (!this.elements.filenameInput || !this.elements.filenameModal) return;
     
     this.elements.filenameInput.value = customFilename || currentFilename;
-    this.elements.modal.style.display = "block";
+    this.elements.filenameModal.style.display = "block";
     
     // Focus and select the input text
     setTimeout(() => {
@@ -278,304 +538,135 @@ const uiManager = {
   },
   
   /**
-   * Update image counter display
-   * @param {number} currentIndex - Current image index
-   * @param {number} totalFiles - Total number of files
-   */
-  updateImageCounter(currentIndex, totalFiles) {
-    if (!this.elements.counterContainer) {
-      // Try to find it again
-      this.elements.counterContainer = document.querySelector('.counter-container');
-      if (!this.elements.counterContainer) return;
-    }
-    
-    if (totalFiles === 0) {
-      this.elements.counterContainer.textContent = 'No images';
-    } else {
-      this.elements.counterContainer.textContent = `${currentIndex + 1} of ${totalFiles}`;
-    }
-  },
-  
-  /**
-   * Show loading indicator
-   */
-  showLoading() {
-    if (this.elements.mediaList) {
-      this.elements.mediaList.innerHTML = '<div style="text-align:center;">Loading...</div>';
-    }
-  },
-  
-  /**
-   * Show error message
-   * @param {string} message - Error message
-   */
-  showError(message) {
-    if (this.elements.mediaList) {
-      this.elements.mediaList.innerHTML = `<div style="color:red;text-align:center;">
-        Error: ${message}
-      </div>`;
-    }
-  },
-  
-  /**
-   * Show empty state when no files are available
-   */
-  showEmptyState() {
-    if (this.elements.mediaList) {
-      this.elements.mediaList.innerHTML = '<div class="no-media">No media files found</div>';
-    }
-  },
-  
-  /**
-   * Create a media item element for display
-   * @param {Object} file - Media file object
-   * @param {string} customFilename - Optional custom filename
-   * @param {string} apiUrl - Base API URL
-   * @returns {HTMLElement} - Media item DOM element
-   */
-  createMediaItem(file, customFilename, apiUrl) {
-    const item = document.createElement('div');
-    item.className = 'media-item';
-    item.dataset.filename = file.name;
-    
-    // Create content based on file type
-    let mediaContent;
-    
-    if (/\.(png)$/i.test(file.name)) {
-      mediaContent = this.createImageElement(file, apiUrl);
-    } else if (/\.(mp4|webm)$/i.test(file.name)) {
-      mediaContent = this.createVideoElement(file, apiUrl);
-    }
-    
-    // Add filename path container with semi-transparent background
-    const filenameContainer = document.createElement('div');
-    filenameContainer.className = 'filename-container overlay';
-    
-    // Extract path and actual filesystem path instead of browser URL
-    // Get the original path from file (which should be the filesystem path)
-    // This assumes 'file' contains the original path somewhere, either in name or as a property
-    const fsPath = file.originalPath || file.name; // Using file.name as fallback
-    
-    // Create path + bold filename
-    const filenamePath = document.createElement('div');
-    filenamePath.className = 'filename-path';
-    filenamePath.innerHTML = `<strong>${customFilename || file.name}</strong>`;
-    filenameContainer.appendChild(filenamePath);
-    
-    // Create 9-zone grid for taps
-    const tapZones = document.createElement('div');
-    tapZones.className = 'tap-zones';
-    
-    // Create zones according to config
-    window.appConfig.zoneConfig.forEach(zone => {
-      const zoneElement = document.createElement('div');
-      zoneElement.className = `tap-zone ${zone.className}`;
-      if (zone.action) {
-        zoneElement.dataset.action = zone.action;
-      }
-      tapZones.appendChild(zoneElement);
-    });
-    
-    // Create swipe instruction element
-    const swipeInstruction = document.createElement('div');
-    swipeInstruction.className = 'swipe-instruction';
-    
-    // Assemble the media item
-    item.appendChild(mediaContent);
-    item.appendChild(filenameContainer);
-    item.appendChild(tapZones);
-    item.appendChild(swipeInstruction);
-    
-    return item;
-  },
-  
-  /**
-   * Create image element
-   * @param {Object} file - File object
-   * @param {string} apiUrl - Base API URL
-   * @returns {HTMLElement} - Image element
-   */
-  createImageElement(file, apiUrl) {
-    const img = document.createElement('img');
-    img.src = `${apiUrl}${file.path}`;
-    img.alt = file.name;
-    img.className = 'media-content';
-    
-    // Check orientation after loading
-    img.onload = function() {
-      const parentItem = this.closest('.media-item');
-      if (parentItem) {
-        if (this.naturalHeight > this.naturalWidth) {
-          parentItem.classList.add('portrait');
-        } else {
-          parentItem.classList.add('landscape');
-        }
-      }
-    };
-    
-    return img;
-  },
-  
-  /**
-   * Create video element with improved playback
-   * @param {Object} file - File object
-   * @param {string} apiUrl - Base API URL
-   * @returns {HTMLElement} - Video element
-   */
-  createVideoElement(file, apiUrl) {
-    const video = document.createElement('video');
-    video.src = `${apiUrl}${file.path}`;
-    video.controls = true;
-    video.autoplay = false;
-    video.muted = false;
-    video.loop = false;
-    video.playsInline = true;
-    video.preload = 'auto'; // Changed from 'metadata' to 'auto' for better initial loading
-    video.className = 'media-content';
-    
-    // Improved video playback
-    video.addEventListener('loadedmetadata', function() {
-      // Try to autoplay once metadata is loaded
-      this.play().catch(e => console.log('Auto-play prevented:', e));
-    });
-    
-    // Handle click to play/pause (but don't interfere with controls)
-    video.addEventListener('click', function(e) {
-      // Only toggle play/pause if the user didn't click on the control area
-      const rect = this.getBoundingClientRect();
-      const y = e.clientY - rect.top;
-      
-      // Avoid conflicting with the video controls at the bottom
-      if (y < rect.height - 40) { 
-        if (this.paused) {
-          this.play();
-        } else {
-          this.pause();
-        }
-      }
-    });
-    
-    return video;
-  },
-  
-  /**
-   * Setup pinch zoom for images
+   * Initialize or update the pinch-zoom functionality
    */
   setupPinchZoom() {
     const mediaContent = document.querySelector('.media-content');
-    if (!mediaContent || mediaContent.tagName !== 'IMG') return;
-    
-    // Check if PinchZoom is available
-    if (typeof window.PinchZoom === 'undefined') {
-      console.log('PinchZoom library not available');
-      return;
-    }
-    
-    try {
-      const container = mediaContent.parentElement;
-      
-      // Create a wrapper for pinch zoom
-      const wrapper = document.createElement('div');
-      wrapper.className = 'pinch-zoom-container';
-      
-      // Move the image into the wrapper
-      container.insertBefore(wrapper, mediaContent);
-      wrapper.appendChild(mediaContent);
-      
-      // Initialize pinch zoom
-      new window.PinchZoom(wrapper, {
-        draggable: true,
-        maxZoom: 5
-      });
-    } catch (error) {
-      console.error('Error initializing PinchZoom:', error);
-    }
-  },
-
-  /**
-   * Add visual feedback for a swipe action
-   * @param {HTMLElement} mediaItem - Media item element
-   * @param {string} action - Action being performed
-   */
-  showActionFeedback(mediaItem, action) {
-    if (!mediaItem) return;
-    
-    // Add swipe class for transition effect
-    mediaItem.classList.add(`swipe-${action}`);
-    
-    // Show instruction text
-    const instruction = mediaItem.querySelector('.swipe-instruction');
-    if (instruction) {
-      switch(action) {
-        case 'archive': 
-        case 'left': instruction.textContent = 'Archived'; break;
-        case 'archive_good': instruction.textContent = 'Archived - Good'; break;
-        case 'archive_bad': instruction.textContent = 'Archived - Bad'; break;
-        case 'saved':
-        case 'right': instruction.textContent = 'Saved'; break;
-        case 'saved_wip': instruction.textContent = 'Saved - WIP'; break;
-        case 'best_complete': 
-        case 'up': instruction.textContent = 'Super Save - Complete'; break;
-        case 'best_wip': instruction.textContent = 'Super Save - WIP'; break;
-        case 'delete':
-        case 'down': instruction.textContent = 'Deleted'; break;
-      }
-      instruction.style.opacity = 1;
-    }
-  },
-  
-  /**
-   * Hide action feedback (for error cases)
-   * @param {HTMLElement} mediaItem - Media item element
-   * @param {string} action - Action to remove feedback for
-   */
-  hideActionFeedback(mediaItem, action) {
-    if (!mediaItem) return;
-    
-    mediaItem.classList.remove(`swipe-${action}`);
-    
-    const instruction = mediaItem.querySelector('.swipe-instruction');
-    if (instruction) {
-      instruction.style.opacity = 0;
-    }
-  },
-  
-  /**
-   * Shows an action label when a tap zone is clicked
-   * @param {string} actionName - Name of the action
-   * @param {DOMRect} rect - Rectangle position of the tap zone
-   */
-  showActionLabel(actionName, rect) {
-    const actionLabel = document.createElement('div');
-    actionLabel.className = 'action-label';
-    
-    switch(actionName) {
-      case 'archive': actionLabel.textContent = 'Archived'; break;
-      case 'archive_good': actionLabel.textContent = 'Archived - Good'; break;
-      case 'archive_bad': actionLabel.textContent = 'Archived - Bad'; break;
-      case 'saved': actionLabel.textContent = 'Saved'; break;
-      case 'saved_wip': actionLabel.textContent = 'Saved - WIP'; break;
-      case 'best_complete': actionLabel.textContent = 'Super Save - Complete'; break;
-      case 'best_wip': actionLabel.textContent = 'Super Save - WIP'; break;
-      case 'delete': actionLabel.textContent = 'Deleted'; break;
-      case 'open_file': actionLabel.textContent = 'Opening File'; break;
-    }
-    
-    document.body.appendChild(actionLabel);
-    
-    // Position the label
-    actionLabel.style.top = rect.top + rect.height / 2 + 'px';
-    actionLabel.style.left = rect.left + rect.width / 2 + 'px';
-    
-    // Animate and remove after 1 second
-    setTimeout(() => {
-      actionLabel.classList.add('fade-out');
+    if (mediaContent && mediaContent.tagName === 'IMG' && window.PinchZoom) {
+      // Use setTimeout to ensure the element is fully rendered
       setTimeout(() => {
-        if (actionLabel.parentNode) {
-          actionLabel.parentNode.removeChild(actionLabel);
+        // Don't initialize if video or not found
+        try {
+          new window.PinchZoom(mediaContent, {
+            tapZoomFactor: 2,
+            zoomOutFactor: 1.3,
+            animationDuration: 300,
+            maxZoom: 4,
+            minZoom: 0.5
+          });
+        } catch (error) {
+          console.error('Error initializing PinchZoom:', error);
         }
-      }, 300);
-    }, 1000);
+      }, 100);
+    }
+  },
+  
+  /**
+   * Show loading state
+   */
+  showLoading() {
+    // Get or create the media list
+    let mediaList = document.getElementById('mediaList');
+    if (!mediaList) {
+      // Create the media container and list if it doesn't exist
+      const container = document.querySelector('.container');
+      if (container) {
+        const mediaContainer = document.createElement('div');
+        mediaContainer.className = 'media-container';
+        
+        mediaList = document.createElement('div');
+        mediaList.id = 'mediaList';
+        mediaList.className = 'media-list';
+        
+        mediaContainer.appendChild(mediaList);
+        container.appendChild(mediaContainer);
+        
+        this.elements.mediaList = mediaList;
+      }
+    }
+    
+    if (mediaList) {
+      mediaList.innerHTML = '<div class="loading">Loading...</div>';
+    }
+  },
+  
+  /**
+   * Show empty state when no files are found
+   */
+  showEmptyState() {
+    if (!this.elements.mediaList) {
+      this.showLoading(); // This will create the mediaList if it doesn't exist
+    }
+    
+    if (this.elements.mediaList) {
+      this.elements.mediaList.innerHTML = `
+        <div class="empty-state">
+          <p>No media files found</p>
+          <button class="btn btn-secondary refresh-btn">Refresh</button>
+        </div>
+      `;
+      
+      // Add click handler to the refresh button
+      const refreshBtn = this.elements.mediaList.querySelector('.refresh-btn');
+      if (refreshBtn) {
+        refreshBtn.addEventListener('click', () => {
+          // Use a safer way to call the refresh function
+          if (window.appController && typeof window.appController.fetchMediaFiles === 'function') {
+            window.appController.fetchMediaFiles();
+          }
+        });
+      }
+    }
+  },
+  
+  /**
+   * Show an error message
+   * @param {string} message - Error message to display
+   */
+  showError(message) {
+    if (!this.elements.mediaList) {
+      this.showLoading(); // This will create the mediaList if it doesn't exist
+    }
+    
+    if (this.elements.mediaList) {
+      this.elements.mediaList.innerHTML = `
+        <div class="error-state">
+          <p>Error: ${message}</p>
+          <button class="btn btn-secondary refresh-btn">Retry</button>
+        </div>
+      `;
+      
+      // Add click handler to the refresh button
+      const refreshBtn = this.elements.mediaList.querySelector('.refresh-btn');
+      if (refreshBtn) {
+        refreshBtn.addEventListener('click', () => {
+          // Use a safer way to call the refresh function
+          if (window.appController && typeof window.appController.fetchMediaFiles === 'function') {
+            window.appController.fetchMediaFiles();
+          } else {
+            console.warn('appController not available yet, refresh button disabled');
+            alert('Please reload the page to refresh.');
+          }
+        });
+      }
+    } else {
+      alert(`Error: ${message}`);
+    }
+  },
+  
+  /**
+   * Update image counter display
+   * @param {number} current - Current image index
+   * @param {number} total - Total images
+   */
+  updateImageCounter(current, total) {
+    if (this.elements.counterContainer) {
+      if (total === 0) {
+        this.elements.counterContainer.textContent = 'No images';
+      } else {
+        this.elements.counterContainer.textContent = `${current + 1} / ${total}`;
+      }
+    }
   }
 };
 

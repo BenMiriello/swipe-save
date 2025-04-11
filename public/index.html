@@ -13,36 +13,16 @@
       console.error('Early error:', e.message, e.filename, e.lineno);
     });
     
-    // Define a simple PinchZoom implementation to avoid external dependency
+    // Define a simple PinchZoom implementation using native browser zoom
     window.PinchZoom = function(el, options) {
-      // This is a simplified version that doesn't actually implement pinch zoom
-      // but prevents errors from occurring when the library is missing
       this.el = el;
       this.options = options || {};
-      console.log('Simple PinchZoom polyfill initialized (no actual zoom)');
     };
   </script>
 </head>
 <body>
   <div class="container">
-    <div class="header-container">
-      <h1>ComfyUI Media Viewer</h1>
-      <div class="header-icons">
-        <button class="icon-button save-icon" title="Download">
-          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-            <polyline points="7 10 12 15 17 10"></polyline>
-            <line x1="12" y1="15" x2="12" y2="3"></line>
-          </svg>
-        </button>
-        <button class="icon-button refresh-icon" title="Refresh">&#x21bb;</button>
-      </div>
-    </div>
-
-    <div class="media-container">
-      <!-- Media items will be loaded here -->
-      <div id="mediaList" class="media-list"></div>
-    </div>
+    <!-- The header and other content will be dynamically created by JS -->
   </div>
 
   <!-- Modal for custom filename -->
@@ -57,21 +37,15 @@
 
   <!-- External libraries -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/hammer.js/2.0.8/hammer.min.js"></script>
-  <!-- We're not using pinch-zoom-js anymore, using our own implementation -->
   
-  <!-- Application scripts (using regular scripts instead of modules) -->
+  <!-- Application scripts - Order is important -->
   <script src="js/error-handler.js"></script>
   <script src="js/config.js"></script>
   <script src="js/api-service.js"></script>
   <script src="js/ui-manager.js"></script>
+  <script src="js/media-utils.js"></script>
   <script src="js/interaction-handler.js"></script>
   <script src="js/app-controller.js"></script>
-  <script>
-    // Initialize error handler first
-    if (window.errorHandler) {
-      window.errorHandler.init();
-    }
-  </script>
-  <script src="app.js"></script>
+  <script src="js/app-init.js"></script>
 </body>
 </html>

@@ -35,6 +35,62 @@ const apiService = {
       throw error;
     }
   },
+  
+  /**
+   * Fetch current path settings from server
+   * @returns {Promise<Object>} Path settings
+   */
+  async fetchPaths() {
+    try {
+      const response = await fetch(`${window.appConfig.getApiUrl()}/api/config/paths`);
+      
+      if (!response.ok) {
+        throw new Error(`Failed to fetch path settings: ${response.status}`);
+      }
+      
+      return await response.json();
+    } catch (error) {
+      console.error('Error fetching path settings:', error);
+      throw error;
+    }
+  },
+  
+  /**
+   * Update path settings on server
+   * @param {string} fromPath - New FROM path
+   * @param {string} toPath - New TO path
+   * @returns {Promise<Object>} Updated path settings
+   */
+  async updatePaths(fromPath, toPath) {
+    try {
+      const requestData = {};
+      
+      if (fromPath) {
+        requestData.fromPath = fromPath;
+      }
+      
+      if (toPath) {
+        requestData.toPath = toPath;
+      }
+      
+      const response = await fetch(`${window.appConfig.getApiUrl()}/api/config/paths`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(requestData)
+      });
+      
+      if (!response.ok) {
+        throw new Error(`Failed to update path settings: ${response.status}`);
+      }
+      
+      return await response.json();
+    } catch (error) {
+      console.error('Error updating path settings:', error);
+      throw error;
+    }
+  },
 
   /**
    * Download the specified media file

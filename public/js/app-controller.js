@@ -8,7 +8,8 @@ class AppController {
       allFiles: [],
       currentIndex: 0,
       customFilename: null,
-      isLoading: false
+      isLoading: false,
+      pathsInitialized: false
     };
     
     // Initialize UI manager
@@ -20,29 +21,71 @@ class AppController {
       showNext: this.showNextImage.bind(this),
       performAction: this.performAction.bind(this),
       undoLastAction: this.undoLastAction.bind(this),
-      toggleOptions: this.toggleOptionsMenu.bind(this),
+      togglePathOverlay: this.togglePathOverlay.bind(this),
       openFilenameModal: this.openFilenameModal.bind(this),
       downloadCurrentFile: this.downloadCurrentFile.bind(this),
       refreshFiles: this.fetchMediaFiles.bind(this),
       openFile: this.openFileInNewView.bind(this),
-      showActionLabel: this.showActionLabel.bind(this)
+      showActionLabel: this.showActionLabel.bind(this),
+      editFromPath: this.editFromPath.bind(this),
+      editToPath: this.editToPath.bind(this),
+      showInstructions: this.showInstructions.bind(this)
     });
     
     // Setup UI event handlers
     window.uiManager.setupEventHandlers({
       openFilenameModal: this.openFilenameModal.bind(this),
-      saveCustomFilename: this.saveCustomFilename.bind(this)
+      saveCustomFilename: this.saveCustomFilename.bind(this),
+      togglePathOverlay: this.togglePathOverlay.bind(this),
+      editFromPath: this.editFromPath.bind(this),
+      editToPath: this.editToPath.bind(this),
+      saveFromPath: this.saveFromPath.bind(this),
+      saveToPath: this.saveToPath.bind(this),
+      showInstructions: this.showInstructions.bind(this)
     });
     
-    // Setup additional UI elements
+    // Setup additional UI controls
     this.setupUIControls();
   }
   
   /**
    * Initialize the application
    */
-  init() {
-    this.fetchMediaFiles();
+  async init() {
+    try {
+      // Initialize paths from server
+      await this.initializePaths();
+      
+      // Then fetch media files
+      await this.fetchMediaFiles();
+      
+      return true;
+    } catch (error) {
+      console.error('Error during initialization:', error);
+      window.uiManager.showError('Failed to initialize application: ' + error.message);
+      return false;
+    }
+  }
+  
+  /**
+   * Initialize paths from server
+   */
+  async initializePaths() {
+    try {
+      await window.appConfig.initPaths();
+      this.state.pathsInitialized = true;
+      
+      // Update UI with paths
+      window.uiManager.updatePathsDisplay(
+        window.appConfig.getDisplayPath(window.appConfig.fromPath),
+        window.appConfig.getDisplayPath(window.appConfig.toPath)
+      );
+      
+      return true;
+    } catch (error) {
+      console.error('Error initializing paths:', error);
+      return false;
+    }
   }
   
   /**
@@ -50,12 +93,12 @@ class AppController {
    */
   setupUIControls() {
     // Set up header buttons if they exist
-    const refreshIcon = document.querySelector('.refresh-icon');
+    const refreshIcon = document.querySelector('.refresh-btn');
     if (refreshIcon) {
       refreshIcon.addEventListener('click', this.fetchMediaFiles.bind(this));
     }
     
-    const saveIcon = document.querySelector('.save-icon');
+    const saveIcon = document.querySelector('.download-btn');
     if (saveIcon) {
       saveIcon.addEventListener('click', this.downloadCurrentFile.bind(this));
     }
@@ -79,6 +122,79 @@ class AppController {
   }
   
   /**
+   * Toggle path overlay visibility
+   */
+  togglePathOverlay() {
+    window.uiManager.togglePathOverlay();
+  }
+  
+  /**
+   * Show instructions modal
+   */
+  showInstructions() {
+    window.uiManager.showInstructionsModal();
+  }
+  
+  /**
+   * Edit 'from' path
+   */
+  editFromPath() {
+    const currentPath = window.appConfig.getDisplayPath(window.appConfig.fromPath);
+    window.uiManager.showPathModal('FROM', currentPath);
+  }
+  
+  /**
+   * Edit 'to' path
+   */
+  editToPath() {
+    const currentPath = window.appConfig.getDisplayPath(window.appConfig.toPath);
+    window.uiManager.showPathModal('TO', currentPath);
+  }
+  
+  /**
+   * Save FROM path
+   */
+  async saveFromPath(newPath) {
+    if (!newPath) return;
+    
+    try {
+      await window.appConfig.updatePaths(newPath, null);
+      
+      // Update UI with new path
+      window.uiManager.updatePathsDisplay(
+        window.appConfig.getDisplayPath(window.appConfig.fromPath),
+        window.appConfig.getDisplayPath(window.appConfig.toPath)
+      );
+      
+      // Refresh files from new path
+      this.fetchMediaFiles();
+    } catch (error) {
+      console.error('Error saving FROM path:', error);
+      window.uiManager.showError('Failed to update FROM path: ' + error.message);
+    }
+  }
+  
+  /**
+   * Save TO path
+   */
+  async saveToPath(newPath) {
+    if (!newPath) return;
+    
+    try {
+      await window.appConfig.updatePaths(null, newPath);
+      
+      // Update UI with new path
+      window.uiManager.updatePathsDisplay(
+        window.appConfig.getDisplayPath(window.appConfig.fromPath),
+        window.appConfig.getDisplayPath(window.appConfig.toPath)
+      );
+    } catch (error) {
+      console.error('Error saving TO path:', error);
+      window.uiManager.showError('Failed to update TO path: ' + error.message);
+    }
+  }
+  
+  /**
    * Fetch media files from server
    */
   async fetchMediaFiles() {
@@ -86,9 +202,14 @@ class AppController {
       this.state.isLoading = true;
       window.uiManager.showLoading();
       
+      // Ensure paths are initialized first
+      if (!this.state.pathsInitialized) {
+        await this.initializePaths();
+      }
+      
       this.state.allFiles = await window.apiService.fetchMediaFiles();
       
-      if (this.state.allFiles.length === 0) {
+      if (!this.state.allFiles || this.state.allFiles.length === 0) {
         window.uiManager.showEmptyState();
         window.uiManager.updateImageCounter(0, 0);
         return;
@@ -110,7 +231,7 @@ class AppController {
    * Display the current image
    */
   displayCurrentImage() {
-    if (this.state.allFiles.length === 0) {
+    if (!this.state.allFiles || this.state.allFiles.length === 0) {
       window.uiManager.showEmptyState();
       window.uiManager.updateImageCounter(0, 0);
       return;
@@ -118,35 +239,46 @@ class AppController {
     
     const file = this.state.allFiles[this.state.currentIndex];
     const mediaList = document.getElementById('mediaList');
+    
+    if (!mediaList) {
+      console.error('mediaList not found in DOM');
+      return;
+    }
+    
     mediaList.innerHTML = '';
     
-    // Create and add the media item
-    const mediaItem = window.uiManager.createMediaItem(
-      file, 
-      this.state.customFilename, 
-      window.appConfig.getApiUrl()
-    );
-    mediaList.appendChild(mediaItem);
-    
-    // Setup interactions
-    window.interactionHandler.setupSwipeHandlers();
-    window.interactionHandler.setupTapHandlers();
-    
-    // Setup pinch zoom for images
-    window.uiManager.setupPinchZoom();
-    
-    // Update counter
-    window.uiManager.updateImageCounter(
-      this.state.currentIndex, 
-      this.state.allFiles.length
-    );
+    // Use mediaUtils to create and add the media item
+    try {
+      const mediaItem = window.mediaUtils.createMediaItem(
+        file, 
+        this.state.customFilename, 
+        window.appConfig.getApiUrl()
+      );
+      mediaList.appendChild(mediaItem);
+      
+      // Setup interactions
+      window.interactionHandler.setupSwipeHandlers();
+      window.interactionHandler.setupTapHandlers();
+      
+      // Setup pinch zoom for images
+      window.uiManager.setupPinchZoom();
+      
+      // Update counter
+      window.uiManager.updateImageCounter(
+        this.state.currentIndex, 
+        this.state.allFiles.length
+      );
+    } catch (error) {
+      console.error('Error displaying image:', error);
+      window.uiManager.showError('Failed to display image: ' + error.message);
+    }
   }
   
   /**
    * Show the previous image
    */
   showPreviousImage() {
-    if (this.state.allFiles.length === 0) return;
+    if (!this.state.allFiles || this.state.allFiles.length === 0) return;
     
     this.state.customFilename = null; // Reset custom filename
     this.state.currentIndex = (this.state.currentIndex - 1 + this.state.allFiles.length) % this.state.allFiles.length;
@@ -157,7 +289,7 @@ class AppController {
    * Show the next image
    */
   showNextImage() {
-    if (this.state.allFiles.length === 0) return;
+    if (!this.state.allFiles || this.state.allFiles.length === 0) return;
     
     this.state.customFilename = null; // Reset custom filename
     this.state.currentIndex = (this.state.currentIndex + 1) % this.state.allFiles.length;
@@ -169,7 +301,7 @@ class AppController {
    * @param {string} action - Action to perform
    */
   async performAction(action) {
-    if (this.state.allFiles.length === 0) return;
+    if (!this.state.allFiles || this.state.allFiles.length === 0) return;
     
     const file = this.state.allFiles[this.state.currentIndex];
     const filename = file.name;
@@ -177,8 +309,8 @@ class AppController {
     
     if (!mediaItem) return;
     
-    // Show visual feedback
-    window.uiManager.showActionFeedback(mediaItem, action);
+    // Show visual feedback using mediaUtils
+    window.mediaUtils.showActionFeedback(mediaItem, action);
     
     try {
       // Call API to perform the action
@@ -209,8 +341,8 @@ class AppController {
       }, 300);
     } catch (error) {
       console.error('Error performing action:', error);
-      // Remove visual feedback on error
-      window.uiManager.hideActionFeedback(mediaItem, action);
+      // Remove visual feedback on error, using mediaUtils
+      window.mediaUtils.hideActionFeedback(mediaItem, action);
     }
   }
   
@@ -222,7 +354,7 @@ class AppController {
       // Call API to undo last action
       const result = await window.apiService.undoLastAction();
       
-      if (result.undoneAction) {
+      if (result && result.undoneAction) {
         // Refresh the media files and try to show the image that was restored
         const undoneFilename = result.undoneAction.filename;
         
@@ -232,7 +364,7 @@ class AppController {
         // Fetch updated files
         this.state.allFiles = await window.apiService.fetchMediaFiles();
         
-        if (this.state.allFiles.length === 0) {
+        if (!this.state.allFiles || this.state.allFiles.length === 0) {
           window.uiManager.showEmptyState();
           window.uiManager.updateImageCounter(0, 0);
           return;
@@ -261,7 +393,7 @@ class AppController {
       }
     } catch (error) {
       console.error('Error performing undo:', error);
-      alert('Failed to undo the last action: ' + error.message);
+      window.uiManager.showError('Failed to undo the last action: ' + error.message);
     }
   }
   
@@ -269,7 +401,7 @@ class AppController {
    * Open the filename modal for renaming
    */
   openFilenameModal() {
-    if (this.state.allFiles.length === 0) return;
+    if (!this.state.allFiles || this.state.allFiles.length === 0) return;
     
     const currentFile = this.state.allFiles[this.state.currentIndex];
     window.uiManager.showFilenameModal(currentFile.name, this.state.customFilename);
@@ -289,7 +421,7 @@ class AppController {
    * Download the current file
    */
   downloadCurrentFile() {
-    if (this.state.allFiles.length === 0) return;
+    if (!this.state.allFiles || this.state.allFiles.length === 0) return;
     
     const currentFile = this.state.allFiles[this.state.currentIndex];
     window.apiService.downloadFile(currentFile, this.state.customFilename);
@@ -299,17 +431,10 @@ class AppController {
    * Open current file in new tab/window
    */
   openFileInNewView() {
-    if (this.state.allFiles.length === 0) return;
+    if (!this.state.allFiles || this.state.allFiles.length === 0) return;
     
     const currentFile = this.state.allFiles[this.state.currentIndex];
     window.apiService.openFileInNewView(currentFile);
-  }
-  
-  /**
-   * Toggle options menu
-   */
-  toggleOptionsMenu() {
-    window.uiManager.toggleOptionsDropdown();
   }
   
   /**
@@ -318,7 +443,7 @@ class AppController {
    * @param {DOMRect} rect - Position of the tap zone
    */
   showActionLabel(actionName, rect) {
-    window.uiManager.showActionLabel(actionName, rect);
+    window.mediaUtils.showActionLabel(actionName, rect);
   }
 }
 

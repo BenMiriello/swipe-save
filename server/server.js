@@ -11,6 +11,13 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
+// Set paths from URL when any request comes in
+app.use((req, res, next) => {
+  // Set paths based on URL parameters
+  config.setPathsFromUrl(req.url);
+  next();
+});
+
 // Create required directories
 fileOps.createRequiredDirectories();
 
@@ -36,6 +43,16 @@ app.use(express.static(path.join(__dirname, '..', 'public')));
 app.get('/', (req, res) => {
   const indexPath = path.join(__dirname, '..', 'public', 'index.html');
   res.sendFile(indexPath);
+});
+
+// New endpoint to get current paths
+app.get('/api/config/paths', (req, res) => {
+  res.json({
+    fromPath: config.OUTPUT_DIR,
+    toPath: config.LOCAL_COPY_DIR,
+    defaultFromPath: config.DEFAULT_OUTPUT_DIR,
+    defaultToPath: config.DEFAULT_SORTED_DIR
+  });
 });
 
 // Apply API routes
