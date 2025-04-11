@@ -52,11 +52,19 @@ class AppController {
    * Initialize the application
    */
   async init() {
-    // Initialize paths from server
-    await this.initializePaths();
-    
-    // Then fetch media files
-    this.fetchMediaFiles();
+    try {
+      // Initialize paths from server
+      await this.initializePaths();
+      
+      // Then fetch media files
+      await this.fetchMediaFiles();
+      
+      return true;
+    } catch (error) {
+      console.error('Error during initialization:', error);
+      window.uiManager.showError('Failed to initialize application: ' + error.message);
+      return false;
+    }
   }
   
   /**
@@ -132,7 +140,7 @@ class AppController {
    */
   editFromPath() {
     const currentPath = window.appConfig.getDisplayPath(window.appConfig.fromPath);
-    window.uiManager.showPathModal('FROM', currentPath, this.saveFromPath.bind(this));
+    window.uiManager.showPathModal('FROM', currentPath);
   }
   
   /**
@@ -140,7 +148,7 @@ class AppController {
    */
   editToPath() {
     const currentPath = window.appConfig.getDisplayPath(window.appConfig.toPath);
-    window.uiManager.showPathModal('TO', currentPath, this.saveToPath.bind(this));
+    window.uiManager.showPathModal('TO', currentPath);
   }
   
   /**
@@ -231,28 +239,39 @@ class AppController {
     
     const file = this.state.allFiles[this.state.currentIndex];
     const mediaList = document.getElementById('mediaList');
+    
+    if (!mediaList) {
+      console.error('Media list element not found');
+      return;
+    }
+    
     mediaList.innerHTML = '';
     
-    // Create and add the media item
-    const mediaItem = window.uiManager.createMediaItem(
-      file, 
-      this.state.customFilename, 
-      window.appConfig.getApiUrl()
-    );
-    mediaList.appendChild(mediaItem);
-    
-    // Setup interactions
-    window.interactionHandler.setupSwipeHandlers();
-    window.interactionHandler.setupTapHandlers();
-    
-    // Setup pinch zoom for images
-    window.uiManager.setupPinchZoom();
-    
-    // Update counter
-    window.uiManager.updateImageCounter(
-      this.state.currentIndex, 
-      this.state.allFiles.length
-    );
+    try {
+      // Create and add the media item using the mediaUtils module
+      const mediaItem = window.mediaUtils.createMediaItem(
+        file, 
+        this.state.customFilename, 
+        window.appConfig.getApiUrl()
+      );
+      mediaList.appendChild(mediaItem);
+      
+      // Setup interactions
+      window.interactionHandler.setupSwipeHandlers();
+      window.interactionHandler.setupTapHandlers();
+      
+      // Setup pinch zoom for images
+      window.uiManager.setupPinchZoom();
+      
+      // Update counter
+      window.uiManager.updateImageCounter(
+        this.state.currentIndex, 
+        this.state.allFiles.length
+      );
+    } catch (error) {
+      console.error('Error displaying current image:', error);
+      window.uiManager.showError('Failed to display image: ' + error.message);
+    }
   }
   
   /**
@@ -291,7 +310,7 @@ class AppController {
     if (!mediaItem) return;
     
     // Show visual feedback
-    window.uiManager.showActionFeedback(mediaItem, action);
+    window.mediaUtils.showActionFeedback(mediaItem, action);
     
     try {
       // Call API to perform the action
@@ -323,7 +342,7 @@ class AppController {
     } catch (error) {
       console.error('Error performing action:', error);
       // Remove visual feedback on error
-      window.uiManager.hideActionFeedback(mediaItem, action);
+      window.mediaUtils.hideActionFeedback(mediaItem, action);
     }
   }
   
@@ -374,7 +393,7 @@ class AppController {
       }
     } catch (error) {
       console.error('Error performing undo:', error);
-      alert('Failed to undo the last action: ' + error.message);
+      window.uiManager.showError('Failed to undo the last action: ' + error.message);
     }
   }
   
@@ -424,7 +443,7 @@ class AppController {
    * @param {DOMRect} rect - Position of the tap zone
    */
   showActionLabel(actionName, rect) {
-    window.uiManager.showActionLabel(actionName, rect);
+    window.mediaUtils.showActionLabel(actionName, rect);
   }
 }
 
