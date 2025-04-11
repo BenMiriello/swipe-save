@@ -4,11 +4,11 @@
 const uiManager = {
   elements: {
     mediaList: null,
-    modal: null,
+    filenameModal: null,
+    pathModal: null,
     infoModal: null,
     filenameInput: null,
-    optionsButton: null,
-    optionsDropdown: null,
+    pathInput: null,
     counterContainer: null,
     controls: null,
     fileHeader: null,
@@ -24,8 +24,11 @@ const uiManager = {
     
     // Get references to DOM elements
     this.elements.mediaList = document.getElementById('mediaList');
-    this.elements.modal = document.getElementById('filenameModal');
+    this.elements.filenameModal = document.getElementById('filenameModal');
+    this.elements.pathModal = document.getElementById('pathModal');
+    this.elements.infoModal = document.getElementById('infoModal');
     this.elements.filenameInput = document.getElementById('customFilename');
+    this.elements.pathInput = document.getElementById('pathInput');
     this.elements.counterContainer = document.querySelector('.counter-container');
     this.elements.fileHeader = document.querySelector('.file-header');
     this.elements.pathOverlay = document.querySelector('.path-overlay');
@@ -33,8 +36,8 @@ const uiManager = {
     // Create the info modal if not already present
     this.createInfoModal();
     
-    // Initialize options menu
-    this.initializeOptionsMenu();
+    // Create the path editing modal
+    this.createPathModal();
   },
   
   /**
@@ -81,13 +84,7 @@ const uiManager = {
       filenameSection.className = 'path-section filename-section';
       filenameSection.style.display = 'none';
       
-      const originalLabel = document.createElement('div');
-      originalLabel.className = 'path-label';
-      originalLabel.textContent = 'Original:';
-      
-      const originalName = document.createElement('div');
-      originalName.className = 'path-value original-name';
-      
+      // Only use "Saving As" without the "Original" line
       const savingAsLabel = document.createElement('div');
       savingAsLabel.className = 'path-label';
       savingAsLabel.textContent = 'Saving As:';
@@ -95,8 +92,6 @@ const uiManager = {
       const savingAsName = document.createElement('div');
       savingAsName.className = 'path-value saving-as-name';
       
-      filenameSection.appendChild(originalLabel);
-      filenameSection.appendChild(originalName);
       filenameSection.appendChild(savingAsLabel);
       filenameSection.appendChild(savingAsName);
       
@@ -149,76 +144,117 @@ const uiManager = {
       
       pathOverlay.appendChild(overlayContent);
       
-      // Header icons (download and refresh)
-      const headerIcons = document.createElement('div');
-      headerIcons.className = 'header-icons';
-      
-      const downloadButton = document.createElement('button');
-      downloadButton.className = 'icon-button save-icon';
-      downloadButton.title = 'Download';
-      downloadButton.innerHTML = `
-        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-          <polyline points="7 10 12 15 17 10"></polyline>
-          <line x1="12" y1="15" x2="12" y2="3"></line>
-        </svg>
-      `;
-      
-      const refreshButton = document.createElement('button');
-      refreshButton.className = 'icon-button refresh-icon';
-      refreshButton.title = 'Refresh';
-      refreshButton.innerHTML = '&#x21bb;';
-      
-      headerIcons.appendChild(downloadButton);
-      headerIcons.appendChild(refreshButton);
-      
       // Add components to the header container
       headerContainer.appendChild(fileHeader);
       headerContainer.appendChild(pathOverlay);
-      headerContainer.appendChild(headerIcons);
       
-      // Replace the existing header
-      existingHeaderContainer.parentNode.replaceChild(headerContainer, existingHeaderContainer);
+      // Create action buttons container (moved to bottom)
+      const actionButtons = document.createElement('div');
+      actionButtons.className = 'action-buttons';
+      
+      // Move to parent container and replace old header
+      const container = existingHeaderContainer.parentNode;
+      container.replaceChild(headerContainer, existingHeaderContainer);
+      
+      this.elements.fileHeader = fileHeader;
+      this.elements.pathOverlay = pathOverlay;
+      
+      // Create bottom controls if they don't exist
+      if (!document.querySelector('.bottom-controls')) {
+        const bottomControls = document.createElement('div');
+        bottomControls.className = 'bottom-controls';
+        
+        // Add navigation buttons to the center
+        const controls = document.createElement('div');
+        controls.className = 'controls';
+        
+        const prevButton = document.createElement('button');
+        prevButton.className = 'btn btn-secondary';
+        prevButton.textContent = 'Previous';
+        
+        const undoButton = document.createElement('button');
+        undoButton.className = 'btn btn-undo';
+        undoButton.textContent = 'Undo';
+        
+        const nextButton = document.createElement('button');
+        nextButton.className = 'btn btn-secondary';
+        nextButton.textContent = 'Next';
+        
+        controls.appendChild(prevButton);
+        controls.appendChild(undoButton);
+        controls.appendChild(nextButton);
+        
+        // Add utility buttons to the left
+        const utilityButtons = document.createElement('div');
+        utilityButtons.className = 'utility-buttons';
+        
+        const refreshButton = document.createElement('button');
+        refreshButton.className = 'btn btn-utility refresh-btn';
+        refreshButton.innerHTML = '&#x21bb;'; // Refresh symbol
+        refreshButton.title = 'Refresh';
+        
+        const downloadButton = document.createElement('button');
+        downloadButton.className = 'btn btn-utility download-btn';
+        downloadButton.innerHTML = '&#x2193;'; // Down arrow
+        downloadButton.title = 'Download';
+        
+        utilityButtons.appendChild(refreshButton);
+        utilityButtons.appendChild(downloadButton);
+        
+        // Add counter to the right
+        const counterContainer = document.createElement('div');
+        counterContainer.className = 'counter-container';
+        counterContainer.textContent = 'No images';
+        
+        // Add everything to bottom controls
+        bottomControls.appendChild(utilityButtons);
+        bottomControls.appendChild(controls);
+        bottomControls.appendChild(counterContainer);
+        
+        // Add to container
+        container.appendChild(bottomControls);
+        
+        this.elements.counterContainer = counterContainer;
+        this.elements.controls = controls;
+      }
+    }
+  },
+  
+  /**
+   * Create path editing modal
+   */
+  createPathModal() {
+    // Check if the modal already exists
+    if (document.getElementById('pathModal')) {
+      this.elements.pathModal = document.getElementById('pathModal');
+      return;
     }
     
-    // Add bottom controls container if it doesn't exist
-    if (!document.querySelector('.bottom-controls')) {
-      const bottomControls = document.createElement('div');
-      bottomControls.className = 'bottom-controls';
-      
-      // Add prev, undo, next buttons
-      const controls = document.createElement('div');
-      controls.className = 'controls';
-      
-      // Add navigation buttons
-      const prevButton = document.createElement('button');
-      prevButton.className = 'btn btn-secondary';
-      prevButton.textContent = 'Previous';
-      
-      const undoButton = document.createElement('button');
-      undoButton.className = 'btn btn-undo';
-      undoButton.textContent = 'Undo';
-      
-      const nextButton = document.createElement('button');
-      nextButton.className = 'btn btn-secondary';
-      nextButton.textContent = 'Next';
-      
-      controls.appendChild(prevButton);
-      controls.appendChild(undoButton);
-      controls.appendChild(nextButton);
-      
-      // Add counter container
-      const counterContainer = document.createElement('div');
-      counterContainer.className = 'counter-container';
-      counterContainer.textContent = 'No images';
-      
-      // Add bottom controls to container
-      bottomControls.appendChild(controls);
-      bottomControls.appendChild(counterContainer);
-      
-      const container = document.querySelector('.container');
-      container.appendChild(bottomControls);
-    }
+    const pathModal = document.createElement('div');
+    pathModal.id = 'pathModal';
+    pathModal.className = 'modal';
+    pathModal.innerHTML = `
+      <div class="modal-content">
+        <span class="close-modal" id="closePathModal">&times;</span>
+        <h2>Edit <span id="pathType">Path</span></h2>
+        <input type="text" id="pathInput" placeholder="Enter path">
+        <button id="savePath">Save</button>
+      </div>
+    `;
+    document.body.appendChild(pathModal);
+    this.elements.pathModal = pathModal;
+    
+    // Close modal when clicking X
+    document.getElementById('closePathModal').addEventListener('click', () => {
+      this.elements.pathModal.style.display = "none";
+    });
+    
+    // Close modal when clicking outside
+    window.addEventListener('click', (event) => {
+      if (event.target === this.elements.pathModal) {
+        this.elements.pathModal.style.display = "none";
+      }
+    });
   },
   
   /**
@@ -260,61 +296,25 @@ const uiManager = {
   },
   
   /**
-   * Initialize options menu
-   */
-  initializeOptionsMenu() {
-    // Create options container if not present
-    const headerContainer = document.querySelector('.header-container');
-    const existingOptionsContainer = document.querySelector('.options-container');
-    
-    if (existingOptionsContainer) {
-      this.elements.optionsContainer = existingOptionsContainer;
-      this.elements.optionsButton = existingOptionsContainer.querySelector('.btn-options');
-      this.elements.optionsDropdown = existingOptionsContainer.querySelector('.options-dropdown');
-    } else {
-      const optionsContainer = document.createElement('div');
-      optionsContainer.className = 'options-container';
-      
-      const optionsButton = document.createElement('button');
-      optionsButton.className = 'btn btn-options';
-      optionsButton.textContent = 'Options';
-      
-      const optionsDropdown = document.createElement('div');
-      optionsDropdown.className = 'options-dropdown';
-      optionsDropdown.innerHTML = `
-        <ul>
-          <li id="customName">Custom Name</li>
-          <li id="showInfo">Show Instructions</li>
-        </ul>
-      `;
-      
-      optionsContainer.appendChild(optionsButton);
-      optionsContainer.appendChild(optionsDropdown);
-      
-      // Insert at the beginning of header
-      headerContainer.insertBefore(optionsContainer, headerContainer.firstChild);
-      
-      this.elements.optionsContainer = optionsContainer;
-      this.elements.optionsButton = optionsButton;
-      this.elements.optionsDropdown = optionsDropdown;
-    }
-  },
-  
-  /**
    * Set up event handlers for UI elements
    * @param {Object} handlers - Object containing handler functions
    */
   setupEventHandlers(handlers) {
-    // Ensure elements exist before attaching handlers
-    if (!this.elements.optionsButton) return;
-    
-    // File header click to toggle path overlay
-    const fileHeader = document.querySelector('.file-header');
-    if (fileHeader) {
-      fileHeader.addEventListener('click', handlers.togglePathOverlay);
+    // Set up file header click to toggle path overlay
+    if (this.elements.fileHeader) {
+      this.elements.fileHeader.addEventListener('click', handlers.togglePathOverlay);
     }
     
-    // 'FROM' path click to edit
+    // Edit icon for custom filename
+    const editIcon = document.querySelector('.edit-icon');
+    if (editIcon) {
+      editIcon.addEventListener('click', (e) => {
+        e.stopPropagation(); // Prevent triggering the fileHeader click
+        handlers.openFilenameModal();
+      });
+    }
+    
+    // FROM path click handler
     const fromPath = document.querySelector('.from-path');
     if (fromPath) {
       fromPath.addEventListener('click', (e) => {
@@ -323,7 +323,7 @@ const uiManager = {
       });
     }
     
-    // 'TO' path click to edit
+    // TO path click handler
     const toPath = document.querySelector('.to-path');
     if (toPath) {
       toPath.addEventListener('click', (e) => {
@@ -332,49 +332,44 @@ const uiManager = {
       });
     }
     
-    // Options button toggle
-    this.elements.optionsButton.addEventListener('click', () => {
-      this.toggleOptionsDropdown();
-    });
-    
-    // Close dropdown when clicking outside
-    window.addEventListener('click', (event) => {
-      if (!this.elements.optionsButton.contains(event.target) && 
-          !this.elements.optionsDropdown.contains(event.target)) {
-        this.elements.optionsDropdown.classList.remove('show');
-      }
-    });
-    
-    // Custom name option
-    const customNameEl = document.getElementById('customName');
-    if (customNameEl) {
-      customNameEl.addEventListener('click', () => {
-        handlers.openFilenameModal();
-        this.elements.optionsDropdown.classList.remove('show');
+    // Show instructions button
+    const showInfoBtn = document.getElementById('showInfo');
+    if (showInfoBtn) {
+      showInfoBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        handlers.showInstructions();
       });
     }
     
-    // Show info option
-    const showInfoEl = document.getElementById('showInfo');
-    if (showInfoEl) {
-      showInfoEl.addEventListener('click', () => {
-        this.elements.infoModal.style.display = "block";
-        this.elements.optionsDropdown.classList.remove('show');
+    // Path modal save button
+    const savePathBtn = document.getElementById('savePath');
+    if (savePathBtn) {
+      savePathBtn.addEventListener('click', () => {
+        const pathType = document.getElementById('pathType').textContent;
+        const pathValue = this.elements.pathInput.value.trim();
+        
+        this.elements.pathModal.style.display = "none";
+        
+        if (pathType === 'FROM Path') {
+          handlers.saveFromPath(pathValue);
+        } else if (pathType === 'TO Path') {
+          handlers.saveToPath(pathValue);
+        }
       });
     }
     
-    // Modal close button
-    const closeModal = document.querySelector('.close-modal');
-    if (closeModal) {
-      closeModal.addEventListener('click', () => {
-        this.elements.modal.style.display = "none";
+    // Filename modal
+    const closeFilenameModal = document.querySelector('#filenameModal .close-modal');
+    if (closeFilenameModal) {
+      closeFilenameModal.addEventListener('click', () => {
+        this.elements.filenameModal.style.display = "none";
       });
     }
     
     // Click outside modal to close
     window.addEventListener('click', (event) => {
-      if (event.target === this.elements.modal) {
-        this.elements.modal.style.display = "none";
+      if (event.target === this.elements.filenameModal) {
+        this.elements.filenameModal.style.display = "none";
       }
     });
     
@@ -383,27 +378,37 @@ const uiManager = {
     if (saveFilenameBtn) {
       saveFilenameBtn.addEventListener('click', () => {
         const customFilename = this.elements.filenameInput.value.trim();
-        this.elements.modal.style.display = "none";
+        this.elements.filenameModal.style.display = "none";
         handlers.saveCustomFilename(customFilename);
       });
     }
     
-    // Edit icon for custom filename
-    const editIcon = document.querySelector('.edit-icon');
-    if (editIcon) {
-      editIcon.addEventListener('click', (e) => {
-        e.stopPropagation();
-        handlers.openFilenameModal();
-      });
+    // Bottom utility buttons
+    const refreshBtn = document.querySelector('.refresh-btn');
+    if (refreshBtn) {
+      refreshBtn.addEventListener('click', handlers.refreshFiles);
     }
-  },
-  
-  /**
-   * Toggle options dropdown visibility
-   */
-  toggleOptionsDropdown() {
-    if (this.elements.optionsDropdown) {
-      this.elements.optionsDropdown.classList.toggle('show');
+    
+    const downloadBtn = document.querySelector('.download-btn');
+    if (downloadBtn) {
+      downloadBtn.addEventListener('click', handlers.downloadCurrentFile);
+    }
+    
+    // Navigation buttons
+    const prevButton = document.querySelector('.controls .btn-secondary:first-child');
+    if (prevButton) {
+      prevButton.addEventListener('click', handlers.showPrevious);
+    }
+    
+    const nextButton = document.querySelector('.controls .btn-secondary:last-child');
+    if (nextButton) {
+      nextButton.addEventListener('click', handlers.showNext);
+    }
+    
+    // Undo button
+    const undoButton = document.querySelector('.btn-undo');
+    if (undoButton) {
+      undoButton.addEventListener('click', handlers.undoLastAction);
     }
   },
   
@@ -412,21 +417,55 @@ const uiManager = {
    */
   togglePathOverlay() {
     if (this.elements.pathOverlay) {
-      const isVisible = this.elements.pathOverlay.style.display !== 'none';
-      this.elements.pathOverlay.style.display = isVisible ? 'none' : 'block';
+      const isHidden = this.elements.pathOverlay.style.display === 'none';
       
-      // Update caret direction
+      // Update caret icon
       const caret = document.querySelector('.caret');
       if (caret) {
-        caret.innerHTML = isVisible ? '&#9654;' : '&#9660;'; // Right vs Down
+        caret.innerHTML = isHidden ? '&#9660;' : '&#9654;'; // Down or right arrow
       }
+      
+      // Toggle visibility
+      this.elements.pathOverlay.style.display = isHidden ? 'block' : 'none';
     }
   },
   
   /**
-   * Update the FROM and TO paths in the UI
-   * @param {string} fromPath - Path to read files from
-   * @param {string} toPath - Path to save files to
+   * Show the path editing modal
+   * @param {string} pathType - Type of path (FROM or TO)
+   * @param {string} currentPath - Current path value
+   * @param {Function} saveCallback - Function to call when saving
+   */
+  showPathModal(pathType, currentPath, saveCallback) {
+    if (!this.elements.pathModal) return;
+    
+    // Update modal title and input value
+    document.getElementById('pathType').textContent = `${pathType} Path`;
+    this.elements.pathInput.value = currentPath || '';
+    
+    // Show modal
+    this.elements.pathModal.style.display = "block";
+    
+    // Focus and select the input text
+    setTimeout(() => {
+      this.elements.pathInput.focus();
+      this.elements.pathInput.select();
+    }, 50);
+  },
+  
+  /**
+   * Show instructions modal
+   */
+  showInstructionsModal() {
+    if (this.elements.infoModal) {
+      this.elements.infoModal.style.display = "block";
+    }
+  },
+  
+  /**
+   * Update paths display in the UI
+   * @param {string} fromPath - FROM path to display
+   * @param {string} toPath - TO path to display
    */
   updatePathsDisplay(fromPath, toPath) {
     const fromPathEl = document.querySelector('.from-path');
@@ -442,51 +481,15 @@ const uiManager = {
   },
   
   /**
-   * Update the filename display in the header
-   * @param {string} originalName - Original filename
-   * @param {string} customName - Custom filename (if set)
-   */
-  updateFilenameDisplay(originalName, customName) {
-    // Update main filename display in header
-    const filenameEl = document.querySelector('.filename');
-    if (filenameEl) {
-      filenameEl.textContent = customName || originalName || 'No file selected';
-    }
-    
-    // Update edit icon visibility
-    const editIcon = document.querySelector('.edit-icon');
-    if (editIcon) {
-      editIcon.style.display = originalName ? 'inline-block' : 'none';
-    }
-    
-    // Update filename section in path overlay
-    const filenameSection = document.querySelector('.filename-section');
-    const originalNameEl = document.querySelector('.original-name');
-    const savingAsNameEl = document.querySelector('.saving-as-name');
-    
-    if (filenameSection && originalNameEl && savingAsNameEl) {
-      if (customName && originalName) {
-        // Show the filename section with both original and custom names
-        filenameSection.style.display = 'block';
-        originalNameEl.textContent = originalName;
-        savingAsNameEl.textContent = customName;
-      } else {
-        // Hide the filename section if there's no custom name
-        filenameSection.style.display = 'none';
-      }
-    }
-  },
-  
-  /**
    * Show filename modal for renaming
    * @param {string} currentFilename - Current filename
    * @param {string} customFilename - Custom filename if available
    */
   showFilenameModal(currentFilename, customFilename) {
-    if (!this.elements.filenameInput || !this.elements.modal) return;
+    if (!this.elements.filenameInput || !this.elements.filenameModal) return;
     
     this.elements.filenameInput.value = customFilename || currentFilename;
-    this.elements.modal.style.display = "block";
+    this.elements.filenameModal.style.display = "block";
     
     // Focus and select the input text
     setTimeout(() => {
@@ -565,15 +568,46 @@ const uiManager = {
       mediaContent = this.createVideoElement(file, apiUrl);
     }
     
-    // Update main filename display
-    this.updateFilenameDisplay(file.name, customFilename);
+    // Update header filename - now removed from the item itself
+    const filenameEl = document.querySelector('.filename');
+    if (filenameEl) {
+      filenameEl.textContent = customFilename || file.name;
+      
+      // Show/hide the custom filename section in the overlay
+      const filenameSection = document.querySelector('.filename-section');
+      const savingAsName = document.querySelector('.saving-as-name');
+      
+      if (filenameSection && savingAsName) {
+        if (customFilename) {
+          filenameSection.style.display = 'block';
+          savingAsName.textContent = customFilename;
+        } else {
+          filenameSection.style.display = 'none';
+        }
+      }
+    }
     
-    // Add swipe instruction element
+    // Create swipe instruction element
     const swipeInstruction = document.createElement('div');
     swipeInstruction.className = 'swipe-instruction';
     
+    // Create 9-zone grid for taps
+    const tapZones = document.createElement('div');
+    tapZones.className = 'tap-zones';
+    
+    // Create zones according to config
+    window.appConfig.zoneConfig.forEach(zone => {
+      const zoneElement = document.createElement('div');
+      zoneElement.className = `tap-zone ${zone.className}`;
+      if (zone.action) {
+        zoneElement.dataset.action = zone.action;
+      }
+      tapZones.appendChild(zoneElement);
+    });
+    
     // Assemble the media item
     item.appendChild(mediaContent);
+    item.appendChild(tapZones);
     item.appendChild(swipeInstruction);
     
     return item;
