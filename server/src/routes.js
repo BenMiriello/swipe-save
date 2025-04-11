@@ -191,14 +191,29 @@ router.post('/api/files/action', async (req, res) => {
       case 'archive_good':
       case 'archive_bad': {
         // Create date folder based on file creation date
-        const dateFolderPath = path.join(config.OUTPUT_DIR, fileDate);
+        // Use TO path instead of OUTPUT_DIR for saving
+        const dateFolderPath = path.join(config.LOCAL_COPY_DIR, fileDate);
         
         if (!fs.existsSync(dateFolderPath)) {
           fs.mkdirSync(dateFolderPath, { recursive: true });
         }
         
-        // Move to date folder
-        const destPath = path.join(dateFolderPath, targetFilename);
+        // Set subfolder for good/bad if needed
+        let destFolder = dateFolderPath;
+        if (actionType === 'archive_good') {
+          destFolder = path.join(dateFolderPath, 'good');
+          if (!fs.existsSync(destFolder)) {
+            fs.mkdirSync(destFolder, { recursive: true });
+          }
+        } else if (actionType === 'archive_bad') {
+          destFolder = path.join(dateFolderPath, 'bad');
+          if (!fs.existsSync(destFolder)) {
+            fs.mkdirSync(destFolder, { recursive: true });
+          }
+        }
+        
+        // Move to appropriate folder
+        const destPath = path.join(destFolder, targetFilename);
         
         // Move file with proper checking
         if (!fileOps.moveFile(sourcePath, destPath)) {
@@ -224,7 +239,8 @@ router.post('/api/files/action', async (req, res) => {
       case 'saved':
       case 'saved_wip': {
         // Create date folder for saved files
-        const dateFolderPath = path.join(config.OUTPUT_DIR, fileDate);
+        // Use TO path instead of OUTPUT_DIR for saving
+        const dateFolderPath = path.join(config.LOCAL_COPY_DIR, fileDate);
         if (!fs.existsSync(dateFolderPath)) {
           fs.mkdirSync(dateFolderPath, { recursive: true });
         }
@@ -259,42 +275,6 @@ router.post('/api/files/action', async (req, res) => {
           action: actionType
         });
         
-        // Also copy to local save directory
-        const copyDateFolder = path.join(config.LOCAL_COPY_DIR, fileDate);
-        if (!fs.existsSync(copyDateFolder)) {
-          fs.mkdirSync(copyDateFolder, { recursive: true });
-        }
-        
-        // For work-in-progress, create a "wip" subfolder in the copy location too
-        let copyDestFolder = copyDateFolder;
-        if (actionType === 'saved_wip') {
-          copyDestFolder = path.join(copyDateFolder, 'wip');
-          if (!fs.existsSync(copyDestFolder)) {
-            fs.mkdirSync(copyDestFolder, { recursive: true });
-          }
-        }
-        
-        // Define copy path
-        const copyPath = path.join(copyDestFolder, targetFilename);
-        
-        // Copy the file
-        if (!fileOps.copyFile(destPath, copyPath)) {
-          throw new Error(`Failed to copy file to ${copyPath}`);
-        }
-        
-        actionRecord.copyPath = copyPath;
-        
-        // Log the copy action
-        fileOps.logSimpleAction(`${actionType}_copy`, {
-          filename,
-          targetFilename,
-          sourcePath: destPath,
-          destPath: copyPath,
-          fileDate,
-          metadata: fileMetadata,
-          action: actionType
-        });
-        
         break;
       }
       
@@ -304,19 +284,19 @@ router.post('/api/files/action', async (req, res) => {
         try {
           console.log(`SUPER SAVE: Processing file: ${filename} as ${actionType}`);
           
-          // Create date folder in local copy directory
-          const copyDateFolder = path.join(config.LOCAL_COPY_DIR, fileDate);
-          if (!fs.existsSync(copyDateFolder)) {
-            fs.mkdirSync(copyDateFolder, { recursive: true });
+          // Create date folder in TO path
+          const dateFolderPath = path.join(config.LOCAL_COPY_DIR, fileDate);
+          if (!fs.existsSync(dateFolderPath)) {
+            fs.mkdirSync(dateFolderPath, { recursive: true });
           }
           
           // Create the appropriate best folder based on action
           // Updated path for best_wip to be under the best folder (best/wip)
           let bestFolder;
           if (actionType === 'best_complete') {
-            bestFolder = path.join(copyDateFolder, 'best');
+            bestFolder = path.join(dateFolderPath, 'best');
           } else { // best_wip
-            bestFolder = path.join(copyDateFolder, 'best', 'wip');
+            bestFolder = path.join(dateFolderPath, 'best', 'wip');
           }
           
           if (!fs.existsSync(bestFolder)) {
@@ -326,39 +306,21 @@ router.post('/api/files/action', async (req, res) => {
           // Define the destination path
           const bestDestPath = path.join(bestFolder, targetFilename);
           
-          // Copy the file
-          if (!fileOps.copyFile(sourcePath, bestDestPath)) {
-            throw new Error(`Failed to copy file to: ${bestDestPath}`);
+          // Move the file (not just copy)
+          if (!fileOps.moveFile(sourcePath, bestDestPath)) {
+            throw new Error(`Failed to move file to: ${bestDestPath}`);
           }
           
-          console.log(`SUPER SAVE: File copied to best folder: ${bestDestPath}`);
+          console.log(`SUPER SAVE: File moved to best folder: ${bestDestPath}`);
           
-          // Also move original to dated folder in output dir
-          const dateFolderPath = path.join(config.OUTPUT_DIR, fileDate);
-          if (!fs.existsSync(dateFolderPath)) {
-            fs.mkdirSync(dateFolderPath, { recursive: true });
-          }
-          
-          // Set the destination path for the original file
-          const movedOriginal = path.join(dateFolderPath, targetFilename);
-          
-          // Move the original file to the date folder
-          if (!fileOps.moveFile(sourcePath, movedOriginal)) {
-            throw new Error(`Failed to move original file to: ${movedOriginal}`);
-          }
-          
-          console.log(`SUPER SAVE: Original file moved to: ${movedOriginal}`);
-          
-          actionRecord.bestCopyPath = bestDestPath;
-          actionRecord.destPath = movedOriginal;
+          actionRecord.destPath = bestDestPath;
           
           // Log the super save action
           fileOps.logSimpleAction(actionType, {
             filename,
             targetFilename,
             sourcePath,
-            bestDestPath,
-            movedOriginal,
+            destPath: bestDestPath,
             fileDate,
             metadata: fileMetadata,
             action: actionType
