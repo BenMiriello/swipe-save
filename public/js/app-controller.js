@@ -209,7 +209,7 @@ class AppController {
       
       this.state.allFiles = await window.apiService.fetchMediaFiles();
       
-      if (this.state.allFiles.length === 0) {
+      if (!this.state.allFiles || this.state.allFiles.length === 0) {
         window.uiManager.showEmptyState();
         window.uiManager.updateImageCounter(0, 0);
         return;
@@ -231,7 +231,7 @@ class AppController {
    * Display the current image
    */
   displayCurrentImage() {
-    if (this.state.allFiles.length === 0) {
+    if (!this.state.allFiles || this.state.allFiles.length === 0) {
       window.uiManager.showEmptyState();
       window.uiManager.updateImageCounter(0, 0);
       return;
@@ -241,14 +241,14 @@ class AppController {
     const mediaList = document.getElementById('mediaList');
     
     if (!mediaList) {
-      console.error('Media list element not found');
+      console.error('mediaList not found in DOM');
       return;
     }
     
     mediaList.innerHTML = '';
     
+    // Use mediaUtils to create and add the media item
     try {
-      // Create and add the media item using the mediaUtils module
       const mediaItem = window.mediaUtils.createMediaItem(
         file, 
         this.state.customFilename, 
@@ -269,7 +269,7 @@ class AppController {
         this.state.allFiles.length
       );
     } catch (error) {
-      console.error('Error displaying current image:', error);
+      console.error('Error displaying image:', error);
       window.uiManager.showError('Failed to display image: ' + error.message);
     }
   }
@@ -278,7 +278,7 @@ class AppController {
    * Show the previous image
    */
   showPreviousImage() {
-    if (this.state.allFiles.length === 0) return;
+    if (!this.state.allFiles || this.state.allFiles.length === 0) return;
     
     this.state.customFilename = null; // Reset custom filename
     this.state.currentIndex = (this.state.currentIndex - 1 + this.state.allFiles.length) % this.state.allFiles.length;
@@ -289,7 +289,7 @@ class AppController {
    * Show the next image
    */
   showNextImage() {
-    if (this.state.allFiles.length === 0) return;
+    if (!this.state.allFiles || this.state.allFiles.length === 0) return;
     
     this.state.customFilename = null; // Reset custom filename
     this.state.currentIndex = (this.state.currentIndex + 1) % this.state.allFiles.length;
@@ -301,7 +301,7 @@ class AppController {
    * @param {string} action - Action to perform
    */
   async performAction(action) {
-    if (this.state.allFiles.length === 0) return;
+    if (!this.state.allFiles || this.state.allFiles.length === 0) return;
     
     const file = this.state.allFiles[this.state.currentIndex];
     const filename = file.name;
@@ -309,7 +309,7 @@ class AppController {
     
     if (!mediaItem) return;
     
-    // Show visual feedback
+    // Show visual feedback using mediaUtils
     window.mediaUtils.showActionFeedback(mediaItem, action);
     
     try {
@@ -341,7 +341,7 @@ class AppController {
       }, 300);
     } catch (error) {
       console.error('Error performing action:', error);
-      // Remove visual feedback on error
+      // Remove visual feedback on error, using mediaUtils
       window.mediaUtils.hideActionFeedback(mediaItem, action);
     }
   }
@@ -354,7 +354,7 @@ class AppController {
       // Call API to undo last action
       const result = await window.apiService.undoLastAction();
       
-      if (result.undoneAction) {
+      if (result && result.undoneAction) {
         // Refresh the media files and try to show the image that was restored
         const undoneFilename = result.undoneAction.filename;
         
@@ -364,7 +364,7 @@ class AppController {
         // Fetch updated files
         this.state.allFiles = await window.apiService.fetchMediaFiles();
         
-        if (this.state.allFiles.length === 0) {
+        if (!this.state.allFiles || this.state.allFiles.length === 0) {
           window.uiManager.showEmptyState();
           window.uiManager.updateImageCounter(0, 0);
           return;
@@ -401,7 +401,7 @@ class AppController {
    * Open the filename modal for renaming
    */
   openFilenameModal() {
-    if (this.state.allFiles.length === 0) return;
+    if (!this.state.allFiles || this.state.allFiles.length === 0) return;
     
     const currentFile = this.state.allFiles[this.state.currentIndex];
     window.uiManager.showFilenameModal(currentFile.name, this.state.customFilename);
@@ -421,7 +421,7 @@ class AppController {
    * Download the current file
    */
   downloadCurrentFile() {
-    if (this.state.allFiles.length === 0) return;
+    if (!this.state.allFiles || this.state.allFiles.length === 0) return;
     
     const currentFile = this.state.allFiles[this.state.currentIndex];
     window.apiService.downloadFile(currentFile, this.state.customFilename);
@@ -431,7 +431,7 @@ class AppController {
    * Open current file in new tab/window
    */
   openFileInNewView() {
-    if (this.state.allFiles.length === 0) return;
+    if (!this.state.allFiles || this.state.allFiles.length === 0) return;
     
     const currentFile = this.state.allFiles[this.state.currentIndex];
     window.apiService.openFileInNewView(currentFile);
