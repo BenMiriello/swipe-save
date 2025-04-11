@@ -10,7 +10,9 @@ const uiManager = {
     optionsButton: null,
     optionsDropdown: null,
     counterContainer: null,
-    controls: null
+    controls: null,
+    fileHeader: null,
+    pathOverlay: null
   },
   
   /**
@@ -25,6 +27,8 @@ const uiManager = {
     this.elements.modal = document.getElementById('filenameModal');
     this.elements.filenameInput = document.getElementById('customFilename');
     this.elements.counterContainer = document.querySelector('.counter-container');
+    this.elements.fileHeader = document.querySelector('.file-header');
+    this.elements.pathOverlay = document.querySelector('.path-overlay');
     
     // Create the info modal if not already present
     this.createInfoModal();
@@ -37,17 +41,152 @@ const uiManager = {
    * Create initial elements needed by the application
    */
   createInitialElements() {
+    // Replace header container with new one containing file header and path overlay
+    const existingHeaderContainer = document.querySelector('.header-container');
+    if (existingHeaderContainer) {
+      // Create new header structure
+      const headerContainer = document.createElement('div');
+      headerContainer.className = 'header-container';
+      
+      // Create file header (caret + filename)
+      const fileHeader = document.createElement('div');
+      fileHeader.className = 'file-header';
+      
+      const caret = document.createElement('span');
+      caret.className = 'caret';
+      caret.innerHTML = '&#9654;'; // Right-pointing triangle
+      
+      const filename = document.createElement('span');
+      filename.className = 'filename';
+      filename.textContent = 'No file selected';
+      
+      const editIcon = document.createElement('span');
+      editIcon.className = 'edit-icon';
+      editIcon.innerHTML = '&#9998;'; // Pencil icon
+      
+      fileHeader.appendChild(caret);
+      fileHeader.appendChild(filename);
+      fileHeader.appendChild(editIcon);
+      
+      // Create path overlay (hidden by default)
+      const pathOverlay = document.createElement('div');
+      pathOverlay.className = 'path-overlay';
+      pathOverlay.style.display = 'none';
+      
+      const overlayContent = document.createElement('div');
+      overlayContent.className = 'overlay-content';
+      
+      // Saving As section (only shown when custom filename is set)
+      const filenameSection = document.createElement('div');
+      filenameSection.className = 'path-section filename-section';
+      filenameSection.style.display = 'none';
+      
+      const originalLabel = document.createElement('div');
+      originalLabel.className = 'path-label';
+      originalLabel.textContent = 'Original:';
+      
+      const originalName = document.createElement('div');
+      originalName.className = 'path-value original-name';
+      
+      const savingAsLabel = document.createElement('div');
+      savingAsLabel.className = 'path-label';
+      savingAsLabel.textContent = 'Saving As:';
+      
+      const savingAsName = document.createElement('div');
+      savingAsName.className = 'path-value saving-as-name';
+      
+      filenameSection.appendChild(originalLabel);
+      filenameSection.appendChild(originalName);
+      filenameSection.appendChild(savingAsLabel);
+      filenameSection.appendChild(savingAsName);
+      
+      // From path section
+      const fromSection = document.createElement('div');
+      fromSection.className = 'path-section from-section';
+      
+      const fromLabel = document.createElement('div');
+      fromLabel.className = 'path-label';
+      fromLabel.textContent = 'FROM:';
+      
+      const fromPath = document.createElement('div');
+      fromPath.className = 'path-value from-path';
+      fromPath.textContent = '~/Documents/ComfyUI/output';
+      
+      fromSection.appendChild(fromLabel);
+      fromSection.appendChild(fromPath);
+      
+      // To path section
+      const toSection = document.createElement('div');
+      toSection.className = 'path-section to-section';
+      
+      const toLabel = document.createElement('div');
+      toLabel.className = 'path-label';
+      toLabel.textContent = 'TO:';
+      
+      const toPath = document.createElement('div');
+      toPath.className = 'path-value to-path';
+      toPath.textContent = '~/Documents/sorted';
+      
+      toSection.appendChild(toLabel);
+      toSection.appendChild(toPath);
+      
+      // Show instructions button
+      const instructionsSection = document.createElement('div');
+      instructionsSection.className = 'path-section instructions-section';
+      
+      const showInstructionsButton = document.createElement('button');
+      showInstructionsButton.id = 'showInfo';
+      showInstructionsButton.className = 'btn btn-info';
+      showInstructionsButton.textContent = 'Show Instructions';
+      
+      instructionsSection.appendChild(showInstructionsButton);
+      
+      // Add sections to overlay content
+      overlayContent.appendChild(filenameSection);
+      overlayContent.appendChild(fromSection);
+      overlayContent.appendChild(toSection);
+      overlayContent.appendChild(instructionsSection);
+      
+      pathOverlay.appendChild(overlayContent);
+      
+      // Header icons (download and refresh)
+      const headerIcons = document.createElement('div');
+      headerIcons.className = 'header-icons';
+      
+      const downloadButton = document.createElement('button');
+      downloadButton.className = 'icon-button save-icon';
+      downloadButton.title = 'Download';
+      downloadButton.innerHTML = `
+        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+          <polyline points="7 10 12 15 17 10"></polyline>
+          <line x1="12" y1="15" x2="12" y2="3"></line>
+        </svg>
+      `;
+      
+      const refreshButton = document.createElement('button');
+      refreshButton.className = 'icon-button refresh-icon';
+      refreshButton.title = 'Refresh';
+      refreshButton.innerHTML = '&#x21bb;';
+      
+      headerIcons.appendChild(downloadButton);
+      headerIcons.appendChild(refreshButton);
+      
+      // Add components to the header container
+      headerContainer.appendChild(fileHeader);
+      headerContainer.appendChild(pathOverlay);
+      headerContainer.appendChild(headerIcons);
+      
+      // Replace the existing header
+      existingHeaderContainer.parentNode.replaceChild(headerContainer, existingHeaderContainer);
+    }
+    
     // Add bottom controls container if it doesn't exist
     if (!document.querySelector('.bottom-controls')) {
       const bottomControls = document.createElement('div');
       bottomControls.className = 'bottom-controls';
       
-      // Add counter to the left
-      const counterContainer = document.createElement('div');
-      counterContainer.className = 'counter-container';
-      counterContainer.textContent = 'No images';
-      
-      // Add controls in the center
+      // Add prev, undo, next buttons
       const controls = document.createElement('div');
       controls.className = 'controls';
       
@@ -56,22 +195,26 @@ const uiManager = {
       prevButton.className = 'btn btn-secondary';
       prevButton.textContent = 'Previous';
       
-      const nextButton = document.createElement('button');
-      nextButton.className = 'btn btn-secondary';
-      nextButton.textContent = 'Next';
-      
-      // Add undo button
       const undoButton = document.createElement('button');
       undoButton.className = 'btn btn-undo';
       undoButton.textContent = 'Undo';
+      
+      const nextButton = document.createElement('button');
+      nextButton.className = 'btn btn-secondary';
+      nextButton.textContent = 'Next';
       
       controls.appendChild(prevButton);
       controls.appendChild(undoButton);
       controls.appendChild(nextButton);
       
+      // Add counter container
+      const counterContainer = document.createElement('div');
+      counterContainer.className = 'counter-container';
+      counterContainer.textContent = 'No images';
+      
       // Add bottom controls to container
-      bottomControls.appendChild(counterContainer);
       bottomControls.appendChild(controls);
+      bottomControls.appendChild(counterContainer);
       
       const container = document.querySelector('.container');
       container.appendChild(bottomControls);
@@ -165,6 +308,30 @@ const uiManager = {
     // Ensure elements exist before attaching handlers
     if (!this.elements.optionsButton) return;
     
+    // File header click to toggle path overlay
+    const fileHeader = document.querySelector('.file-header');
+    if (fileHeader) {
+      fileHeader.addEventListener('click', handlers.togglePathOverlay);
+    }
+    
+    // 'FROM' path click to edit
+    const fromPath = document.querySelector('.from-path');
+    if (fromPath) {
+      fromPath.addEventListener('click', (e) => {
+        e.stopPropagation();
+        handlers.editFromPath();
+      });
+    }
+    
+    // 'TO' path click to edit
+    const toPath = document.querySelector('.to-path');
+    if (toPath) {
+      toPath.addEventListener('click', (e) => {
+        e.stopPropagation();
+        handlers.editToPath();
+      });
+    }
+    
     // Options button toggle
     this.elements.optionsButton.addEventListener('click', () => {
       this.toggleOptionsDropdown();
@@ -221,32 +388,13 @@ const uiManager = {
       });
     }
     
-    // Navigation buttons
-    const prevButton = document.querySelector('.btn-secondary:first-child');
-    if (prevButton) {
-      prevButton.addEventListener('click', handlers.showPrevious);
-    }
-    
-    const nextButton = document.querySelector('.btn-secondary:last-of-type');
-    if (nextButton) {
-      nextButton.addEventListener('click', handlers.showNext);
-    }
-    
-    // Undo button
-    const undoButton = document.querySelector('.btn-undo');
-    if (undoButton) {
-      undoButton.addEventListener('click', handlers.undoLastAction);
-    }
-    
-    // Header buttons
-    const refreshIcon = document.querySelector('.refresh-icon');
-    if (refreshIcon) {
-      refreshIcon.addEventListener('click', handlers.refreshFiles);
-    }
-    
-    const saveIcon = document.querySelector('.save-icon');
-    if (saveIcon) {
-      saveIcon.addEventListener('click', handlers.downloadCurrentFile);
+    // Edit icon for custom filename
+    const editIcon = document.querySelector('.edit-icon');
+    if (editIcon) {
+      editIcon.addEventListener('click', (e) => {
+        e.stopPropagation();
+        handlers.openFilenameModal();
+      });
     }
   },
   
@@ -256,6 +404,76 @@ const uiManager = {
   toggleOptionsDropdown() {
     if (this.elements.optionsDropdown) {
       this.elements.optionsDropdown.classList.toggle('show');
+    }
+  },
+  
+  /**
+   * Toggle path overlay visibility
+   */
+  togglePathOverlay() {
+    if (this.elements.pathOverlay) {
+      const isVisible = this.elements.pathOverlay.style.display !== 'none';
+      this.elements.pathOverlay.style.display = isVisible ? 'none' : 'block';
+      
+      // Update caret direction
+      const caret = document.querySelector('.caret');
+      if (caret) {
+        caret.innerHTML = isVisible ? '&#9654;' : '&#9660;'; // Right vs Down
+      }
+    }
+  },
+  
+  /**
+   * Update the FROM and TO paths in the UI
+   * @param {string} fromPath - Path to read files from
+   * @param {string} toPath - Path to save files to
+   */
+  updatePathsDisplay(fromPath, toPath) {
+    const fromPathEl = document.querySelector('.from-path');
+    const toPathEl = document.querySelector('.to-path');
+    
+    if (fromPathEl && fromPath) {
+      fromPathEl.textContent = fromPath;
+    }
+    
+    if (toPathEl && toPath) {
+      toPathEl.textContent = toPath;
+    }
+  },
+  
+  /**
+   * Update the filename display in the header
+   * @param {string} originalName - Original filename
+   * @param {string} customName - Custom filename (if set)
+   */
+  updateFilenameDisplay(originalName, customName) {
+    // Update main filename display in header
+    const filenameEl = document.querySelector('.filename');
+    if (filenameEl) {
+      filenameEl.textContent = customName || originalName || 'No file selected';
+    }
+    
+    // Update edit icon visibility
+    const editIcon = document.querySelector('.edit-icon');
+    if (editIcon) {
+      editIcon.style.display = originalName ? 'inline-block' : 'none';
+    }
+    
+    // Update filename section in path overlay
+    const filenameSection = document.querySelector('.filename-section');
+    const originalNameEl = document.querySelector('.original-name');
+    const savingAsNameEl = document.querySelector('.saving-as-name');
+    
+    if (filenameSection && originalNameEl && savingAsNameEl) {
+      if (customName && originalName) {
+        // Show the filename section with both original and custom names
+        filenameSection.style.display = 'block';
+        originalNameEl.textContent = originalName;
+        savingAsNameEl.textContent = customName;
+      } else {
+        // Hide the filename section if there's no custom name
+        filenameSection.style.display = 'none';
+      }
     }
   },
   
@@ -347,43 +565,15 @@ const uiManager = {
       mediaContent = this.createVideoElement(file, apiUrl);
     }
     
-    // Add filename path container with semi-transparent background
-    const filenameContainer = document.createElement('div');
-    filenameContainer.className = 'filename-container overlay';
+    // Update main filename display
+    this.updateFilenameDisplay(file.name, customFilename);
     
-    // Extract path and actual filesystem path instead of browser URL
-    // Get the original path from file (which should be the filesystem path)
-    // This assumes 'file' contains the original path somewhere, either in name or as a property
-    const fsPath = file.originalPath || file.name; // Using file.name as fallback
-    
-    // Create path + bold filename
-    const filenamePath = document.createElement('div');
-    filenamePath.className = 'filename-path';
-    filenamePath.innerHTML = `<strong>${customFilename || file.name}</strong>`;
-    filenameContainer.appendChild(filenamePath);
-    
-    // Create 9-zone grid for taps
-    const tapZones = document.createElement('div');
-    tapZones.className = 'tap-zones';
-    
-    // Create zones according to config
-    window.appConfig.zoneConfig.forEach(zone => {
-      const zoneElement = document.createElement('div');
-      zoneElement.className = `tap-zone ${zone.className}`;
-      if (zone.action) {
-        zoneElement.dataset.action = zone.action;
-      }
-      tapZones.appendChild(zoneElement);
-    });
-    
-    // Create swipe instruction element
+    // Add swipe instruction element
     const swipeInstruction = document.createElement('div');
     swipeInstruction.className = 'swipe-instruction';
     
     // Assemble the media item
     item.appendChild(mediaContent);
-    item.appendChild(filenameContainer);
-    item.appendChild(tapZones);
     item.appendChild(swipeInstruction);
     
     return item;
