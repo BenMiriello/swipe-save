@@ -8,7 +8,8 @@ class AppController {
       allFiles: [],
       currentIndex: 0,
       customFilename: null,
-      isLoading: false
+      isLoading: false,
+      pathsInitialized: false
     };
     
     // Initialize UI manager
@@ -25,13 +26,18 @@ class AppController {
       downloadCurrentFile: this.downloadCurrentFile.bind(this),
       refreshFiles: this.fetchMediaFiles.bind(this),
       openFile: this.openFileInNewView.bind(this),
-      showActionLabel: this.showActionLabel.bind(this)
+      showActionLabel: this.showActionLabel.bind(this),
+      editFromPath: this.editFromPath.bind(this),
+      editToPath: this.editToPath.bind(this)
     });
     
     // Setup UI event handlers
     window.uiManager.setupEventHandlers({
       openFilenameModal: this.openFilenameModal.bind(this),
-      saveCustomFilename: this.saveCustomFilename.bind(this)
+      saveCustomFilename: this.saveCustomFilename.bind(this),
+      togglePathOverlay: this.togglePathOverlay.bind(this),
+      editFromPath: this.editFromPath.bind(this),
+      editToPath: this.editToPath.bind(this)
     });
     
     // Setup additional UI elements
@@ -41,8 +47,33 @@ class AppController {
   /**
    * Initialize the application
    */
-  init() {
+  async init() {
+    // Initialize paths from server
+    await this.initializePaths();
+    
+    // Then fetch media files
     this.fetchMediaFiles();
+  }
+  
+  /**
+   * Initialize paths from server
+   */
+  async initializePaths() {
+    try {
+      await window.appConfig.initPaths();
+      this.state.pathsInitialized = true;
+      
+      // Update UI with paths
+      window.uiManager.updatePathsDisplay(
+        window.appConfig.fromPath,
+        window.appConfig.toPath
+      );
+      
+      return true;
+    } catch (error) {
+      console.error('Error initializing paths:', error);
+      return false;
+    }
   }
   
   /**
@@ -79,12 +110,54 @@ class AppController {
   }
   
   /**
+   * Toggle path overlay visibility
+   */
+  togglePathOverlay() {
+    window.uiManager.togglePathOverlay();
+  }
+  
+  /**
+   * Edit 'from' path
+   */
+  editFromPath() {
+    const currentPath = window.appConfig.fromPath || window.appConfig.defaultFromPath;
+    const newPath = prompt('Edit FROM path:', currentPath);
+    
+    if (newPath && newPath !== currentPath) {
+      // Redirect with the new path parameter
+      const url = new URL(window.location.href);
+      url.searchParams.set('fromPath', newPath);
+      window.location.href = url.toString();
+    }
+  }
+  
+  /**
+   * Edit 'to' path
+   */
+  editToPath() {
+    const currentPath = window.appConfig.toPath || window.appConfig.defaultToPath;
+    const newPath = prompt('Edit TO path:', currentPath);
+    
+    if (newPath && newPath !== currentPath) {
+      // Redirect with the new path parameter
+      const url = new URL(window.location.href);
+      url.searchParams.set('toPath', newPath);
+      window.location.href = url.toString();
+    }
+  }
+  
+  /**
    * Fetch media files from server
    */
   async fetchMediaFiles() {
     try {
       this.state.isLoading = true;
       window.uiManager.showLoading();
+      
+      // Ensure paths are initialized first
+      if (!this.state.pathsInitialized) {
+        await this.initializePaths();
+      }
       
       this.state.allFiles = await window.apiService.fetchMediaFiles();
       
