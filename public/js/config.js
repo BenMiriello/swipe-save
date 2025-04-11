@@ -5,6 +5,30 @@ const config = {
   // API endpoint handling
   getApiUrl: () => `${window.location.protocol}//${window.location.host}`,
   
+  // Paths for media files
+  fromPath: null,
+  toPath: null,
+  defaultFromPath: null,
+  defaultToPath: null,
+  
+  // Initialize paths from server
+  initPaths: async function() {
+    try {
+      const response = await fetch(`${this.getApiUrl()}/api/config/paths`);
+      if (response.ok) {
+        const data = await response.json();
+        this.fromPath = data.fromPath;
+        this.toPath = data.toPath;
+        this.defaultFromPath = data.defaultFromPath;
+        this.defaultToPath = data.defaultToPath;
+        return data;
+      }
+    } catch (error) {
+      console.error('Error fetching paths:', error);
+    }
+    return null;
+  },
+  
   // Action types
   actions: {
     ARCHIVE: 'archive',
@@ -108,6 +132,13 @@ const config = {
       <li><strong>Right swipe:</strong> Save</li>
       <li><strong>Up swipe:</strong> Super Save - Complete</li>
       <li><strong>Down swipe:</strong> Delete</li>
+    </ul>
+    
+    <h3>Custom Paths</h3>
+    <ul>
+      <li><strong>FROM:</strong> The directory to sort media from</li>
+      <li><strong>TO:</strong> The directory to sort media to</li>
+      <li>Paths can be edited by tapping on them in the expanded header</li>
     </ul>
   `
 };
