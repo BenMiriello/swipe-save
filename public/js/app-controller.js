@@ -375,6 +375,10 @@ class AppController {
     
     const count = parseInt(countInput.value) || 1;
     const useNewSeed = type === 'queue' ? newSeedToggle.checked : false;
+    const destination = window.uiManager.getSelectedDestination();
+    
+    console.log('Queue Debug - Selected destination:', destination);
+    console.log('Queue Debug - Count:', count, 'UseNewSeed:', useNewSeed);
     
     // Set button to waiting state
     this.setButtonState(button, 'waiting', 'Waiting');
@@ -385,7 +389,7 @@ class AppController {
           await window.apiService.queueInComfyUI(
             this.state.allFiles[this.state.currentIndex], 
             useNewSeed,
-            window.uiManager.getSelectedDestination()
+            destination
           );
         }
       } else {
@@ -393,7 +397,7 @@ class AppController {
           await window.apiService.loadInComfyUI(
             this.state.allFiles[this.state.currentIndex], 
             false,
-            window.uiManager.getSelectedDestination()
+            destination
           );
         }
       }

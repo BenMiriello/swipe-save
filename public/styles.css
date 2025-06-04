@@ -799,8 +799,8 @@ video.media-content[data-hide-controls]::-webkit-media-controls-volume-slider {
   display: flex;
   align-items: center;
   gap: 10px;
-  flex: 1;
   margin-left: 10px;
+  margin-right: 10px;
 }
 
 /* New Seed Container */
@@ -808,10 +808,10 @@ video.media-content[data-hide-controls]::-webkit-media-controls-volume-slider {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 6px 10px;
+  padding: 4.5px 10px;
   background-color: #f8f9fa;
   border: 2px solid #dee2e6;
-  border-radius: 4px;
+  border-radius: 6px;
 }
 
 /* Toggle Styling */
@@ -988,6 +988,11 @@ video.media-content[data-hide-controls]::-webkit-media-controls-volume-slider {
 .run-btn.shrinking {
   transform-origin: left center;
   transition: transform 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.run-btn:after {
+  content: '\279C';
+  font-size: 14px;
 }
 
 /* Open Button */
