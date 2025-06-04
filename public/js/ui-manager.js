@@ -912,6 +912,181 @@ const uiManager = {
     if (this.elements.comfyuiModal) {
       this.elements.comfyuiModal.style.display = "none";
     }
+  },
+  
+  /**
+   * Initialize ComfyUI destination management
+   */
+  initializeComfyUIDestinations() {
+    const input = document.getElementById('comfyuiDestination');
+    const saveBtn = document.getElementById('saveDestination');
+    
+    if (input && saveBtn) {
+      // Load saved destinations
+      this.loadSavedDestinations();
+      
+      // Set default destination
+      if (!input.value) {
+        input.value = this.getDefaultComfyUIUrl();
+      }
+      
+      // Save destination on button click
+      saveBtn.addEventListener('click', () => {
+        this.saveDestination(input.value.trim());
+      });
+      
+      // Save on Enter key
+      input.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') {
+          this.saveDestination(input.value.trim());
+        }
+      });
+    }
+  },
+  
+  /**
+   * Get default ComfyUI URL
+   */
+  getDefaultComfyUIUrl() {
+    const currentUrl = new URL(window.location.href);
+    return `${currentUrl.protocol}//${currentUrl.hostname}:8188`;
+  },
+  
+  /**
+   * Load saved destinations from storage
+   */
+  loadSavedDestinations() {
+    try {
+      const saved = JSON.parse(localStorage.getItem('comfyui-destinations') || '[]');
+      const defaultUrl = this.getDefaultComfyUIUrl();
+      
+      // Ensure default is always included
+      if (!saved.includes(defaultUrl)) {
+        saved.unshift(defaultUrl);
+        localStorage.setItem('comfyui-destinations', JSON.stringify(saved));
+      }
+      
+      this.renderDestinations(saved);
+      return saved;
+    } catch (error) {
+      console.error('Error loading destinations:', error);
+      const defaultUrl = this.getDefaultComfyUIUrl();
+      this.renderDestinations([defaultUrl]);
+      return [defaultUrl];
+    }
+  },
+  
+  /**
+   * Save a new destination
+   */
+  saveDestination(url) {
+    if (!url) return;
+    
+    try {
+      const saved = JSON.parse(localStorage.getItem('comfyui-destinations') || '[]');
+      
+      if (!saved.includes(url)) {
+        saved.push(url);
+        localStorage.setItem('comfyui-destinations', JSON.stringify(saved));
+        this.renderDestinations(saved);
+      }
+      
+      // Select the new destination
+      this.selectDestination(url);
+    } catch (error) {
+      console.error('Error saving destination:', error);
+    }
+  },
+  
+  /**
+   * Delete a destination
+   */
+  deleteDestination(url) {
+    try {
+      let saved = JSON.parse(localStorage.getItem('comfyui-destinations') || '[]');
+      saved = saved.filter(dest => dest !== url);
+      
+      // If no destinations left, add default back
+      if (saved.length === 0) {
+        saved.push(this.getDefaultComfyUIUrl());
+      }
+      
+      localStorage.setItem('comfyui-destinations', JSON.stringify(saved));
+      this.renderDestinations(saved);
+      
+      // Select first destination if current was deleted
+      const input = document.getElementById('comfyuiDestination');
+      if (input && input.value === url) {
+        this.selectDestination(saved[0]);
+      }
+    } catch (error) {
+      console.error('Error deleting destination:', error);
+    }
+  },
+  
+  /**
+   * Select a destination
+   */
+  selectDestination(url) {
+    const input = document.getElementById('comfyuiDestination');
+    if (input) {
+      input.value = url;
+    }
+    
+    // Update visual selection
+    const items = document.querySelectorAll('.destination-item');
+    items.forEach(item => {
+      if (item.dataset.url === url) {
+        item.classList.add('selected');
+      } else {
+        item.classList.remove('selected');
+      }
+    });
+  },
+  
+  /**
+   * Render saved destinations
+   */
+  renderDestinations(destinations) {
+    const container = document.getElementById('savedDestinations');
+    if (!container) return;
+    
+    container.innerHTML = '';
+    
+    destinations.forEach(url => {
+      const item = document.createElement('div');
+      item.className = 'destination-item';
+      item.dataset.url = url;
+      
+      const text = document.createElement('span');
+      text.className = 'destination-text';
+      text.textContent = url;
+      
+      const deleteBtn = document.createElement('button');
+      deleteBtn.className = 'destination-delete';
+      deleteBtn.textContent = 'Delete';
+      deleteBtn.onclick = (e) => {
+        e.stopPropagation();
+        this.deleteDestination(url);
+      };
+      
+      item.appendChild(text);
+      item.appendChild(deleteBtn);
+      
+      item.onclick = () => {
+        this.selectDestination(url);
+      };
+      
+      container.appendChild(item);
+    });
+  },
+  
+  /**
+   * Get currently selected ComfyUI destination
+   */
+  getSelectedDestination() {
+    const input = document.getElementById('comfyuiDestination');
+    return input ? input.value.trim() : this.getDefaultComfyUIUrl();
   }
 };
 

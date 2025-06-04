@@ -651,6 +651,88 @@ video.media-content[data-hide-controls]::-webkit-media-controls-volume-slider {
 }
 
 /* ComfyUI Modal Styling */
+.comfyui-destination {
+  margin-bottom: 20px;
+  padding: 15px;
+  background-color: #f8f9fa;
+  border-radius: 6px;
+}
+
+.comfyui-destination h3 {
+  margin: 0 0 10px 0;
+  font-size: 1rem;
+  color: #333;
+}
+
+.destination-input {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 15px;
+}
+
+.destination-input input {
+  flex: 1;
+  padding: 8px 12px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-family: monospace;
+  font-size: 0.9rem;
+}
+
+.btn-small {
+  padding: 8px 12px;
+  font-size: 0.85rem;
+}
+
+.saved-destinations {
+  max-height: 150px;
+  overflow-y: auto;
+}
+
+.destination-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  margin-bottom: 5px;
+  background-color: white;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.destination-item:hover {
+  background-color: #f0f0f0;
+}
+
+.destination-item.selected {
+  background-color: #e3f2fd;
+  border-color: #2196f3;
+}
+
+.destination-text {
+  flex: 1;
+  font-family: monospace;
+  font-size: 0.85rem;
+  color: #333;
+}
+
+.destination-delete {
+  padding: 4px 8px;
+  font-size: 0.75rem;
+  background-color: #dc3545;
+  color: white;
+  border: none;
+  border-radius: 3px;
+  cursor: pointer;
+  margin-left: 10px;
+}
+
+.destination-delete:hover {
+  background-color: #c82333;
+}
+
 .comfyui-options {
   display: flex;
   flex-direction: column;

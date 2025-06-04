@@ -331,6 +331,7 @@ class AppController {
     if (this.state.allFiles.length === 0) return;
     
     window.uiManager.showComfyUIModal();
+    window.uiManager.initializeComfyUIDestinations();
     
     // Setup modal button handlers
     this.setupComfyUIModalHandlers();
@@ -360,10 +361,12 @@ class AppController {
     if (this.state.allFiles.length === 0) return;
     
     const currentFile = this.state.allFiles[this.state.currentIndex];
+    const destination = window.uiManager.getSelectedDestination();
+    
     window.uiManager.hideComfyUIModal();
     
     try {
-      await window.apiService.loadInComfyUI(currentFile, modifySeeds);
+      await window.apiService.loadInComfyUI(currentFile, modifySeeds, destination);
     } catch (error) {
       alert('Failed to load workflow in ComfyUI: ' + error.message);
     }

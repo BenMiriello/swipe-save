@@ -60,6 +60,18 @@
     <div class="modal-content">
       <span class="close-modal">&times;</span>
       <h2>Load Workflow in ComfyUI</h2>
+      
+      <div class="comfyui-destination">
+        <h3>Forward workflow to:</h3>
+        <div class="destination-input">
+          <input type="text" id="comfyuiDestination" placeholder="Enter ComfyUI URL">
+          <button id="saveDestination" class="btn btn-small">Save</button>
+        </div>
+        <div class="saved-destinations" id="savedDestinations">
+          <!-- Saved destinations will appear here -->
+        </div>
+      </div>
+      
       <div class="comfyui-options">
         <button id="loadWithoutModifications" class="btn btn-primary">Load without modifications</button>
         <button id="loadWithNewSeed" class="btn btn-secondary">Load with new seed</button>

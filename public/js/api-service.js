@@ -224,12 +224,13 @@ const apiService = {
   },
   
   /**
-   * Load workflow in ComfyUI
+   * Load workflow in ComfyUI interface
    * @param {Object} file - Current file object
    * @param {boolean} modifySeeds - Whether to modify seed values
+   * @param {string} comfyUrl - Custom ComfyUI URL
    * @returns {Promise<void>}
    */
-  async loadInComfyUI(file, modifySeeds = false) {
+  async loadInComfyUI(file, modifySeeds = false, comfyUrl = null) {
     try {
       console.log('Loading workflow in ComfyUI for file:', file.name);
       
@@ -240,50 +241,52 @@ const apiService = {
         throw new Error('No workflow found in image metadata');
       }
       
-      console.log('Workflow data type:', typeof workflowData);
-      console.log('Workflow keys:', Object.keys(workflowData).slice(0, 5));
-      
       // Modify seeds if requested
       if (modifySeeds) {
         this.modifyWorkflowSeeds(workflowData);
-        console.log('Seeds modified');
       }
       
-      // Send to ComfyUI using correct endpoint and format
-      const comfyUIUrl = this.getComfyUIUrl();
-      const clientId = this.generateClientId();
+      // Get ComfyUI URL
+      const targetUrl = comfyUrl || this.getComfyUIUrl();
+      console.log('Opening ComfyUI at:', targetUrl);
       
-      console.log('Sending to ComfyUI URL:', comfyUIUrl);
-      console.log('Client ID:', clientId);
-      
-      const requestBody = {
-        prompt: workflowData,
-        client_id: clientId
-      };
-      
-      console.log('Request body keys:', Object.keys(requestBody));
-      
-      const response = await fetch(`${comfyUIUrl}/prompt`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(requestBody)
-      });
-      
-      console.log('ComfyUI response status:', response.status);
-      
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error('ComfyUI error response:', errorText);
-        throw new Error(`Failed to load workflow in ComfyUI: ${response.status} - ${errorText}`);
-      }
-      
-      const responseData = await response.json();
-      console.log('ComfyUI response data:', responseData);
+      // Create a data URL with the workflow JSON
+      const workflowJson = JSON.stringify(workflowData, null, 2);
+      const dataUrl = 'data:application/json;charset=utf-8,' + encodeURIComponent(workflowJson);
       
       // Open ComfyUI in new tab
-      window.open(comfyUIUrl, '_blank');
+      const comfyWindow = window.open(targetUrl, '_blank');
+      
+      // Wait a moment for ComfyUI to load, then try to load the workflow
+      setTimeout(() => {
+        try {
+          // Try to post the workflow to ComfyUI window
+          if (comfyWindow && !comfyWindow.closed) {
+            comfyWindow.postMessage({
+              type: 'load_workflow',
+              workflow: workflowData
+            }, targetUrl);
+          }
+        } catch (error) {
+          console.log('Could not post workflow to ComfyUI window:', error.message);
+        }
+      }, 2000);
+      
+      // Also create a downloadable JSON file as backup
+      const blob = new Blob([workflowJson], { type: 'application/json' });
+      const downloadUrl = URL.createObjectURL(blob);
+      
+      const link = document.createElement('a');
+      link.href = downloadUrl;
+      link.download = `workflow_${file.name.replace(/\.[^/.]+$/, '')}.json`;
+      
+      // Auto-download the workflow file
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      
+      URL.revokeObjectURL(downloadUrl);
+      
     } catch (error) {
       console.error('Error loading workflow in ComfyUI:', error);
       throw error;
