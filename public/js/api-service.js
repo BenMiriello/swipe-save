@@ -243,18 +243,24 @@ const apiService = {
         this.modifyWorkflowSeeds(workflowData);
       }
       
-      // Send to ComfyUI
+      // Send to ComfyUI using correct endpoint and format
       const comfyUIUrl = this.getComfyUIUrl();
-      const response = await fetch(`${comfyUIUrl}/api/workflow`, {
+      const clientId = this.generateClientId();
+      
+      const response = await fetch(`${comfyUIUrl}/prompt`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify(workflowData)
+        body: JSON.stringify({
+          prompt: workflowData,
+          client_id: clientId
+        })
       });
       
       if (!response.ok) {
-        throw new Error('Failed to load workflow in ComfyUI');
+        const errorText = await response.text();
+        throw new Error(`Failed to load workflow in ComfyUI: ${errorText}`);
       }
       
       // Open ComfyUI in new tab
@@ -263,6 +269,14 @@ const apiService = {
       console.error('Error loading workflow in ComfyUI:', error);
       throw error;
     }
+  },
+  
+  /**
+   * Generate a unique client ID for ComfyUI
+   * @returns {string} Client ID
+   */
+  generateClientId() {
+    return 'swipe-save-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9);
   },
   
   /**
