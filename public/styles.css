@@ -62,7 +62,7 @@ h1 {
   background-color: #e0e0e0;
 }
 
-.save-icon, .refresh-icon {
+.save-icon, .comfyui-icon {
   font-size: 1.5rem;
 }
 
@@ -648,6 +648,41 @@ video.media-content[data-hide-controls]::-webkit-media-controls-volume-slider {
 
 .modal-content button:hover {
   background-color: #45a049;
+}
+
+/* ComfyUI Modal Styling */
+.comfyui-options {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+  margin-top: 20px;
+}
+
+.comfyui-options .btn {
+  padding: 12px 20px;
+  font-size: 1rem;
+  border-radius: 6px;
+  cursor: pointer;
+  border: none;
+  transition: background-color 0.2s;
+}
+
+.comfyui-options .btn-primary {
+  background-color: #007bff;
+  color: white;
+}
+
+.comfyui-options .btn-primary:hover {
+  background-color: #0056b3;
+}
+
+.comfyui-options .btn-secondary {
+  background-color: #6c757d;
+  color: white;
+}
+
+.comfyui-options .btn-secondary:hover {
+  background-color: #545b62;
 }
 
 /* Grid explanation in info modal */

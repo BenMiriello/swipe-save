@@ -6,6 +6,7 @@ const uiManager = {
     mediaList: null,
     modal: null,
     infoModal: null,
+    comfyuiModal: null,
     filenameInput: null,
     optionsButton: null,
     optionsDropdown: null,
@@ -23,6 +24,7 @@ const uiManager = {
     // Get references to DOM elements
     this.elements.mediaList = document.getElementById('mediaList');
     this.elements.modal = document.getElementById('filenameModal');
+    this.elements.comfyuiModal = document.getElementById('comfyuiModal');
     this.elements.filenameInput = document.getElementById('customFilename');
     this.elements.counterContainer = document.querySelector('.counter-container');
     
@@ -355,6 +357,9 @@ const uiManager = {
       if (event.target === this.elements.modal) {
         this.elements.modal.style.display = "none";
       }
+      if (event.target === this.elements.comfyuiModal) {
+        this.elements.comfyuiModal.style.display = "none";
+      }
     });
     
     // Save filename button
@@ -385,9 +390,9 @@ const uiManager = {
     }
     
     // Header buttons
-    const refreshIcon = document.querySelector('.refresh-icon');
-    if (refreshIcon) {
-      refreshIcon.addEventListener('click', handlers.refreshFiles);
+    const comfyuiIcon = document.querySelector('.comfyui-icon');
+    if (comfyuiIcon) {
+      comfyuiIcon.addEventListener('click', handlers.openComfyUIModal);
     }
     
     const saveIcon = document.querySelector('.save-icon');
@@ -888,6 +893,24 @@ const uiManager = {
       }
     } catch (error) {
       alert('Failed to set default directory: ' + error.message);
+    }
+  },
+  
+  /**
+   * Show ComfyUI modal
+   */
+  showComfyUIModal() {
+    if (this.elements.comfyuiModal) {
+      this.elements.comfyuiModal.style.display = "block";
+    }
+  },
+  
+  /**
+   * Hide ComfyUI modal
+   */
+  hideComfyUIModal() {
+    if (this.elements.comfyuiModal) {
+      this.elements.comfyuiModal.style.display = "none";
     }
   }
 };

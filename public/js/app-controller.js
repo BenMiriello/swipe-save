@@ -31,7 +31,8 @@ class AppController {
     // Setup UI event handlers
     window.uiManager.setupEventHandlers({
       openFilenameModal: this.openFilenameModal.bind(this),
-      saveCustomFilename: this.saveCustomFilename.bind(this)
+      saveCustomFilename: this.saveCustomFilename.bind(this),
+      openComfyUIModal: this.openComfyUIModal.bind(this)
     });
     
     // Setup additional UI elements
@@ -321,6 +322,51 @@ class AppController {
    */
   showActionLabel(actionName, rect) {
     window.uiManager.showActionLabel(actionName, rect);
+  }
+  
+  /**
+   * Open ComfyUI modal
+   */
+  openComfyUIModal() {
+    if (this.state.allFiles.length === 0) return;
+    
+    window.uiManager.showComfyUIModal();
+    
+    // Setup modal button handlers
+    this.setupComfyUIModalHandlers();
+  }
+  
+  /**
+   * Setup ComfyUI modal button handlers
+   */
+  setupComfyUIModalHandlers() {
+    const loadWithoutModifications = document.getElementById('loadWithoutModifications');
+    const loadWithNewSeed = document.getElementById('loadWithNewSeed');
+    
+    if (loadWithoutModifications) {
+      loadWithoutModifications.onclick = () => this.loadInComfyUI(false);
+    }
+    
+    if (loadWithNewSeed) {
+      loadWithNewSeed.onclick = () => this.loadInComfyUI(true);
+    }
+  }
+  
+  /**
+   * Load current image workflow in ComfyUI
+   * @param {boolean} modifySeeds - Whether to modify seed values
+   */
+  async loadInComfyUI(modifySeeds) {
+    if (this.state.allFiles.length === 0) return;
+    
+    const currentFile = this.state.allFiles[this.state.currentIndex];
+    window.uiManager.hideComfyUIModal();
+    
+    try {
+      await window.apiService.loadInComfyUI(currentFile, modifySeeds);
+    } catch (error) {
+      alert('Failed to load workflow in ComfyUI: ' + error.message);
+    }
   }
 }
 

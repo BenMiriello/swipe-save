@@ -35,7 +35,7 @@
             <line x1="12" y1="15" x2="12" y2="3"></line>
           </svg>
         </button>
-        <button class="icon-button refresh-icon" title="Refresh">&#x21bb;</button>
+        <button class="icon-button comfyui-icon" title="Load in ComfyUI">&#x2192;</button>
       </div>
     </div>
 
@@ -52,6 +52,18 @@
       <h2>Custom Filename</h2>
       <input type="text" id="customFilename" placeholder="Enter new filename">
       <button id="saveFilename">Save</button>
+    </div>
+  </div>
+
+  <!-- Modal for ComfyUI -->
+  <div id="comfyuiModal" class="modal">
+    <div class="modal-content">
+      <span class="close-modal">&times;</span>
+      <h2>Load Workflow in ComfyUI</h2>
+      <div class="comfyui-options">
+        <button id="loadWithoutModifications" class="btn btn-primary">Load without modifications</button>
+        <button id="loadWithNewSeed" class="btn btn-secondary">Load with new seed</button>
+      </div>
     </div>
   </div>
 

@@ -212,6 +212,101 @@ const apiService = {
       console.error('Error browsing directory:', error);
       throw error;
     }
+  },
+  
+  /**
+   * Get ComfyUI URL based on current hostname
+   * @returns {string} ComfyUI URL
+   */
+  getComfyUIUrl() {
+    const currentUrl = new URL(window.location.href);
+    return `${currentUrl.protocol}//${currentUrl.hostname}:8188`;
+  },
+  
+  /**
+   * Load workflow in ComfyUI
+   * @param {Object} file - Current file object
+   * @param {boolean} modifySeeds - Whether to modify seed values
+   * @returns {Promise<void>}
+   */
+  async loadInComfyUI(file, modifySeeds = false) {
+    try {
+      // Get workflow data from the current image
+      const workflowData = await this.getWorkflowFromImage(file);
+      
+      if (!workflowData) {
+        throw new Error('No workflow found in image metadata');
+      }
+      
+      // Modify seeds if requested
+      if (modifySeeds) {
+        this.modifyWorkflowSeeds(workflowData);
+      }
+      
+      // Send to ComfyUI
+      const comfyUIUrl = this.getComfyUIUrl();
+      const response = await fetch(`${comfyUIUrl}/api/workflow`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(workflowData)
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to load workflow in ComfyUI');
+      }
+      
+      // Open ComfyUI in new tab
+      window.open(comfyUIUrl, '_blank');
+    } catch (error) {
+      console.error('Error loading workflow in ComfyUI:', error);
+      throw error;
+    }
+  },
+  
+  /**
+   * Extract workflow from image metadata
+   * @param {Object} file - File object
+   * @returns {Promise<Object|null>} Workflow data or null
+   */
+  async getWorkflowFromImage(file) {
+    try {
+      const response = await fetch(`${window.appConfig.getApiUrl()}/api/workflow/${encodeURIComponent(file.name)}`);
+      
+      if (!response.ok) {
+        throw new Error('Failed to get workflow from image');
+      }
+      
+      return await response.json();
+    } catch (error) {
+      console.error('Error getting workflow from image:', error);
+      return null;
+    }
+  },
+  
+  /**
+   * Modify seed values in workflow by appending zero
+   * @param {Object} workflow - Workflow object to modify
+   */
+  modifyWorkflowSeeds(workflow) {
+    if (!workflow || typeof workflow !== 'object') return;
+    
+    // Recursively search for seed values and modify them
+    const modifySeeds = (obj) => {
+      if (typeof obj !== 'object' || obj === null) return;
+      
+      for (const key in obj) {
+        if (key === 'seed' && typeof obj[key] === 'number') {
+          // Append zero to seed value
+          obj[key] = parseInt(obj[key].toString() + '0');
+        } else if (typeof obj[key] === 'object') {
+          modifySeeds(obj[key]);
+        }
+      }
+    };
+    
+    modifySeeds(workflow);
   }
 };
 
