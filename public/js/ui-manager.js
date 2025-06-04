@@ -79,6 +79,11 @@ const uiManager = {
       bottomControls.appendChild(counterContainer);
       bottomControls.appendChild(controls);
       
+      // Add spacer to balance the counter
+      const spacer = document.createElement('div');
+      spacer.className = 'spacer';
+      bottomControls.appendChild(spacer);
+      
       const container = document.querySelector('.container');
       container.appendChild(bottomControls);
     }
@@ -183,19 +188,17 @@ const uiManager = {
    * Update config display in options dropdown
    */
   updateConfigDisplay(config) {
-    const sourceInfo = document.getElementById('sourceInfo');
-    const destInfo = document.getElementById('destInfo');
+    const sourcePathEl = document.getElementById('sourcePathClickable');
+    const destPathEl = document.getElementById('destPathClickable');
     
-    if (sourceInfo && config.sourceDir) {
-      const sourceDirSpan = sourceInfo.querySelector('.dir-path');
-      sourceDirSpan.textContent = this.shortenPath(config.sourceDir);
-      sourceDirSpan.title = config.sourceDir;
+    if (sourcePathEl && config.sourceDir) {
+      sourcePathEl.textContent = this.shortenPath(config.sourceDir);
+      sourcePathEl.title = `Click to browse: ${config.sourceDir}`;
     }
     
-    if (destInfo && config.destinationDir) {
-      const destDirSpan = destInfo.querySelector('.dir-path');
-      destDirSpan.textContent = this.shortenPath(config.destinationDir);
-      destDirSpan.title = config.destinationDir;
+    if (destPathEl && config.destinationDir) {
+      destPathEl.textContent = this.shortenPath(config.destinationDir);
+      destPathEl.title = `Click to browse: ${config.destinationDir}`;
     }
   },
   
@@ -232,10 +235,20 @@ const uiManager = {
       optionsDropdown.className = 'options-dropdown';
       optionsDropdown.innerHTML = `
         <ul>
-          <li class="directory-info" id="sourceInfo">Sorting from: <span class="dir-path">Loading...</span></li>
-          <li id="browseSource">Browse Source Directory</li>
-          <li class="directory-info" id="destInfo">Saving to: <span class="dir-path">Loading...</span></li>
-          <li id="browseDestination">Browse Destination Directory</li>
+          <li class="directory-row">
+            <div class="dir-info">
+              <span class="dir-label">From:</span>
+              <span class="dir-path-clickable" id="sourcePathClickable" title="Click to browse">Loading...</span>
+            </div>
+            <button class="use-default-btn" id="useDefaultSource">Use Default</button>
+          </li>
+          <li class="directory-row">
+            <div class="dir-info">
+              <span class="dir-label">To:</span>
+              <span class="dir-path-clickable" id="destPathClickable" title="Click to browse">Loading...</span>
+            </div>
+            <button class="use-default-btn" id="useDefaultDest">Use Default</button>
+          </li>
           <li class="separator"></li>
           <li id="customName">Custom Name</li>
           <li id="showInfo">Show Instructions</li>
@@ -284,20 +297,38 @@ const uiManager = {
       });
     }
     
-    // Browse source directory
-    const browseSourceEl = document.getElementById('browseSource');
-    if (browseSourceEl) {
-      browseSourceEl.addEventListener('click', () => {
+    // Clickable source path to browse
+    const sourcePathEl = document.getElementById('sourcePathClickable');
+    if (sourcePathEl) {
+      sourcePathEl.addEventListener('click', () => {
         this.openDirectoryBrowser('source');
         this.elements.optionsDropdown.classList.remove('show');
       });
     }
     
-    // Browse destination directory
-    const browseDestEl = document.getElementById('browseDestination');
-    if (browseDestEl) {
-      browseDestEl.addEventListener('click', () => {
+    // Clickable destination path to browse
+    const destPathEl = document.getElementById('destPathClickable');
+    if (destPathEl) {
+      destPathEl.addEventListener('click', () => {
         this.openDirectoryBrowser('destination');
+        this.elements.optionsDropdown.classList.remove('show');
+      });
+    }
+    
+    // Use default source button
+    const useDefaultSourceEl = document.getElementById('useDefaultSource');
+    if (useDefaultSourceEl) {
+      useDefaultSourceEl.addEventListener('click', async () => {
+        await this.useDefaultDirectory('source');
+        this.elements.optionsDropdown.classList.remove('show');
+      });
+    }
+    
+    // Use default destination button
+    const useDefaultDestEl = document.getElementById('useDefaultDest');
+    if (useDefaultDestEl) {
+      useDefaultDestEl.addEventListener('click', async () => {
+        await this.useDefaultDirectory('destination');
         this.elements.optionsDropdown.classList.remove('show');
       });
     }
@@ -828,6 +859,35 @@ const uiManager = {
       }
     } catch (error) {
       alert('Failed to update directory: ' + error.message);
+    }
+  },
+  
+  /**
+   * Use default directory for source or destination
+   * @param {string} type - 'source' or 'destination'
+   */
+  async useDefaultDirectory(type) {
+    try {
+      const defaults = {
+        source: '/home/simonsays/Documents/ComfyUI/output',
+        destination: '/home/simonsays/Documents/ComfyUI/output/swipe-save'
+      };
+      
+      const updateData = {};
+      updateData[type + 'Dir'] = defaults[type];
+      
+      const result = await window.apiService.updateConfig(updateData);
+      
+      if (result.success) {
+        this.updateConfigDisplay(result.config);
+        
+        // Refresh files if source directory changed
+        if (type === 'source' && window.appController) {
+          window.appController.fetchMediaFiles();
+        }
+      }
+    } catch (error) {
+      alert('Failed to set default directory: ' + error.message);
     }
   }
 };
