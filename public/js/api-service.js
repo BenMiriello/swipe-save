@@ -250,46 +250,178 @@ const apiService = {
       const targetUrl = comfyUrl || this.getComfyUIUrl();
       console.log('Opening ComfyUI at:', targetUrl);
       
-      // Create a data URL with the workflow JSON
-      const workflowJson = JSON.stringify(workflowData, null, 2);
-      const dataUrl = 'data:application/json;charset=utf-8,' + encodeURIComponent(workflowJson);
+      // Create workflow filename
+      const baseFilename = file.name.replace(/\.[^/.]+$/, '');
+      const workflowFilename = `workflow_${baseFilename}.json`;
       
-      // Open ComfyUI in new tab
+      // Check if we've already downloaded this workflow
+      const existingDownloads = this.getExistingWorkflows();
+      if (!existingDownloads.includes(workflowFilename)) {
+        // Download the workflow
+        await this.downloadWorkflow(workflowData, workflowFilename);
+        this.saveWorkflowRecord(workflowFilename);
+      } else {
+        console.log('Workflow already downloaded:', workflowFilename);
+      }
+      
+      // Open ComfyUI and provide instructions
       const comfyWindow = window.open(targetUrl, '_blank');
       
-      // Wait a moment for ComfyUI to load, then try to load the workflow
+      // Show instructions for loading workflow
       setTimeout(() => {
-        try {
-          // Try to post the workflow to ComfyUI window
-          if (comfyWindow && !comfyWindow.closed) {
-            comfyWindow.postMessage({
-              type: 'load_workflow',
-              workflow: workflowData
-            }, targetUrl);
+        const message = `ComfyUI opened! To load the workflow:\n\n` +
+          `1. In ComfyUI, click "Load" button (or drag & drop)\n` +
+          `2. Select: ${workflowFilename}\n` +
+          `3. File saved to Downloads folder\n\n` +
+          `${modifySeeds ? '(Seeds were modified with new values)' : '(Original seeds preserved)'}\n\n` +
+          `Workflow ready to load!`;
+        
+        if (this.isMobile()) {
+          alert(message);
+        } else {
+          if (confirm(message + '\n\nClick OK to continue.')) {
+            // User acknowledged
           }
-        } catch (error) {
-          console.log('Could not post workflow to ComfyUI window:', error.message);
         }
-      }, 2000);
-      
-      // Also create a downloadable JSON file as backup
-      const blob = new Blob([workflowJson], { type: 'application/json' });
-      const downloadUrl = URL.createObjectURL(blob);
-      
-      const link = document.createElement('a');
-      link.href = downloadUrl;
-      link.download = `workflow_${file.name.replace(/\.[^/.]+$/, '')}.json`;
-      
-      // Auto-download the workflow file
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      
-      URL.revokeObjectURL(downloadUrl);
+      }, 1000);
       
     } catch (error) {
       console.error('Error loading workflow in ComfyUI:', error);
       throw error;
+    }
+  },
+  
+  /**
+   * Download workflow with proper folder structure
+   */
+  async downloadWorkflow(workflowData, filename) {
+    const workflowJson = JSON.stringify(workflowData, null, 2);
+    
+    // Try multiple download methods for compatibility
+    if (this.isMobile()) {
+      // Mobile-friendly download
+      this.downloadForMobile(workflowJson, filename);
+    } else {
+      // Desktop download with folder structure
+      this.downloadForDesktop(workflowJson, filename);
+    }
+  },
+  
+  /**
+   * Mobile-compatible download
+   */
+  downloadForMobile(content, filename) {
+    try {
+      // Create blob URL
+      const blob = new Blob([content], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      
+      // Try multiple methods
+      // Method 1: Direct window.open (works on some mobile browsers)
+      const dataUrl = 'data:application/json;charset=utf-8,' + encodeURIComponent(content);
+      const newWindow = window.open(dataUrl, '_blank');
+      
+      if (!newWindow) {
+        // Method 2: Create temporary link
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = filename;
+        link.style.display = 'none';
+        
+        document.body.appendChild(link);
+        
+        // Force click
+        if (link.click) {
+          link.click();
+        } else {
+          // Fallback for older browsers
+          const event = new MouseEvent('click');
+          link.dispatchEvent(event);
+        }
+        
+        document.body.removeChild(link);
+      }
+      
+      // Clean up
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+      
+    } catch (error) {
+      console.error('Mobile download failed:', error);
+      // Fallback: copy to clipboard
+      this.copyToClipboard(content, filename);
+    }
+  },
+  
+  /**
+   * Desktop download with folder structure
+   */
+  downloadForDesktop(content, filename) {
+    try {
+      const blob = new Blob([content], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      
+      const link = document.createElement('a');
+      link.href = url;
+      // Note: browsers may ignore folder structure in download attribute
+      link.download = filename;
+      
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Desktop download failed:', error);
+      throw error;
+    }
+  },
+  
+  /**
+   * Fallback: copy to clipboard
+   */
+  copyToClipboard(content, filename) {
+    try {
+      navigator.clipboard.writeText(content).then(() => {
+        alert(`Download failed. Workflow JSON copied to clipboard.\n\nFilename: ${filename}\n\nPaste into a text file and save as .json`);
+      }).catch(() => {
+        // Final fallback: show in alert
+        alert(`Download failed. Please copy this workflow manually:\n\n${content.substring(0, 500)}...`);
+      });
+    } catch (error) {
+      console.error('Clipboard fallback failed:', error);
+    }
+  },
+  
+  /**
+   * Detect mobile device
+   */
+  isMobile() {
+    return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+  },
+  
+  /**
+   * Get existing workflow downloads
+   */
+  getExistingWorkflows() {
+    try {
+      return JSON.parse(localStorage.getItem('downloaded-workflows') || '[]');
+    } catch {
+      return [];
+    }
+  },
+  
+  /**
+   * Save workflow download record
+   */
+  saveWorkflowRecord(filename) {
+    try {
+      const existing = this.getExistingWorkflows();
+      if (!existing.includes(filename)) {
+        existing.push(filename);
+        localStorage.setItem('downloaded-workflows', JSON.stringify(existing));
+      }
+    } catch (error) {
+      console.error('Error saving workflow record:', error);
     }
   },
   
