@@ -99,7 +99,7 @@ router.get('/api/files', (req, res) => {
 
     const mediaEntries = entries
       .filter(entry => !entry.isDirectory()) // Skip directories
-      .filter(file => /\.(png|mp4|webm)$/i.test(file.name)) // Only media files
+      .filter(file => /\.(png|jpe?g|gif|bmp|webp|tiff?|svg|mp4|webm|mov|avi|mkv|flv|wmv|m4v|3gp|ogv)$/i.test(file.name)) // Media files
       .filter(file => !file.name.startsWith('._')); // Skip dot-underscore files
 
     mediaEntries.forEach(file => {
@@ -147,10 +147,24 @@ router.get('/media/:filename', (req, res) => {
       // Set content type based on file extension
       if (filename.toLowerCase().endsWith('.png')) {
         res.set('Content-Type', 'image/png');
-      } else if (filename.toLowerCase().endsWith('.mp4')) {
+      } else if (filename.toLowerCase().endsWith('.jpg') || filename.toLowerCase().endsWith('.jpeg')) {
+        res.set('Content-Type', 'image/jpeg');
+      } else if (filename.toLowerCase().endsWith('.gif')) {
+        res.set('Content-Type', 'image/gif');
+      } else if (filename.toLowerCase().endsWith('.webp')) {
+        res.set('Content-Type', 'image/webp');
+      } else if (filename.toLowerCase().endsWith('.mp4') || filename.toLowerCase().endsWith('.m4v')) {
         res.set('Content-Type', 'video/mp4');
       } else if (filename.toLowerCase().endsWith('.webm')) {
         res.set('Content-Type', 'video/webm');
+      } else if (filename.toLowerCase().endsWith('.mov')) {
+        res.set('Content-Type', 'video/quicktime');
+      } else if (filename.toLowerCase().endsWith('.avi')) {
+        res.set('Content-Type', 'video/x-msvideo');
+      } else if (filename.toLowerCase().endsWith('.mkv')) {
+        res.set('Content-Type', 'video/x-matroska');
+      } else if (filename.toLowerCase().endsWith('.ogv')) {
+        res.set('Content-Type', 'video/ogg');
       }
       
       // Stream the file

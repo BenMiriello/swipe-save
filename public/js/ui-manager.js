@@ -456,9 +456,9 @@ const uiManager = {
     // Create content based on file type
     let mediaContent;
     
-    if (/\.(png)$/i.test(file.name)) {
+    if (/\.(png|jpe?g|gif|bmp|webp|tiff?|svg)$/i.test(file.name)) {
       mediaContent = this.createImageElement(file, apiUrl);
-    } else if (/\.(mp4|webm)$/i.test(file.name)) {
+    } else if (/\.(mp4|webm|mov|avi|mkv|flv|wmv|m4v|3gp|ogv)$/i.test(file.name)) {
       mediaContent = this.createVideoElement(file, apiUrl);
     }
     
@@ -542,15 +542,64 @@ const uiManager = {
     video.src = `${apiUrl}${file.path}`;
     video.controls = true;
     video.autoplay = false;
-    video.muted = false;
+    video.muted = true; // Start muted for autoplay compatibility
     video.loop = false;
     video.playsInline = true;
-    video.preload = 'auto'; // Changed from 'metadata' to 'auto' for better initial loading
+    video.preload = 'metadata'; // Changed back to metadata for better loading
     video.className = 'media-content';
+    
+    // Add multiple source elements for better format support
+    const source = document.createElement('source');
+    source.src = `${apiUrl}${file.path}`;
+    
+    // Set proper MIME type based on extension
+    const ext = file.name.toLowerCase().split('.').pop();
+    switch(ext) {
+      case 'mp4':
+      case 'm4v':
+        source.type = 'video/mp4; codecs="avc1.42E01E, mp4a.40.2"';
+        break;
+      case 'webm':
+        source.type = 'video/webm; codecs="vp8, vorbis"';
+        break;
+      case 'mov':
+        source.type = 'video/quicktime';
+        break;
+      case 'avi':
+        source.type = 'video/x-msvideo';
+        break;
+      case 'mkv':
+        source.type = 'video/x-matroska';
+        break;
+      case 'ogv':
+        source.type = 'video/ogg; codecs="theora, vorbis"';
+        break;
+      default:
+        source.type = `video/${ext}`;
+    }
+    
+    video.appendChild(source);
+    
+    // Error handling
+    video.addEventListener('error', function(e) {
+      console.error('Video error:', e, this.error);
+      const errorDiv = document.createElement('div');
+      errorDiv.className = 'video-error';
+      errorDiv.innerHTML = `
+        <p>⚠️ Unable to play video: ${file.name}</p>
+        <p>Format: ${ext.toUpperCase()}</p>
+        <button onclick="window.open('${apiUrl}${file.path}', '_blank')">Open in New Tab</button>
+      `;
+      this.parentNode.replaceChild(errorDiv, this);
+    });
     
     // Improved video playback
     video.addEventListener('loadedmetadata', function() {
-      // Try to autoplay once metadata is loaded
+      console.log('Video metadata loaded:', file.name);
+    });
+    
+    video.addEventListener('canplay', function() {
+      // Try to autoplay once it can play (muted)
       this.play().catch(e => console.log('Auto-play prevented:', e));
     });
     
@@ -563,6 +612,8 @@ const uiManager = {
       // Avoid conflicting with the video controls at the bottom
       if (y < rect.height - 40) { 
         if (this.paused) {
+          // Unmute on user interaction
+          this.muted = false;
           this.play();
         } else {
           this.pause();
