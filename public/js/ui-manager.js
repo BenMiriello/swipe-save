@@ -542,78 +542,43 @@ const uiManager = {
     video.src = `${apiUrl}${file.path}`;
     video.controls = true;
     video.autoplay = false;
-    video.muted = true; // Start muted for autoplay compatibility
+    video.muted = false;
     video.loop = false;
     video.playsInline = true;
-    video.preload = 'metadata'; // Changed back to metadata for better loading
+    video.preload = 'auto';
     video.className = 'media-content';
     
-    // Add multiple source elements for better format support
-    const source = document.createElement('source');
-    source.src = `${apiUrl}${file.path}`;
-    
-    // Set proper MIME type based on extension
-    const ext = file.name.toLowerCase().split('.').pop();
-    switch(ext) {
-      case 'mp4':
-      case 'm4v':
-        source.type = 'video/mp4; codecs="avc1.42E01E, mp4a.40.2"';
-        break;
-      case 'webm':
-        source.type = 'video/webm; codecs="vp8, vorbis"';
-        break;
-      case 'mov':
-        source.type = 'video/quicktime';
-        break;
-      case 'avi':
-        source.type = 'video/x-msvideo';
-        break;
-      case 'mkv':
-        source.type = 'video/x-matroska';
-        break;
-      case 'ogv':
-        source.type = 'video/ogg; codecs="theora, vorbis"';
-        break;
-      default:
-        source.type = `video/${ext}`;
-    }
-    
-    video.appendChild(source);
-    
-    // Error handling
-    video.addEventListener('error', function(e) {
-      console.error('Video error:', e, this.error);
-      const errorDiv = document.createElement('div');
-      errorDiv.className = 'video-error';
-      errorDiv.innerHTML = `
-        <p>⚠️ Unable to play video: ${file.name}</p>
-        <p>Format: ${ext.toUpperCase()}</p>
-        <button onclick="window.open('${apiUrl}${file.path}', '_blank')">Open in New Tab</button>
-      `;
-      this.parentNode.replaceChild(errorDiv, this);
-    });
-    
-    // Improved video playback
+    // Try to autoplay once metadata is loaded (like original)
     video.addEventListener('loadedmetadata', function() {
-      console.log('Video metadata loaded:', file.name);
-    });
-    
-    video.addEventListener('canplay', function() {
-      // Try to autoplay once it can play (muted)
       this.play().catch(e => console.log('Auto-play prevented:', e));
     });
     
-    // Handle click to play/pause (but don't interfere with controls)
+    // Hide controls overlay after short delay for better viewing
+    video.addEventListener('play', function() {
+      setTimeout(() => {
+        if (!this.paused) {
+          this.setAttribute('data-hide-controls', 'true');
+        }
+      }, 800);
+    });
+    
+    // Show controls on interaction
+    video.addEventListener('mouseenter', function() {
+      this.removeAttribute('data-hide-controls');
+    });
+    
+    video.addEventListener('pause', function() {
+      this.removeAttribute('data-hide-controls');
+    });
+    
+    // Handle click to play/pause (like original)
     video.addEventListener('click', function(e) {
-      // Only toggle play/pause if the user didn't click on the control area
       const rect = this.getBoundingClientRect();
       const y = e.clientY - rect.top;
       
       // Avoid conflicting with the video controls at the bottom
       if (y < rect.height - 40) { 
         if (this.paused) {
-          // Unmute on user interaction
-          this.muted = false;
           this.play();
         } else {
           this.pause();

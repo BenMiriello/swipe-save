@@ -324,6 +324,19 @@ video.media-content::-webkit-media-controls-timeline:hover {
   opacity: 1;
 }
 
+/* Hide video controls overlay quickly */
+video.media-content[data-hide-controls]::-webkit-media-controls-panel {
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+
+video.media-content[data-hide-controls]::-webkit-media-controls-play-button,
+video.media-content[data-hide-controls]::-webkit-media-controls-timeline,
+video.media-content[data-hide-controls]::-webkit-media-controls-volume-slider {
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+
 /* Video error display */
 .video-error {
   display: flex;
