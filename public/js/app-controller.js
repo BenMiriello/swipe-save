@@ -341,26 +341,207 @@ class AppController {
    * Setup ComfyUI modal button handlers
    */
   setupComfyUIModalHandlers() {
-    const loadWithoutModifications = document.getElementById('loadWithoutModifications');
-    const loadWithNewSeed = document.getElementById('loadWithNewSeed');
-    const queueWorkflow = document.getElementById('queueWorkflow');
-    const queueWithNewSeed = document.getElementById('queueWithNewSeed');
+    const queueRun = document.getElementById('queueRun');
+    const loadRun = document.getElementById('loadRun');
     
-    if (loadWithoutModifications) {
-      loadWithoutModifications.onclick = () => this.loadInComfyUI(false);
+    if (queueRun) {
+      queueRun.onclick = () => this.handleRunAction('queue');
     }
     
-    if (loadWithNewSeed) {
-      loadWithNewSeed.onclick = () => this.loadInComfyUI(true);
+    if (loadRun) {
+      loadRun.onclick = () => this.handleRunAction('load');
     }
     
-    if (queueWorkflow) {
-      queueWorkflow.onclick = () => this.queueInComfyUI(false);
+    // Make New Seed text clickable
+    const newSeedText = document.querySelector('.toggle-text');
+    const newSeedToggle = document.getElementById('newSeedToggle');
+    if (newSeedText && newSeedToggle) {
+      newSeedText.onclick = () => {
+        newSeedToggle.checked = !newSeedToggle.checked;
+      };
     }
     
-    if (queueWithNewSeed) {
-      queueWithNewSeed.onclick = () => this.queueInComfyUI(true);
+    // Setup number pickers
+    this.setupNumberPickers();
+  }
+  
+  /**
+   * Handle run action (queue or load)
+   */
+  async handleRunAction(type) {
+    const button = document.getElementById(type + 'Run');
+    const countInput = document.getElementById(type + 'Count');
+    const newSeedToggle = document.getElementById('newSeedToggle');
+    
+    const count = parseInt(countInput.value) || 1;
+    const useNewSeed = type === 'queue' ? newSeedToggle.checked : false;
+    
+    // Set button to waiting state
+    this.setButtonState(button, 'waiting', 'Waiting');
+    
+    try {
+      if (type === 'queue') {
+        for (let i = 0; i < count; i++) {
+          await window.apiService.queueInComfyUI(
+            this.state.allFiles[this.state.currentIndex], 
+            useNewSeed,
+            window.uiManager.getSelectedDestination()
+          );
+        }
+      } else {
+        for (let i = 0; i < count; i++) {
+          await window.apiService.loadInComfyUI(
+            this.state.allFiles[this.state.currentIndex], 
+            false,
+            window.uiManager.getSelectedDestination()
+          );
+        }
+      }
+      
+      // Success state
+      this.setButtonState(button, 'success', 'Success!');
+      
+    } catch (error) {
+      console.error(`Error in ${type} action:`, error);
+      this.setButtonState(button, 'error', 'Error occurred', error.message || 'Unknown error occurred');
     }
+  }
+  
+  /**
+   * Set button state with animations
+   */
+  setButtonState(button, state, text, errorMessage = null) {
+    const runButtons = button.parentElement;
+    const errorDiv = document.getElementById('comfyuiError');
+    
+    if (state === 'waiting') {
+      button.textContent = text;
+      button.className = 'run-btn waiting';
+      if (errorDiv) errorDiv.style.display = 'none';
+      
+    } else if (state === 'success') {
+      button.textContent = text;
+      button.className = 'run-btn success';
+      if (errorDiv) errorDiv.style.display = 'none';
+      
+      setTimeout(() => {
+        button.textContent = button.id === 'queueRun' ? 'Queue:' : 'Load:';
+        button.classList.add('shrinking');
+        
+        const openBtn = document.createElement('button');
+        openBtn.className = 'open-btn';
+        openBtn.textContent = '→';
+        openBtn.onclick = () => {
+          const destination = window.uiManager.getSelectedDestination();
+          window.apiService.openComfyUITab(destination);
+        };
+        
+        runButtons.appendChild(openBtn);
+        
+        setTimeout(() => {
+          button.style.transform = 'scaleX(0.6)';
+          openBtn.classList.add('show');
+        }, 50);
+        
+        setTimeout(() => {
+          button.style.transform = '';
+          button.textContent = 'Run >';
+          button.className = 'run-btn';
+          button.classList.remove('shrinking');
+          if (openBtn.parentElement) {
+            openBtn.remove();
+          }
+        }, 3000);
+        
+      }, 1000);
+      
+    } else if (state === 'error') {
+      button.textContent = text;
+      button.className = 'run-btn error';
+      
+      if (errorDiv && errorMessage) {
+        errorDiv.textContent = errorMessage;
+        errorDiv.style.display = 'block';
+      }
+      
+      setTimeout(() => {
+        button.textContent = 'Run >';
+        button.className = 'run-btn';
+      }, 1500);
+    }
+  }
+  
+  /**
+   * Setup number picker controls
+   */
+  setupNumberPickers() {
+    const pickers = document.querySelectorAll('.number-picker');
+    
+    pickers.forEach(picker => {
+      const input = picker.querySelector('input[type="number"]');
+      const decrementBtn = picker.querySelector('[data-action="decrement"]');
+      const incrementBtn = picker.querySelector('[data-action="increment"]');
+      
+      let holdInterval = null;
+      let holdTimeout = null;
+      
+      // Handle input validation - cap at 99 and replace empty with 1
+      input.addEventListener('input', () => {
+        let value = parseInt(input.value);
+        if (isNaN(value) || value < 1) {
+          input.value = 1;
+        } else if (value > 99) {
+          input.value = 99;
+        }
+      });
+      
+      input.addEventListener('blur', () => {
+        if (!input.value || input.value === '') {
+          input.value = 1;
+        }
+      });
+      
+      const increment = () => {
+        const current = parseInt(input.value) || 1;
+        const max = 99;
+        input.value = Math.min(current + 1, max);
+      };
+      
+      const decrement = () => {
+        const current = parseInt(input.value) || 1;
+        const min = 1;
+        input.value = Math.max(current - 1, min);
+      };
+      
+      const startHold = (action) => {
+        holdTimeout = setTimeout(() => {
+          holdInterval = setInterval(action, 100);
+        }, 500);
+      };
+      
+      const stopHold = () => {
+        if (holdTimeout) clearTimeout(holdTimeout);
+        if (holdInterval) clearInterval(holdInterval);
+        holdTimeout = null;
+        holdInterval = null;
+      };
+      
+      // Increment button
+      incrementBtn.onclick = increment;
+      incrementBtn.onmousedown = () => startHold(increment);
+      incrementBtn.onmouseup = stopHold;
+      incrementBtn.onmouseleave = stopHold;
+      incrementBtn.ontouchstart = () => startHold(increment);
+      incrementBtn.ontouchend = stopHold;
+      
+      // Decrement button
+      decrementBtn.onclick = decrement;
+      decrementBtn.onmousedown = () => startHold(decrement);
+      decrementBtn.onmouseup = stopHold;
+      decrementBtn.onmouseleave = stopHold;
+      decrementBtn.ontouchstart = () => startHold(decrement);
+      decrementBtn.ontouchend = stopHold;
+    });
   }
   
   /**
@@ -392,13 +573,11 @@ class AppController {
     const currentFile = this.state.allFiles[this.state.currentIndex];
     const destination = window.uiManager.getSelectedDestination();
     
-    window.uiManager.hideComfyUIModal();
-    
     try {
       await window.apiService.queueInComfyUI(currentFile, modifySeeds, destination);
-      alert(`Workflow queued successfully in ComfyUI!${modifySeeds ? ' (with modified seeds)' : ''}`);
+      // Success handled by button state management - no popup
     } catch (error) {
-      alert('Failed to queue workflow in ComfyUI: ' + error.message);
+      throw error; // Let calling function handle the error
     }
   }
 }

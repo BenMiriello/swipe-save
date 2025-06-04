@@ -938,15 +938,32 @@ const uiManager = {
         input.value = this.getDefaultComfyUIUrl();
       }
       
+      // Store original value to detect changes
+      input.originalValue = input.value;
+      
+      // Show save button when input changes
+      input.addEventListener('input', () => {
+        const hasChanged = input.value.trim() !== input.originalValue;
+        saveBtn.style.display = hasChanged ? 'inline-block' : 'none';
+        
+        // Refresh destination list when input changes
+        const saved = this.loadSavedDestinations();
+        this.renderDestinations(saved);
+      });
+      
       // Save destination on button click
       saveBtn.addEventListener('click', () => {
         this.saveDestination(input.value.trim());
+        input.originalValue = input.value.trim();
+        saveBtn.style.display = 'none';
       });
       
       // Save on Enter key
       input.addEventListener('keypress', (e) => {
         if (e.key === 'Enter') {
           this.saveDestination(input.value.trim());
+          input.originalValue = input.value.trim();
+          saveBtn.style.display = 'none';
         }
       });
     }
@@ -1039,17 +1056,18 @@ const uiManager = {
     const input = document.getElementById('comfyuiDestination');
     if (input) {
       input.value = url;
-    }
-    
-    // Update visual selection
-    const items = document.querySelectorAll('.destination-item');
-    items.forEach(item => {
-      if (item.dataset.url === url) {
-        item.classList.add('selected');
-      } else {
-        item.classList.remove('selected');
+      input.originalValue = url;
+      
+      // Hide save button since we're setting a saved value
+      const saveBtn = document.getElementById('saveDestination');
+      if (saveBtn) {
+        saveBtn.style.display = 'none';
       }
-    });
+      
+      // Refresh destination list to hide currently selected one
+      const saved = this.loadSavedDestinations();
+      this.renderDestinations(saved);
+    }
   },
   
   /**
@@ -1061,7 +1079,13 @@ const uiManager = {
     
     container.innerHTML = '';
     
+    // Get current destination to avoid showing it as an option
+    const currentDestination = this.getSelectedDestination();
+    
     destinations.forEach(url => {
+      // Don't show the currently selected destination as an option
+      if (url === currentDestination) return;
+      
       const item = document.createElement('div');
       item.className = 'destination-item';
       item.dataset.url = url;

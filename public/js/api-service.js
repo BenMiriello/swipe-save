@@ -264,26 +264,8 @@ const apiService = {
         console.log('Workflow already downloaded:', workflowFilename);
       }
       
-      // Open ComfyUI and provide instructions
-      const comfyWindow = window.open(targetUrl, '_blank');
-      
-      // Show instructions for loading workflow
-      setTimeout(() => {
-        const message = `ComfyUI opened! To load the workflow:\n\n` +
-          `1. In ComfyUI, click "Load" button (or drag & drop)\n` +
-          `2. Select: ${workflowFilename}\n` +
-          `3. File saved to Downloads folder\n\n` +
-          `${modifySeeds ? '(Seeds were modified with new values)' : '(Original seeds preserved)'}\n\n` +
-          `Workflow ready to load!`;
-        
-        if (this.isMobile()) {
-          alert(message);
-        } else {
-          if (confirm(message + '\n\nClick OK to continue.')) {
-            // User acknowledged
-          }
-        }
-      }, 1000);
+      // Open ComfyUI tab
+      this.openComfyUITab(targetUrl);
       
     } catch (error) {
       console.error('Error loading workflow in ComfyUI:', error);
@@ -400,6 +382,65 @@ const apiService = {
   },
   
   /**
+   * Open ComfyUI tab with mobile-friendly approach
+   * @param {string} url - ComfyUI URL to open
+   */
+  openComfyUITab(url) {
+    try {
+      if (this.isMobile()) {
+        // Mobile approach - try multiple methods
+        console.log('Opening ComfyUI on mobile device:', url);
+        
+        // Method 1: Direct window.open with target
+        const newWindow = window.open(url, '_blank', 'noopener,noreferrer');
+        
+        if (!newWindow || newWindow.closed || typeof newWindow.closed === 'undefined') {
+          // Method 2: Try without window features
+          window.open(url, '_blank');
+        }
+        
+        // Method 3: Fallback - create temporary link and click
+        setTimeout(() => {
+          const link = document.createElement('a');
+          link.href = url;
+          link.target = '_blank';
+          link.rel = 'noopener noreferrer';
+          link.style.display = 'none';
+          
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+        }, 100);
+        
+      } else {
+        // Desktop approach
+        console.log('Opening ComfyUI on desktop:', url);
+        window.open(url, '_blank', 'noopener,noreferrer');
+      }
+    } catch (error) {
+      console.error('Error opening ComfyUI tab:', error);
+      // Final fallback - copy URL to clipboard
+      this.copyUrlToClipboard(url);
+    }
+  },
+  
+  /**
+   * Copy URL to clipboard as fallback
+   */
+  copyUrlToClipboard(url) {
+    try {
+      navigator.clipboard.writeText(url).then(() => {
+        alert(`ComfyUI URL copied to clipboard:\n${url}\n\nPaste it in your browser to access ComfyUI.`);
+      }).catch(() => {
+        // Final fallback
+        alert(`Please manually open ComfyUI at:\n${url}`);
+      });
+    } catch (error) {
+      alert(`Please manually open ComfyUI at:\n${url}`);
+    }
+  },
+  
+  /**
    * Get existing workflow downloads
    */
   getExistingWorkflows() {
@@ -464,38 +505,26 @@ const apiService = {
     try {
       console.log('Queueing workflow in ComfyUI for file:', file.name);
       
-      const workflowData = await this.getWorkflowFromImage(file);
-      if (!workflowData) {
-        throw new Error('No workflow found in image metadata');
-      }
-      
-      if (modifySeeds) {
-        this.modifyWorkflowSeeds(workflowData);
-        console.log('Seeds modified for queuing');
-      }
-      
-      const targetUrl = comfyUrl || this.getComfyUIUrl();
-      const clientId = this.generateClientId();
-      
-      const response = await fetch(`${targetUrl}/prompt`, {
+      const response = await fetch(`${window.appConfig.getApiUrl()}/api/queue-workflow`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          prompt: workflowData,
-          client_id: clientId
+          filename: file.name,
+          modifySeeds: modifySeeds,
+          comfyUrl: comfyUrl
         })
       });
       
       if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`ComfyUI API error: ${response.status} - ${errorText}`);
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to queue workflow');
       }
       
       const result = await response.json();
       console.log('Workflow queued successfully:', result);
       
       // Open ComfyUI to show progress
-      window.open(targetUrl, '_blank');
+      this.openComfyUITab(result.comfyUrl);
       
       return result;
     } catch (error) {

@@ -658,16 +658,39 @@ video.media-content[data-hide-controls]::-webkit-media-controls-volume-slider {
   border-radius: 6px;
 }
 
-.comfyui-destination h3 {
-  margin: 0 0 10px 0;
+.destination-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.destination-header h3 {
+  margin: 0;
   font-size: 1rem;
   color: #333;
+}
+
+.open-comfy-btn {
+  background-color: #28a745;
+  color: white;
+  border: none;
+  padding: 6px 12px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+
+.open-comfy-btn:hover {
+  background-color: #218838;
 }
 
 .destination-input {
   display: flex;
   gap: 10px;
   margin-bottom: 15px;
+  align-items: center;
 }
 
 .destination-input input {
@@ -677,115 +700,340 @@ video.media-content[data-hide-controls]::-webkit-media-controls-volume-slider {
   border-radius: 4px;
   font-family: monospace;
   font-size: 0.9rem;
+  height: 36px;
 }
 
 .btn-small {
   padding: 8px 12px;
   font-size: 0.85rem;
+  background-color: #007bff;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  height: auto;
+  line-height: 1.2;
+}
+
+.btn-small:hover {
+  background-color: #0056b3;
 }
 
 .saved-destinations {
-  max-height: 150px;
+  max-height: 120px;
   overflow-y: auto;
 }
 
 .destination-item {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  padding: 8px 12px;
-  margin-bottom: 5px;
+  padding: 6px 10px;
+  margin-bottom: 3px;
   background-color: white;
   border: 1px solid #ddd;
   border-radius: 4px;
   cursor: pointer;
   transition: background-color 0.2s;
+  white-space: nowrap;
+  overflow: hidden;
 }
 
 .destination-item:hover {
   background-color: #f0f0f0;
 }
 
-.destination-item.selected {
-  background-color: #e3f2fd;
-  border-color: #2196f3;
-}
-
 .destination-text {
   flex: 1;
   font-family: monospace;
-  font-size: 0.85rem;
+  font-size: 0.8rem;
   color: #333;
+  text-overflow: ellipsis;
+  overflow: hidden;
 }
 
 .destination-delete {
-  padding: 4px 8px;
-  font-size: 0.75rem;
-  background-color: #dc3545;
-  color: white;
-  border: none;
-  border-radius: 3px;
+  padding: 3px 6px;
+  font-size: 0.7rem;
+  background-color: white;
+  color: #dc3545;
+  border: 1px solid #dc3545;
+  border-radius: 2px;
   cursor: pointer;
-  margin-left: 10px;
+  margin-left: 8px;
 }
 
 .destination-delete:hover {
-  background-color: #c82333;
+  background-color: #fff5f5;
 }
 
-.comfyui-options .btn-success {
-  background-color: #28a745;
-  color: white;
-}
-
-.comfyui-options .btn-success:hover {
-  background-color: #218838;
-}
-
-.comfyui-options .btn-warning {
-  background-color: #ffc107;
-  color: #212529;
-}
-
-.comfyui-options .btn-warning:hover {
-  background-color: #e0a800;
-}
-
-.comfyui-options {
-  display: flex;
-  flex-direction: column;
-  gap: 15px;
+/* New Workflow Actions Styling */
+.workflow-actions {
+  background-color: #f8f9fa;
+  border: 2px solid #dee2e6;
+  border-radius: 6px;
+  padding: 4px;
   margin-top: 20px;
 }
 
-.comfyui-options .btn {
-  padding: 12px 20px;
-  font-size: 1rem;
-  border-radius: 6px;
-  cursor: pointer;
-  border: none;
-  transition: background-color 0.2s;
+.action-row {
+  display: flex;
+  align-items: center;
+  padding: 8px;
+  margin-bottom: 4px;
 }
 
-.comfyui-options .btn-primary {
+.action-row:last-child {
+  margin-bottom: 0;
+}
+
+.action-label {
+  color: #333;
+  font-weight: 500;
+  width: 60px;
+  text-align: left;
+  flex-shrink: 0;
+}
+
+.action-controls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1;
+  margin-left: 10px;
+}
+
+/* New Seed Container */
+.new-seed-container {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  background-color: #f8f9fa;
+  border: 2px solid #dee2e6;
+  border-radius: 4px;
+}
+
+/* Toggle Styling */
+.toggle-container {
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+}
+
+.toggle-container input[type="checkbox"] {
+  display: none;
+}
+
+.toggle-slider {
+  width: 32px;
+  height: 18px;
+  background-color: #ccc;
+  border-radius: 18px;
+  position: relative;
+  transition: background-color 0.3s;
+}
+
+.toggle-slider::before {
+  content: '';
+  position: absolute;
+  width: 14px;
+  height: 14px;
+  background-color: white;
+  border-radius: 50%;
+  top: 2px;
+  left: 2px;
+  transition: transform 0.3s;
+}
+
+.toggle-container input[type="checkbox"]:checked + .toggle-slider {
+  background-color: #007bff;
+}
+
+.toggle-container input[type="checkbox"]:checked + .toggle-slider::before {
+  transform: translateX(14px);
+}
+
+.toggle-text {
+  font-size: 0.85rem;
+  color: #333;
+  user-select: none;
+  cursor: pointer;
+}
+
+/* Number Picker Styling */
+.number-picker {
+  display: flex;
+  align-items: center;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  overflow: hidden;
+  background-color: white;
+}
+
+.number-btn {
+  background-color: #f8f9fa;
+  border: none;
+  padding: 4px;
+  cursor: pointer;
+  font-size: 12px;
+  color: #666;
+  transition: background-color 0.2s;
+  user-select: none;
+  width: 16px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.number-btn:hover {
+  background-color: #e9ecef;
+}
+
+.number-btn:active {
+  background-color: #dee2e6;
+}
+
+.number-btn[data-action="decrement"] {
+  content: '';
+}
+
+.number-btn[data-action="decrement"]:after {
+  content: '\276E';
+  font-size: 14px;
+}
+
+.number-btn[data-action="increment"]:after {
+  content: '\276F';
+  font-size: 14px;
+}
+
+.number-picker input[type="number"] {
+  border: none;
+  padding: 6px 8px;
+  width: 40px;
+  text-align: center;
+  font-size: 0.9rem;
+  font-family: inherit;
+  background-color: white;
+  margin: 0;
+  height: 32px;
+}
+
+.number-picker input[type="number"]:focus {
+  outline: none;
+  background-color: #f8f9fa;
+}
+
+/* Remove number input arrows */
+.number-picker input[type="number"]::-webkit-outer-spin-button,
+.number-picker input[type="number"]::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.number-picker input[type="number"] {
+  -moz-appearance: textfield;
+}
+
+/* Run Buttons */
+.run-buttons {
+  display: flex;
+  gap: 8px;
+  margin-left: auto;
+}
+
+.run-btn {
   background-color: #007bff;
   color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  font-weight: 500;
+  transition: all 0.3s ease;
+  white-space: nowrap;
+  min-width: 70px;
+  text-align: center;
 }
 
-.comfyui-options .btn-primary:hover {
+.run-btn:hover {
   background-color: #0056b3;
 }
 
-.comfyui-options .btn-secondary {
-  background-color: #6c757d;
+/* Waiting State */
+.run-btn.waiting {
+  background-color: white;
+  color: #6c757d;
+  border: 2px solid #6c757d;
+  animation: pulse 1.5s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.6; }
+}
+
+/* Success State */
+.run-btn.success {
+  background-color: white;
+  color: #333;
+  border: 2px solid #6c757d;
+  text-align: left;
+  padding-left: 12px;
+}
+
+.run-btn.shrinking {
+  transform-origin: left center;
+  transition: transform 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Open Button */
+.open-btn {
+  background-color: #28a745;
   color: white;
+  border: none;
+  padding: 8px 12px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  font-weight: 500;
+  opacity: 0;
+  transition: opacity 0.25s ease;
+  margin-left: 8px;
 }
 
-.comfyui-options .btn-secondary:hover {
-  background-color: #545b62;
+.open-btn.show {
+  opacity: 1;
 }
 
-/* Grid explanation in info modal */
+.open-btn:hover {
+  background-color: #218838;
+}
+
+/* Error State */
+.run-btn.error {
+  background-color: #dc3545;
+  color: white;
+  border: none;
+}
+
+.run-btn.error:hover {
+  background-color: #c82333;
+}
+
+/* ComfyUI Error Display */
+.comfyui-error {
+  margin-top: 15px;
+  padding: 10px;
+  background-color: #f8d7da;
+  color: #721c24;
+  border: 1px solid #f5c6cb;
+  border-radius: 4px;
+  font-size: 0.9rem;
+}
 .grid-explanation {
   display: grid;
   grid-template-columns: 1fr 1fr 1fr;
