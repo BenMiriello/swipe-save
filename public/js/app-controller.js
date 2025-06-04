@@ -343,6 +343,8 @@ class AppController {
   setupComfyUIModalHandlers() {
     const loadWithoutModifications = document.getElementById('loadWithoutModifications');
     const loadWithNewSeed = document.getElementById('loadWithNewSeed');
+    const queueWorkflow = document.getElementById('queueWorkflow');
+    const queueWithNewSeed = document.getElementById('queueWithNewSeed');
     
     if (loadWithoutModifications) {
       loadWithoutModifications.onclick = () => this.loadInComfyUI(false);
@@ -350,6 +352,14 @@ class AppController {
     
     if (loadWithNewSeed) {
       loadWithNewSeed.onclick = () => this.loadInComfyUI(true);
+    }
+    
+    if (queueWorkflow) {
+      queueWorkflow.onclick = () => this.queueInComfyUI(false);
+    }
+    
+    if (queueWithNewSeed) {
+      queueWithNewSeed.onclick = () => this.queueInComfyUI(true);
     }
   }
   
@@ -369,6 +379,26 @@ class AppController {
       await window.apiService.loadInComfyUI(currentFile, modifySeeds, destination);
     } catch (error) {
       alert('Failed to load workflow in ComfyUI: ' + error.message);
+    }
+  }
+  
+  /**
+   * Queue current image workflow in ComfyUI
+   * @param {boolean} modifySeeds - Whether to modify seed values
+   */
+  async queueInComfyUI(modifySeeds) {
+    if (this.state.allFiles.length === 0) return;
+    
+    const currentFile = this.state.allFiles[this.state.currentIndex];
+    const destination = window.uiManager.getSelectedDestination();
+    
+    window.uiManager.hideComfyUIModal();
+    
+    try {
+      await window.apiService.queueInComfyUI(currentFile, modifySeeds, destination);
+      alert(`Workflow queued successfully in ComfyUI!${modifySeeds ? ' (with modified seeds)' : ''}`);
+    } catch (error) {
+      alert('Failed to queue workflow in ComfyUI: ' + error.message);
     }
   }
 }

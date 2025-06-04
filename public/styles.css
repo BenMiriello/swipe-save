@@ -733,6 +733,24 @@ video.media-content[data-hide-controls]::-webkit-media-controls-volume-slider {
   background-color: #c82333;
 }
 
+.comfyui-options .btn-success {
+  background-color: #28a745;
+  color: white;
+}
+
+.comfyui-options .btn-success:hover {
+  background-color: #218838;
+}
+
+.comfyui-options .btn-warning {
+  background-color: #ffc107;
+  color: #212529;
+}
+
+.comfyui-options .btn-warning:hover {
+  background-color: #e0a800;
+}
+
 .comfyui-options {
   display: flex;
   flex-direction: column;

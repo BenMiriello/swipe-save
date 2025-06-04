@@ -362,6 +362,14 @@ const uiManager = {
       }
     });
     
+    // Setup ComfyUI modal close handlers
+    const comfyuiCloseButtons = this.elements.comfyuiModal ? this.elements.comfyuiModal.querySelectorAll('.close-modal') : [];
+    comfyuiCloseButtons.forEach(button => {
+      button.addEventListener('click', () => {
+        this.elements.comfyuiModal.style.display = "none";
+      });
+    });
+    
     // Save filename button
     const saveFilenameBtn = document.getElementById('saveFilename');
     if (saveFilenameBtn) {

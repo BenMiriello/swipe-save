@@ -454,20 +454,78 @@ const apiService = {
   },
   
   /**
+   * Queue workflow in ComfyUI via API
+   * @param {Object} file - Current file object
+   * @param {boolean} modifySeeds - Whether to modify seed values
+   * @param {string} comfyUrl - Custom ComfyUI URL
+   * @returns {Promise<void>}
+   */
+  async queueInComfyUI(file, modifySeeds = false, comfyUrl = null) {
+    try {
+      console.log('Queueing workflow in ComfyUI for file:', file.name);
+      
+      const workflowData = await this.getWorkflowFromImage(file);
+      if (!workflowData) {
+        throw new Error('No workflow found in image metadata');
+      }
+      
+      if (modifySeeds) {
+        this.modifyWorkflowSeeds(workflowData);
+        console.log('Seeds modified for queuing');
+      }
+      
+      const targetUrl = comfyUrl || this.getComfyUIUrl();
+      const clientId = this.generateClientId();
+      
+      const response = await fetch(`${targetUrl}/prompt`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          prompt: workflowData,
+          client_id: clientId
+        })
+      });
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`ComfyUI API error: ${response.status} - ${errorText}`);
+      }
+      
+      const result = await response.json();
+      console.log('Workflow queued successfully:', result);
+      
+      // Open ComfyUI to show progress
+      window.open(targetUrl, '_blank');
+      
+      return result;
+    } catch (error) {
+      console.error('Error queueing workflow:', error);
+      throw error;
+    }
+  },
+  
+  /**
    * Modify seed values in workflow by appending zero
    * @param {Object} workflow - Workflow object to modify
    */
   modifyWorkflowSeeds(workflow) {
     if (!workflow || typeof workflow !== 'object') return;
     
-    // Recursively search for seed values and modify them
+    console.log('Modifying seeds in workflow...');
+    let seedCount = 0;
+    
     const modifySeeds = (obj) => {
       if (typeof obj !== 'object' || obj === null) return;
       
       for (const key in obj) {
         if (key === 'seed' && typeof obj[key] === 'number') {
-          // Append zero to seed value
+          const oldSeed = obj[key];
           obj[key] = parseInt(obj[key].toString() + '0');
+          console.log(`Modified seed: ${oldSeed} -> ${obj[key]}`);
+          seedCount++;
+        } else if (key === 'inputs' && typeof obj[key] === 'object') {
+          // Check inputs object specifically for KSampler nodes
+          modifySeeds(obj[key]);
         } else if (typeof obj[key] === 'object') {
           modifySeeds(obj[key]);
         }
@@ -475,6 +533,7 @@ const apiService = {
     };
     
     modifySeeds(workflow);
+    console.log(`Total seeds modified: ${seedCount}`);
   }
 };
 
