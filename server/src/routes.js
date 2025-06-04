@@ -183,6 +183,42 @@ router.get('/api/history', (req, res) => {
   res.json(actionHistory);
 });
 
+// Extract workflow from image
+router.get('/api/workflow/:filename', async (req, res) => {
+  try {
+    const filename = decodeURIComponent(req.params.filename);
+    const filePath = path.join(config.OUTPUT_DIR, filename);
+    
+    if (!fs.existsSync(filePath)) {
+      return res.status(404).json({ error: 'File not found' });
+    }
+    
+    if (fs.statSync(filePath).isDirectory()) {
+      return res.status(400).json({ error: 'Path is a directory, not a file' });
+    }
+    
+    // Extract metadata including workflow
+    const metadata = await fileOps.extractComfyMetadata(filePath, filename);
+    
+    // Check if workflow was found
+    if (metadata.workflow) {
+      try {
+        // Try to parse the workflow JSON
+        const workflowData = JSON.parse(metadata.workflow);
+        res.json(workflowData);
+      } catch (parseError) {
+        console.error('Error parsing workflow JSON:', parseError);
+        res.status(500).json({ error: 'Invalid workflow JSON in image metadata' });
+      }
+    } else {
+      res.status(404).json({ error: 'No workflow found in image metadata' });
+    }
+  } catch (error) {
+    console.error('Error extracting workflow:', error);
+    res.status(500).json({ error: 'Failed to extract workflow from image' });
+  }
+});
+
 // Undo last action
 router.post('/api/undo', (req, res) => {
   try {
