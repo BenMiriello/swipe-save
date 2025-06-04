@@ -2,6 +2,8 @@ const fs = require('fs-extra');
 const path = require('path');
 const moment = require('moment');
 const config = require('./config');
+const extractChunks = require('png-chunks-extract');
+const textChunk = require('png-chunk-text');
 
 /**
  * Helper function to get file creation date
@@ -18,7 +20,7 @@ function getFileCreationDate(filePath) {
 }
 
 /**
- * Extract metadata from ComfyUI PNG files
+ * Extract metadata from ComfyUI PNG files using proper PNG chunk extraction
  */
 async function extractComfyMetadata(sourcePath, filename) {
   try {
@@ -38,158 +40,68 @@ async function extractComfyMetadata(sourcePath, filename) {
     }
     
     try {
-      // Read the file
+      // Read the PNG file
       const buffer = fs.readFileSync(sourcePath);
       
-      // Convert to string to search for metadata
-      // Note: PNG files can have text chunks which often contain metadata
-      const fileStr = buffer.toString('binary');
+      // Extract PNG chunks
+      const chunks = extractChunks(buffer);
       
-      // Capture everything between tEXt chunks
-      const pngInfoRegex = /tEXtpnginfo(.+?)(?=IDAT|IEND|tEXt)/s;
-      const match = fileStr.match(pngInfoRegex);
-      
-      if (match && match[1]) {
-        metadata.pnginfo = match[1];
-      }
-      
-      // Try to extract ComfyUI-specific metadata
-      // Look for chunks with specific keywords
-      const keywords = [
-        'prompt', 'workflow', 'comfy', 'parameters', 
-        'seed', 'model', 'extra'
-      ];
-      
-      // Function to extract JSON-like data
-      function extractJsonData(str, keyword) {
-        const regex = new RegExp(`"${keyword}"\\s*:\\s*({[^}]*(?:{[^}]*}[^}]*)*})`, 'g');
-        const matches = [];
-        let match;
-        
-        while ((match = regex.exec(str)) !== null) {
-          if (match[1]) {
-            matches.push(match[1]);
-          }
-        }
-        
-        return matches.length > 0 ? matches : null;
-      }
-      
-      // Extract complete text chunks that might contain workflow or prompt
-      const utf8Str = buffer.toString('utf8');
-      
-      // Function to extract a complete JSON object, handling nested braces
-      const extractCompleteJson = (text, startKey) => {
-        const keyIndex = text.indexOf(`"${startKey}"`);
-        if (keyIndex === -1) return null;
-        
-        // Find the colon after the key
-        const colonIndex = text.indexOf(':', keyIndex);
-        if (colonIndex === -1) return null;
-        
-        // Find the start of the JSON object
-        let startPos = text.indexOf('{', colonIndex);
-        if (startPos === -1) return null;
-        
-        // Track nesting level to find the matching closing brace
-        let braceLevel = 1;
-        let inString = false;
-        let i = startPos + 1;
-        
-        while (i < text.length && braceLevel > 0) {
-          const char = text.charAt(i);
-          
-          if (char === '"' && text.charAt(i-1) !== '\\') {
-            inString = !inString;
-          } else if (!inString) {
-            if (char === '{') {
-              braceLevel++;
-            } else if (char === '}') {
-              braceLevel--;
+      // Look for text chunks containing ComfyUI data
+      for (const chunk of chunks) {
+        if (chunk.name === 'tEXt') {
+          try {
+            // Parse the text chunk
+            const textData = textChunk.decode(chunk.data);
+            
+            // Check for ComfyUI-specific metadata
+            if (textData.keyword === 'workflow') {
+              try {
+                metadata.workflow = JSON.parse(textData.text);
+                console.log(`Found workflow metadata in ${filename}`);
+              } catch (parseError) {
+                console.log(`Workflow found but JSON parse failed in ${filename}:`, parseError.message);
+                metadata.workflowRaw = textData.text;
+              }
+            } else if (textData.keyword === 'prompt') {
+              try {
+                metadata.prompt = JSON.parse(textData.text);
+                console.log(`Found prompt metadata in ${filename}`);
+              } catch (parseError) {
+                console.log(`Prompt found but JSON parse failed in ${filename}:`, parseError.message);
+                metadata.promptRaw = textData.text;
+              }
+            } else if (textData.keyword === 'parameters') {
+              metadata.parameters = textData.text;
+              console.log(`Found parameters metadata in ${filename}`);
+            } else if (textData.keyword.toLowerCase().includes('comfy')) {
+              metadata[textData.keyword] = textData.text;
+              console.log(`Found ComfyUI metadata key '${textData.keyword}' in ${filename}`);
             }
-          }
-          
-          i++;
-        }
-        
-        if (braceLevel === 0) {
-          // Extract the complete JSON object including outer braces
-          return text.substring(startPos, i);
-        }
-        
-        return null;
-      };
-      
-      // Try to extract workflow and prompt as complete JSON objects
-      const workflowJson = extractCompleteJson(utf8Str, "workflow");
-      if (workflowJson) {
-        metadata.workflow = workflowJson;
-      }
-      
-      const promptJson = extractCompleteJson(utf8Str, "prompt");
-      if (promptJson) {
-        metadata.prompt = promptJson;
-      }
-      
-      // Extract additional ComfyUI metadata
-      keywords.forEach(keyword => {
-        if (keyword !== 'workflow' && keyword !== 'prompt') {
-          const extracted = extractJsonData(utf8Str, keyword);
-          if (extracted) {
-            metadata[keyword] = extracted;
+          } catch (textParseError) {
+            console.log(`Error parsing text chunk in ${filename}:`, textParseError.message);
           }
         }
-      });
-      
-      // Extract seeds (these are particularly important)
-      const seedRegex = /"seed"\s*:\s*(\d+)/g;
-      const seeds = [];
-      let seedMatch;
-      
-      while ((seedMatch = seedRegex.exec(utf8Str)) !== null) {
-        seeds.push(parseInt(seedMatch[1]));
       }
       
-      if (seeds.length > 0) {
-        metadata.seeds = seeds;
-      }
+      // Log what we found
+      const foundKeys = Object.keys(metadata).filter(key => 
+        !['filename', 'filesize', 'createdAt', 'modifiedAt', 'absolutePath'].includes(key)
+      );
       
-      // Extract model names
-      const modelRegex = /"model"\s*:\s*"([^"]+)"/g;
-      const models = [];
-      let modelMatch;
-      
-      while ((modelMatch = modelRegex.exec(utf8Str)) !== null) {
-        models.push(modelMatch[1]);
-      }
-      
-      if (models.length > 0) {
-        metadata.models = models;
-      }
-      
-      // Also try a basic string extraction of the raw metadata
-      const pngInfoChunk = utf8Str.indexOf('parameters');
-      if (pngInfoChunk !== -1) {
-        const endChunk = utf8Str.indexOf('\0', pngInfoChunk);
-        if (endChunk !== -1) {
-          metadata.rawParameters = utf8Str.substring(pngInfoChunk, endChunk);
-        }
-      }
-      
-      // Look for text in the PNG specifically about ComfyUI
-      const comfyMatch = utf8Str.match(/ComfyUI.*?(?:\0|$)/);
-      if (comfyMatch) {
-        metadata.comfyInfo = comfyMatch[0].replace(/\0/g, '');
+      if (foundKeys.length > 0) {
+        console.log(`Extracted metadata keys from ${filename}:`, foundKeys);
+      } else {
+        console.log(`No ComfyUI metadata found in ${filename}`);
       }
       
     } catch (error) {
-      console.error(`Error extracting detailed metadata: ${error.message}`);
+      console.error(`Error extracting PNG chunks from ${filename}:`, error.message);
       metadata.extractionError = error.message;
     }
     
     return metadata;
   } catch (error) {
-    console.error(`Error in metadata extraction: ${error.message}`);
+    console.error(`Error in metadata extraction for ${filename}:`, error.message);
     return {
       filename: filename,
       error: error.message
