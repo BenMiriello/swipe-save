@@ -4,7 +4,7 @@
 const config = {
   // API endpoint handling
   getApiUrl: () => `${window.location.protocol}//${window.location.host}`,
-  
+
   // Action types
   actions: {
     ARCHIVE: 'archive',
@@ -17,7 +17,7 @@ const config = {
     DELETE: 'delete',
     OPEN_FILE: 'open_file'
   },
-  
+
   // Keyboard mapping for actions
   keyboardMap: {
     // Left side keyboard layout
@@ -37,7 +37,7 @@ const config = {
     'Z': 'archive_bad',
     'x': 'saved_wip',
     'X': 'saved_wip',
-    
+
     // Right side keyboard layout
     'j': 'archive',
     'J': 'archive',
@@ -55,7 +55,7 @@ const config = {
     'M': 'archive_bad',
     ',': 'saved_wip'
   },
-  
+
   // Grid zone configuration for tap areas
   zoneConfig: [
     { className: 'top-left', action: 'archive_good' },
@@ -68,7 +68,7 @@ const config = {
     { className: 'bottom-middle', action: 'delete' },
     { className: 'bottom-right', action: 'saved_wip' }
   ],
-  
+
   // Instructions content for the info modal
   instructionsContent: `
     <h3>Keyboard Controls</h3>
@@ -93,7 +93,7 @@ const config = {
       <li><strong>Command+S:</strong> Download current image</li>
       <li><strong>Command+R:</strong> Refresh</li>
     </ul>
-    
+
     <h3>Tap Zones</h3>
     <p>The image is divided into a 3x3 grid:</p>
     <div class="grid-explanation">
@@ -101,7 +101,7 @@ const config = {
       <div>Archive</div><div>Open File</div><div>Save</div>
       <div>Archive Bad</div><div>Delete</div><div>Save WIP</div>
     </div>
-    
+
     <h3>Swipe Actions</h3>
     <ul>
       <li><strong>Left swipe:</strong> Archive</li>

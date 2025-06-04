@@ -9,13 +9,13 @@ const errorHandler = {
     // Set up global error handler
     window.addEventListener('error', this.handleGlobalError.bind(this));
     window.addEventListener('unhandledrejection', this.handlePromiseRejection.bind(this));
-    
+
     // Adding retry mechanism for API calls
     this.setupFetchRetry();
-    
+
     console.log('Error handler initialized');
   },
-  
+
   /**
    * Handle global JavaScript errors
    * @param {ErrorEvent} event - Error event
@@ -28,7 +28,7 @@ const errorHandler = {
       colno: event.colno,
       error: event.error
     });
-    
+
     // Show error in UI if appropriate
     if (event.error && event.error.message && window.uiManager) {
       const mediaList = document.getElementById('mediaList');
@@ -37,7 +37,7 @@ const errorHandler = {
       }
     }
   },
-  
+
   /**
    * Handle unhandled Promise rejections
    * @param {PromiseRejectionEvent} event - Promise rejection event
@@ -45,17 +45,17 @@ const errorHandler = {
   handlePromiseRejection(event) {
     console.error('Unhandled promise rejection:', event.reason);
   },
-  
+
   /**
    * Add retry mechanism to fetch API
    */
   setupFetchRetry() {
     const originalFetch = window.fetch;
-    
+
     window.fetch = async function(...args) {
       let retries = 3;
       let lastError;
-      
+
       while (retries > 0) {
         try {
           const response = await originalFetch.apply(this, args);
@@ -68,7 +68,7 @@ const errorHandler = {
           await new Promise(resolve => setTimeout(resolve, (4 - retries) * 500));
         }
       }
-      
+
       throw lastError;
     };
   }

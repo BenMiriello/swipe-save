@@ -13,34 +13,35 @@ const uiManager = {
     counterContainer: null,
     controls: null
   },
-  
+
   /**
    * Initialize UI elements
    */
   initializeUI() {
     // Create needed DOM elements if they don't exist
     this.createInitialElements();
-    
+
     // Get references to DOM elements
     this.elements.mediaList = document.getElementById('mediaList');
     this.elements.modal = document.getElementById('filenameModal');
     this.elements.comfyuiModal = document.getElementById('comfyuiModal');
     this.elements.filenameInput = document.getElementById('customFilename');
     this.elements.counterContainer = document.querySelector('.counter-container');
-    
+    this.elements.numberDialModal = document.getElementById('numberDialModal');
+
     // Create the info modal if not already present
     this.createInfoModal();
-    
+
     // Create directory browser modal
     this.createDirectoryBrowser();
-    
+
     // Initialize options menu
     this.initializeOptionsMenu();
-    
+
     // Load current config
     this.loadCurrentConfig();
   },
-  
+
   /**
    * Create initial elements needed by the application
    */
@@ -49,48 +50,48 @@ const uiManager = {
     if (!document.querySelector('.bottom-controls')) {
       const bottomControls = document.createElement('div');
       bottomControls.className = 'bottom-controls';
-      
+
       // Add counter to the left
       const counterContainer = document.createElement('div');
       counterContainer.className = 'counter-container';
       counterContainer.textContent = 'No images';
-      
+
       // Add controls in the center
       const controls = document.createElement('div');
       controls.className = 'controls';
-      
+
       // Add navigation buttons
       const prevButton = document.createElement('button');
       prevButton.className = 'btn btn-secondary';
       prevButton.textContent = 'Previous';
-      
+
       const nextButton = document.createElement('button');
       nextButton.className = 'btn btn-secondary';
       nextButton.textContent = 'Next';
-      
+
       // Add undo button
       const undoButton = document.createElement('button');
       undoButton.className = 'btn btn-undo';
       undoButton.textContent = 'Undo';
-      
+
       controls.appendChild(prevButton);
       controls.appendChild(undoButton);
       controls.appendChild(nextButton);
-      
+
       // Add bottom controls to container
       bottomControls.appendChild(counterContainer);
       bottomControls.appendChild(controls);
-      
+
       // Add spacer to balance the counter
       const spacer = document.createElement('div');
       spacer.className = 'spacer';
       bottomControls.appendChild(spacer);
-      
+
       const container = document.querySelector('.container');
       container.appendChild(bottomControls);
     }
   },
-  
+
   /**
    * Create info modal with instructions
    */
@@ -100,7 +101,7 @@ const uiManager = {
       this.elements.infoModal = document.getElementById('infoModal');
       return;
     }
-    
+
     const infoModal = document.createElement('div');
     infoModal.id = 'infoModal';
     infoModal.className = 'modal';
@@ -115,12 +116,12 @@ const uiManager = {
     `;
     document.body.appendChild(infoModal);
     this.elements.infoModal = infoModal;
-    
+
     // Close info modal when clicking X
     document.getElementById('closeInfoModal').addEventListener('click', () => {
       this.elements.infoModal.style.display = "none";
     });
-    
+
     // Close info modal when clicking outside
     window.addEventListener('click', (event) => {
       if (event.target === this.elements.infoModal) {
@@ -128,16 +129,45 @@ const uiManager = {
       }
     });
   },
-  
+
+  /**
+   * Create number dial modal for media selection
+   */
+  createNumberDialModal() {
+    if (document.getElementById('numberDialModal')) {
+      this.elements.numberDialModal = document.getElementById('numberDialModal');
+      return;
+    }
+
+    const dialModal = document.createElement('div');
+    dialModal.id = 'numberDialModal';
+    dialModal.className = 'number-dial-modal';
+    dialModal.innerHTML = `
+      <div class="number-dial-container">
+        <button class="dial-close">&times;</button>
+        <div class="dial-header">Select Media Item</div>
+        <div class="dial-track">
+          <div class="dial-thumb" id="dialThumb"></div>
+        </div>
+        <div class="dial-numbers" id="dialNumbers"></div>
+        <div class="dial-arrows">
+          <button class="dial-arrow" id="dialPrev">‹</button>
+          <button class="dial-arrow" id="dialNext">›</button>
+        </div>
+      </div>
+    `;
+
+    document.body.appendChild(dialModal);
+    this.elements.numberDialModal = dialModal;
+
+    this.setupNumberDialHandlers();
+  },
+
   /**
    * Create directory browser modal
    */
   createDirectoryBrowser() {
-    if (document.getElementById('directoryBrowser')) {
-      this.elements.directoryBrowser = document.getElementById('directoryBrowser');
-      return;
-    }
-    
+
     const browserModal = document.createElement('div');
     browserModal.id = 'directoryBrowser';
     browserModal.className = 'modal';
@@ -158,22 +188,22 @@ const uiManager = {
         </div>
       </div>
     `;
-    
+
     document.body.appendChild(browserModal);
     this.elements.directoryBrowser = browserModal;
-    
+
     // Close modal handlers
     document.getElementById('closeBrowserModal').addEventListener('click', () => {
       this.elements.directoryBrowser.style.display = 'none';
     });
-    
+
     window.addEventListener('click', (event) => {
       if (event.target === this.elements.directoryBrowser) {
         this.elements.directoryBrowser.style.display = 'none';
       }
     });
   },
-  
+
   /**
    * Load and display current configuration
    */
@@ -185,25 +215,25 @@ const uiManager = {
       console.error('Error loading config:', error);
     }
   },
-  
+
   /**
    * Update config display in options dropdown
    */
   updateConfigDisplay(config) {
     const sourcePathEl = document.getElementById('sourcePathClickable');
     const destPathEl = document.getElementById('destPathClickable');
-    
+
     if (sourcePathEl && config.sourceDir) {
       sourcePathEl.textContent = this.shortenPath(config.sourceDir);
       sourcePathEl.title = `Click to browse: ${config.sourceDir}`;
     }
-    
+
     if (destPathEl && config.destinationDir) {
       destPathEl.textContent = this.shortenPath(config.destinationDir);
       destPathEl.title = `Click to browse: ${config.destinationDir}`;
     }
   },
-  
+
   /**
    * Shorten path for display
    */
@@ -212,7 +242,7 @@ const uiManager = {
     const parts = path.split('/');
     return '.../' + parts.slice(-2).join('/');
   },
-  
+
   /**
    * Initialize options menu
    */
@@ -220,7 +250,7 @@ const uiManager = {
     // Create options container if not present
     const headerContainer = document.querySelector('.header-container');
     const existingOptionsContainer = document.querySelector('.options-container');
-    
+
     if (existingOptionsContainer) {
       this.elements.optionsContainer = existingOptionsContainer;
       this.elements.optionsButton = existingOptionsContainer.querySelector('.btn-options');
@@ -228,11 +258,11 @@ const uiManager = {
     } else {
       const optionsContainer = document.createElement('div');
       optionsContainer.className = 'options-container';
-      
+
       const optionsButton = document.createElement('button');
       optionsButton.className = 'btn btn-options';
       optionsButton.textContent = 'Options';
-      
+
       const optionsDropdown = document.createElement('div');
       optionsDropdown.className = 'options-dropdown';
       optionsDropdown.innerHTML = `
@@ -256,19 +286,19 @@ const uiManager = {
           <li id="showInfo">Show Instructions</li>
         </ul>
       `;
-      
+
       optionsContainer.appendChild(optionsButton);
       optionsContainer.appendChild(optionsDropdown);
-      
+
       // Insert at the beginning of header
       headerContainer.insertBefore(optionsContainer, headerContainer.firstChild);
-      
+
       this.elements.optionsContainer = optionsContainer;
       this.elements.optionsButton = optionsButton;
       this.elements.optionsDropdown = optionsDropdown;
     }
   },
-  
+
   /**
    * Set up event handlers for UI elements
    * @param {Object} handlers - Object containing handler functions
@@ -276,12 +306,12 @@ const uiManager = {
   setupEventHandlers(handlers) {
     // Ensure elements exist before attaching handlers
     if (!this.elements.optionsButton) return;
-    
+
     // Options button toggle
     this.elements.optionsButton.addEventListener('click', () => {
       this.toggleOptionsDropdown();
     });
-    
+
     // Close dropdown when clicking outside
     window.addEventListener('click', (event) => {
       if (!this.elements.optionsButton.contains(event.target) && 
@@ -289,7 +319,7 @@ const uiManager = {
         this.elements.optionsDropdown.classList.remove('show');
       }
     });
-    
+
     // Custom name option
     const customNameEl = document.getElementById('customName');
     if (customNameEl) {
@@ -298,7 +328,7 @@ const uiManager = {
         this.elements.optionsDropdown.classList.remove('show');
       });
     }
-    
+
     // Clickable source path to browse
     const sourcePathEl = document.getElementById('sourcePathClickable');
     if (sourcePathEl) {
@@ -307,7 +337,7 @@ const uiManager = {
         this.elements.optionsDropdown.classList.remove('show');
       });
     }
-    
+
     // Clickable destination path to browse
     const destPathEl = document.getElementById('destPathClickable');
     if (destPathEl) {
@@ -316,7 +346,7 @@ const uiManager = {
         this.elements.optionsDropdown.classList.remove('show');
       });
     }
-    
+
     // Use default source button
     const useDefaultSourceEl = document.getElementById('useDefaultSource');
     if (useDefaultSourceEl) {
@@ -325,7 +355,7 @@ const uiManager = {
         this.elements.optionsDropdown.classList.remove('show');
       });
     }
-    
+
     // Use default destination button
     const useDefaultDestEl = document.getElementById('useDefaultDest');
     if (useDefaultDestEl) {
@@ -334,7 +364,7 @@ const uiManager = {
         this.elements.optionsDropdown.classList.remove('show');
       });
     }
-    
+
     // Show info option
     const showInfoEl = document.getElementById('showInfo');
     if (showInfoEl) {
@@ -343,7 +373,7 @@ const uiManager = {
         this.elements.optionsDropdown.classList.remove('show');
       });
     }
-    
+
     // Modal close button
     const closeModal = document.querySelector('.close-modal');
     if (closeModal) {
@@ -351,7 +381,7 @@ const uiManager = {
         this.elements.modal.style.display = "none";
       });
     }
-    
+
     // Click outside modal to close
     window.addEventListener('click', (event) => {
       if (event.target === this.elements.modal) {
@@ -361,7 +391,7 @@ const uiManager = {
         this.elements.comfyuiModal.style.display = "none";
       }
     });
-    
+
     // Setup ComfyUI modal close handlers
     const comfyuiCloseButtons = this.elements.comfyuiModal ? this.elements.comfyuiModal.querySelectorAll('.close-modal') : [];
     comfyuiCloseButtons.forEach(button => {
@@ -369,7 +399,7 @@ const uiManager = {
         this.elements.comfyuiModal.style.display = "none";
       });
     });
-    
+
     // Save filename button
     const saveFilenameBtn = document.getElementById('saveFilename');
     if (saveFilenameBtn) {
@@ -379,36 +409,44 @@ const uiManager = {
         handlers.saveCustomFilename(customFilename);
       });
     }
-    
+
+    // Counter click to open number dial
+    const counterContainer = document.querySelector('.counter-container');
+    if (counterContainer) {
+      counterContainer.addEventListener('click', () => {
+        this.openNumberDial();
+      });
+    }
+
     // Navigation buttons
     const prevButton = document.querySelector('.btn-secondary:first-child');
     if (prevButton) {
       prevButton.addEventListener('click', handlers.showPrevious);
     }
-    
+
     const nextButton = document.querySelector('.btn-secondary:last-of-type');
     if (nextButton) {
       nextButton.addEventListener('click', handlers.showNext);
     }
-    
+
     // Undo button
     const undoButton = document.querySelector('.btn-undo');
     if (undoButton) {
       undoButton.addEventListener('click', handlers.undoLastAction);
     }
-    
+
     // Header buttons
     const comfyuiIcon = document.querySelector('.comfyui-icon');
     if (comfyuiIcon) {
       comfyuiIcon.addEventListener('click', handlers.openComfyUIModal);
     }
-    
+
     const saveIcon = document.querySelector('.save-icon');
     if (saveIcon) {
       saveIcon.addEventListener('click', handlers.downloadCurrentFile);
     }
   },
-  
+
   /**
    * Toggle options dropdown visibility
    */
@@ -417,7 +455,7 @@ const uiManager = {
       this.elements.optionsDropdown.classList.toggle('show');
     }
   },
-  
+
   /**
    * Show filename modal for renaming
    * @param {string} currentFilename - Current filename
@@ -425,17 +463,17 @@ const uiManager = {
    */
   showFilenameModal(currentFilename, customFilename) {
     if (!this.elements.filenameInput || !this.elements.modal) return;
-    
+
     this.elements.filenameInput.value = customFilename || currentFilename;
     this.elements.modal.style.display = "block";
-    
+
     // Focus and select the input text
     setTimeout(() => {
       this.elements.filenameInput.focus();
       this.elements.filenameInput.select();
     }, 50);
   },
-  
+
   /**
    * Update image counter display
    * @param {number} currentIndex - Current image index
@@ -447,14 +485,14 @@ const uiManager = {
       this.elements.counterContainer = document.querySelector('.counter-container');
       if (!this.elements.counterContainer) return;
     }
-    
+
     if (totalFiles === 0) {
       this.elements.counterContainer.textContent = 'No images';
     } else {
       this.elements.counterContainer.textContent = `${currentIndex + 1} of ${totalFiles}`;
     }
   },
-  
+
   /**
    * Show loading indicator
    */
@@ -463,7 +501,7 @@ const uiManager = {
       this.elements.mediaList.innerHTML = '<div style="text-align:center;">Loading...</div>';
     }
   },
-  
+
   /**
    * Show error message
    * @param {string} message - Error message
@@ -475,7 +513,7 @@ const uiManager = {
       </div>`;
     }
   },
-  
+
   /**
    * Show empty state when no files are available
    */
@@ -484,7 +522,7 @@ const uiManager = {
       this.elements.mediaList.innerHTML = '<div class="no-media">No media files found</div>';
     }
   },
-  
+
   /**
    * Create a media item element for display
    * @param {Object} file - Media file object
@@ -496,35 +534,35 @@ const uiManager = {
     const item = document.createElement('div');
     item.className = 'media-item';
     item.dataset.filename = file.name;
-    
+
     // Create content based on file type
     let mediaContent;
-    
+
     if (/\.(png|jpe?g|gif|bmp|webp|tiff?|svg)$/i.test(file.name)) {
       mediaContent = this.createImageElement(file, apiUrl);
     } else if (/\.(mp4|webm|mov|avi|mkv|flv|wmv|m4v|3gp|ogv)$/i.test(file.name)) {
       mediaContent = this.createVideoElement(file, apiUrl);
     }
-    
+
     // Add filename path container above image
     const filenameContainer = document.createElement('div');
     filenameContainer.className = 'filename-container';
-    
+
     // Extract path and actual filesystem path instead of browser URL
     // Get the original path from file (which should be the filesystem path)
     // This assumes 'file' contains the original path somewhere, either in name or as a property
     const fsPath = file.originalPath || file.name; // Using file.name as fallback
-    
+
     // Create path + bold filename
     const filenamePath = document.createElement('div');
     filenamePath.className = 'filename-path';
     filenamePath.innerHTML = `<strong>${customFilename || file.name}</strong>`;
     filenameContainer.appendChild(filenamePath);
-    
+
     // Create 9-zone grid for taps
     const tapZones = document.createElement('div');
     tapZones.className = 'tap-zones';
-    
+
     // Create zones according to config
     window.appConfig.zoneConfig.forEach(zone => {
       const zoneElement = document.createElement('div');
@@ -534,20 +572,20 @@ const uiManager = {
       }
       tapZones.appendChild(zoneElement);
     });
-    
+
     // Create swipe instruction element
     const swipeInstruction = document.createElement('div');
     swipeInstruction.className = 'swipe-instruction';
-    
+
     // Assemble the media item - filename first, then media content
     item.appendChild(filenameContainer);
     item.appendChild(mediaContent);
     item.appendChild(tapZones);
     item.appendChild(swipeInstruction);
-    
+
     return item;
   },
-  
+
   /**
    * Create image element
    * @param {Object} file - File object
@@ -559,7 +597,7 @@ const uiManager = {
     img.src = `${apiUrl}${file.path}`;
     img.alt = file.name;
     img.className = 'media-content';
-    
+
     // Check orientation after loading
     img.onload = function() {
       const parentItem = this.closest('.media-item');
@@ -571,10 +609,10 @@ const uiManager = {
         }
       }
     };
-    
+
     return img;
   },
-  
+
   /**
    * Create video element with improved playback
    * @param {Object} file - File object
@@ -591,12 +629,12 @@ const uiManager = {
     video.playsInline = true;
     video.preload = 'auto';
     video.className = 'media-content';
-    
+
     // Try to autoplay once metadata is loaded (like original)
     video.addEventListener('loadedmetadata', function() {
       this.play().catch(e => console.log('Auto-play prevented:', e));
     });
-    
+
     // Hide controls overlay after short delay for better viewing
     video.addEventListener('play', function() {
       setTimeout(() => {
@@ -605,21 +643,21 @@ const uiManager = {
         }
       }, 800);
     });
-    
+
     // Show controls on interaction
     video.addEventListener('mouseenter', function() {
       this.removeAttribute('data-hide-controls');
     });
-    
+
     video.addEventListener('pause', function() {
       this.removeAttribute('data-hide-controls');
     });
-    
+
     // Handle click to play/pause (like original)
     video.addEventListener('click', function(e) {
       const rect = this.getBoundingClientRect();
       const y = e.clientY - rect.top;
-      
+
       // Avoid conflicting with the video controls at the bottom
       if (y < rect.height - 40) { 
         if (this.paused) {
@@ -629,34 +667,34 @@ const uiManager = {
         }
       }
     });
-    
+
     return video;
   },
-  
+
   /**
    * Setup pinch zoom for images
    */
   setupPinchZoom() {
     const mediaContent = document.querySelector('.media-content');
     if (!mediaContent || mediaContent.tagName !== 'IMG') return;
-    
+
     // Check if PinchZoom is available
     if (typeof window.PinchZoom === 'undefined') {
       console.log('PinchZoom library not available');
       return;
     }
-    
+
     try {
       const container = mediaContent.parentElement;
-      
+
       // Create a wrapper for pinch zoom
       const wrapper = document.createElement('div');
       wrapper.className = 'pinch-zoom-container';
-      
+
       // Move the image into the wrapper
       container.insertBefore(wrapper, mediaContent);
       wrapper.appendChild(mediaContent);
-      
+
       // Initialize pinch zoom
       new window.PinchZoom(wrapper, {
         draggable: true,
@@ -674,10 +712,10 @@ const uiManager = {
    */
   showActionFeedback(mediaItem, action) {
     if (!mediaItem) return;
-    
+
     // Add swipe class for transition effect
     mediaItem.classList.add(`swipe-${action}`);
-    
+
     // Show instruction text
     const instruction = mediaItem.querySelector('.swipe-instruction');
     if (instruction) {
@@ -698,7 +736,7 @@ const uiManager = {
       instruction.style.opacity = 1;
     }
   },
-  
+
   /**
    * Hide action feedback (for error cases)
    * @param {HTMLElement} mediaItem - Media item element
@@ -706,15 +744,15 @@ const uiManager = {
    */
   hideActionFeedback(mediaItem, action) {
     if (!mediaItem) return;
-    
+
     mediaItem.classList.remove(`swipe-${action}`);
-    
+
     const instruction = mediaItem.querySelector('.swipe-instruction');
     if (instruction) {
       instruction.style.opacity = 0;
     }
   },
-  
+
   /**
    * Shows an action label when a tap zone is clicked
    * @param {string} actionName - Name of the action
@@ -723,7 +761,7 @@ const uiManager = {
   showActionLabel(actionName, rect) {
     const actionLabel = document.createElement('div');
     actionLabel.className = 'action-label';
-    
+
     switch(actionName) {
       case 'archive': actionLabel.textContent = 'Archived'; break;
       case 'archive_good': actionLabel.textContent = 'Archived - Good'; break;
@@ -735,13 +773,13 @@ const uiManager = {
       case 'delete': actionLabel.textContent = 'Deleted'; break;
       case 'open_file': actionLabel.textContent = 'Opening File'; break;
     }
-    
+
     document.body.appendChild(actionLabel);
-    
+
     // Position the label
     actionLabel.style.top = rect.top + rect.height / 2 + 'px';
     actionLabel.style.left = rect.left + rect.width / 2 + 'px';
-    
+
     // Animate and remove after 1 second
     setTimeout(() => {
       actionLabel.classList.add('fade-out');
@@ -752,7 +790,7 @@ const uiManager = {
       }, 300);
     }, 1000);
   },
-  
+
   /**
    * Open directory browser
    * @param {string} type - 'source' or 'destination'
@@ -760,10 +798,10 @@ const uiManager = {
   async openDirectoryBrowser(type) {
     this.currentBrowserType = type;
     this.elements.directoryBrowser.style.display = 'block';
-    
+
     const title = document.getElementById('browserTitle');
     title.textContent = type === 'source' ? 'Select Source Directory' : 'Select Destination Directory';
-    
+
     // Start with current config path or home directory
     try {
       const config = await window.apiService.getConfig();
@@ -773,10 +811,10 @@ const uiManager = {
       const homePath = '/Users/' + (window.navigator.userAgent.includes('Mac') ? process.env.USER || 'user' : 'user');
       await this.browseDirectory(homePath);
     }
-    
+
     this.setupDirectoryBrowserHandlers();
   },
-  
+
   /**
    * Browse a directory
    * @param {string} path - Directory path to browse
@@ -785,25 +823,25 @@ const uiManager = {
     const directoryList = document.getElementById('directoryList');
     const currentPath = document.getElementById('currentPath');
     const upButton = document.getElementById('upButton');
-    
+
     try {
       directoryList.innerHTML = 'Loading...';
       const result = await window.apiService.browseDirectory(path);
-      
+
       this.currentBrowserPath = result.currentPath;
       currentPath.textContent = result.currentPath;
-      
+
       // Enable/disable up button
       upButton.disabled = !result.parentPath;
-      
+
       // Create directory listing
       directoryList.innerHTML = '';
-      
+
       if (result.directories.length === 0) {
         directoryList.innerHTML = '<div class="no-directories">No subdirectories found</div>';
         return;
       }
-      
+
       result.directories.forEach(dir => {
         const dirItem = document.createElement('div');
         dirItem.className = 'directory-item';
@@ -820,7 +858,7 @@ const uiManager = {
       directoryList.innerHTML = `<div style="color: red;">Error: ${error.message}</div>`;
     }
   },
-  
+
   /**
    * Setup directory browser event handlers
    */
@@ -833,7 +871,7 @@ const uiManager = {
         await this.browseDirectory(parentPath);
       }
     };
-    
+
     // Select directory button
     const selectButton = document.getElementById('selectDirectory');
     selectButton.onclick = async () => {
@@ -841,14 +879,14 @@ const uiManager = {
         await this.selectDirectory(this.currentBrowserPath, this.currentBrowserType);
       }
     };
-    
+
     // Cancel button
     const cancelButton = document.getElementById('cancelBrowser');
     cancelButton.onclick = () => {
       this.elements.directoryBrowser.style.display = 'none';
     };
   },
-  
+
   /**
    * Select a directory and update config
    * @param {string} path - Selected directory path
@@ -858,13 +896,13 @@ const uiManager = {
     try {
       const updateData = {};
       updateData[type + 'Dir'] = path;
-      
+
       const result = await window.apiService.updateConfig(updateData);
-      
+
       if (result.success) {
         this.updateConfigDisplay(result.config);
         this.elements.directoryBrowser.style.display = 'none';
-        
+
         // Refresh files if source directory changed
         if (type === 'source' && window.appController) {
           window.appController.fetchMediaFiles();
@@ -874,7 +912,7 @@ const uiManager = {
       alert('Failed to update directory: ' + error.message);
     }
   },
-  
+
   /**
    * Use default directory for source or destination
    * @param {string} type - 'source' or 'destination'
@@ -885,15 +923,15 @@ const uiManager = {
         source: '/home/simonsays/Documents/ComfyUI/output',
         destination: '/home/simonsays/Documents/ComfyUI/output/swipe-save'
       };
-      
+
       const updateData = {};
       updateData[type + 'Dir'] = defaults[type];
-      
+
       const result = await window.apiService.updateConfig(updateData);
-      
+
       if (result.success) {
         this.updateConfigDisplay(result.config);
-        
+
         // Refresh files if source directory changed
         if (type === 'source' && window.appController) {
           window.appController.fetchMediaFiles();
@@ -903,7 +941,7 @@ const uiManager = {
       alert('Failed to set default directory: ' + error.message);
     }
   },
-  
+
   /**
    * Show ComfyUI modal
    */
@@ -912,7 +950,7 @@ const uiManager = {
       this.elements.comfyuiModal.style.display = "block";
     }
   },
-  
+
   /**
    * Hide ComfyUI modal
    */
@@ -921,43 +959,43 @@ const uiManager = {
       this.elements.comfyuiModal.style.display = "none";
     }
   },
-  
+
   /**
    * Initialize ComfyUI destination management
    */
   initializeComfyUIDestinations() {
     const input = document.getElementById('comfyuiDestination');
     const saveBtn = document.getElementById('saveDestination');
-    
+
     if (input && saveBtn) {
       // Load saved destinations
       this.loadSavedDestinations();
-      
+
       // Set default destination
       if (!input.value) {
         input.value = this.getDefaultComfyUIUrl();
       }
-      
+
       // Store original value to detect changes
       input.originalValue = input.value;
-      
+
       // Show save button when input changes
       input.addEventListener('input', () => {
         const hasChanged = input.value.trim() !== input.originalValue;
         saveBtn.style.display = hasChanged ? 'inline-block' : 'none';
-        
+
         // Refresh destination list when input changes
         const saved = this.loadSavedDestinations();
         this.renderDestinations(saved);
       });
-      
+
       // Save destination on button click
       saveBtn.addEventListener('click', () => {
         this.saveDestination(input.value.trim());
         input.originalValue = input.value.trim();
         saveBtn.style.display = 'none';
       });
-      
+
       // Save on Enter key
       input.addEventListener('keypress', (e) => {
         if (e.key === 'Enter') {
@@ -968,7 +1006,7 @@ const uiManager = {
       });
     }
   },
-  
+
   /**
    * Get default ComfyUI URL
    */
@@ -976,7 +1014,7 @@ const uiManager = {
     const currentUrl = new URL(window.location.href);
     return `${currentUrl.protocol}//${currentUrl.hostname}:8188`;
   },
-  
+
   /**
    * Load saved destinations from storage
    */
@@ -984,13 +1022,13 @@ const uiManager = {
     try {
       const saved = JSON.parse(localStorage.getItem('comfyui-destinations') || '[]');
       const defaultUrl = this.getDefaultComfyUIUrl();
-      
+
       // Ensure default is always included
       if (!saved.includes(defaultUrl)) {
         saved.unshift(defaultUrl);
         localStorage.setItem('comfyui-destinations', JSON.stringify(saved));
       }
-      
+
       this.renderDestinations(saved);
       return saved;
     } catch (error) {
@@ -1000,29 +1038,29 @@ const uiManager = {
       return [defaultUrl];
     }
   },
-  
+
   /**
    * Save a new destination
    */
   saveDestination(url) {
     if (!url) return;
-    
+
     try {
       const saved = JSON.parse(localStorage.getItem('comfyui-destinations') || '[]');
-      
+
       if (!saved.includes(url)) {
         saved.push(url);
         localStorage.setItem('comfyui-destinations', JSON.stringify(saved));
         this.renderDestinations(saved);
       }
-      
+
       // Select the new destination
       this.selectDestination(url);
     } catch (error) {
       console.error('Error saving destination:', error);
     }
   },
-  
+
   /**
    * Delete a destination
    */
@@ -1030,15 +1068,15 @@ const uiManager = {
     try {
       let saved = JSON.parse(localStorage.getItem('comfyui-destinations') || '[]');
       saved = saved.filter(dest => dest !== url);
-      
+
       // If no destinations left, add default back
       if (saved.length === 0) {
         saved.push(this.getDefaultComfyUIUrl());
       }
-      
+
       localStorage.setItem('comfyui-destinations', JSON.stringify(saved));
       this.renderDestinations(saved);
-      
+
       // Select first destination if current was deleted
       const input = document.getElementById('comfyuiDestination');
       if (input && input.value === url) {
@@ -1048,7 +1086,7 @@ const uiManager = {
       console.error('Error deleting destination:', error);
     }
   },
-  
+
   /**
    * Select a destination
    */
@@ -1057,43 +1095,43 @@ const uiManager = {
     if (input) {
       input.value = url;
       input.originalValue = url;
-      
+
       // Hide save button since we're setting a saved value
       const saveBtn = document.getElementById('saveDestination');
       if (saveBtn) {
         saveBtn.style.display = 'none';
       }
-      
+
       // Refresh destination list to hide currently selected one
       const saved = this.loadSavedDestinations();
       this.renderDestinations(saved);
     }
   },
-  
+
   /**
    * Render saved destinations
    */
   renderDestinations(destinations) {
     const container = document.getElementById('savedDestinations');
     if (!container) return;
-    
+
     container.innerHTML = '';
-    
+
     // Get current destination to avoid showing it as an option
     const currentDestination = this.getSelectedDestination();
-    
+
     destinations.forEach(url => {
       // Don't show the currently selected destination as an option
       if (url === currentDestination) return;
-      
+
       const item = document.createElement('div');
       item.className = 'destination-item';
       item.dataset.url = url;
-      
+
       const text = document.createElement('span');
       text.className = 'destination-text';
       text.textContent = url;
-      
+
       const deleteBtn = document.createElement('button');
       deleteBtn.className = 'destination-delete';
       deleteBtn.textContent = 'Delete';
@@ -1101,24 +1139,292 @@ const uiManager = {
         e.stopPropagation();
         this.deleteDestination(url);
       };
-      
+
       item.appendChild(text);
       item.appendChild(deleteBtn);
-      
+
       item.onclick = () => {
         this.selectDestination(url);
       };
-      
+
       container.appendChild(item);
     });
   },
-  
+
   /**
    * Get currently selected ComfyUI destination
    */
   getSelectedDestination() {
     const input = document.getElementById('comfyuiDestination');
     return input ? input.value.trim() : this.getDefaultComfyUIUrl();
+  },
+
+  /**
+   * Setup number dial event handlers
+   */
+  setupNumberDialHandlers() {
+    const modal = this.elements.numberDialModal;
+    const thumb = modal.querySelector('#dialThumb');
+    const track = modal.querySelector('.dial-track');
+
+    // Close modal handlers - only clicking outside
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal) {
+        this.closeNumberDial();
+      }
+    });
+
+    // Drag functionality
+    let isDragging = false;
+    let startX = 0;
+    let startLeft = 0;
+
+    const handleStart = (clientX) => {
+      isDragging = true;
+      startX = clientX;
+      startLeft = parseInt(thumb.style.left) || 0;
+      thumb.style.cursor = 'grabbing';
+    };
+
+    const handleMove = (clientX) => {
+      if (!isDragging) return;
+
+      const trackRect = track.getBoundingClientRect();
+      const thumbWidth = thumb.offsetWidth;
+      const trackWidth = trackRect.width - thumbWidth;
+
+      let newLeft = startLeft + (clientX - startX);
+      newLeft = Math.max(0, Math.min(newLeft, trackWidth));
+
+      const percentage = newLeft / trackWidth;
+      const totalFiles = this.currentDialData?.totalFiles || 1;
+      const newIndex = Math.round(percentage * (totalFiles - 1));
+
+      this.updateDialPosition(newIndex, false); // Don't animate during drag
+      this.updateDialNumbers(newIndex); // Update numbers display
+    };
+
+    const handleEnd = () => {
+      if (!isDragging) return;
+      isDragging = false;
+      thumb.style.cursor = 'grab';
+
+      // Select the media item when drag ends
+      const currentIndex = this.currentDialData?.currentIndex || 0;
+      this.selectMediaItem(currentIndex);
+    };
+
+    // Mouse events
+    thumb.addEventListener('mousedown', (e) => {
+      e.preventDefault();
+      handleStart(e.clientX);
+    });
+
+    document.addEventListener('mousemove', (e) => {
+      handleMove(e.clientX);
+    });
+
+    document.addEventListener('mouseup', handleEnd);
+
+    // Touch events
+    thumb.addEventListener('touchstart', (e) => {
+      e.preventDefault();
+      handleStart(e.touches[0].clientX);
+    });
+
+    document.addEventListener('touchmove', (e) => {
+      if (isDragging) {
+        e.preventDefault();
+        handleMove(e.touches[0].clientX);
+      }
+    });
+
+    document.addEventListener('touchend', handleEnd);
+
+    // Track click to jump to position
+    track.addEventListener('click', (e) => {
+      if (e.target === thumb) return;
+
+      const trackRect = track.getBoundingClientRect();
+      const thumbWidth = thumb.offsetWidth;
+      const clickX = e.clientX - trackRect.left - (thumbWidth / 2);
+      const trackWidth = trackRect.width - thumbWidth;
+
+      const percentage = Math.max(0, Math.min(1, clickX / trackWidth));
+      const totalFiles = this.currentDialData?.totalFiles || 1;
+      const newIndex = Math.round(percentage * (totalFiles - 1));
+
+      this.updateDialPosition(newIndex, true); // Animate on click
+      this.updateDialNumbers(newIndex); // Update numbers display
+      this.selectMediaItem(newIndex);
+    });
+  },
+
+  /**
+   * Open number dial modal
+   */
+  openNumberDial() {
+    if (!window.appController || !window.appController.state.allFiles.length) {
+      return;
+    }
+
+    // Ensure modal exists
+    if (!this.elements.numberDialModal) {
+      this.createNumberDialModal();
+      this.elements.numberDialModal = document.getElementById('numberDialModal');
+    }
+
+    const totalFiles = window.appController.state.allFiles.length;
+    const currentIndex = window.appController.state.currentIndex;
+
+    this.currentDialData = {
+      totalFiles,
+      currentIndex
+    };
+
+    this.setupDialNumbers(totalFiles);
+    this.updateDialNumbers(currentIndex); // Set initial numbers
+    this.updateDialPosition(currentIndex); // Set initial slider position
+    this.elements.numberDialModal.style.display = 'block';
+  },
+
+  /**
+   * Close number dial modal
+   */
+  closeNumberDial() {
+    this.elements.numberDialModal.style.display = 'none';
+  },
+
+  /**
+   * Setup number markers on the dial
+   */
+  setupDialNumbers(totalFiles) {
+    if (!this.elements.numberDialModal) return;
+
+    const numbersContainer = this.elements.numberDialModal.querySelector('#dialNumbers');
+    if (!numbersContainer) return;
+
+    numbersContainer.innerHTML = '';
+
+    // Calculate which numbers to show based on current index
+    this.updateDialNumbers(this.currentDialData?.currentIndex || 0);
+  },
+
+  /**
+   * Update visible numbers based on current index
+   */
+  updateDialNumbers(currentIndex) {
+    const numbersContainer = this.elements.numberDialModal.querySelector('#dialNumbers');
+    if (!numbersContainer) return;
+
+    const totalFiles = this.currentDialData?.totalFiles || 1;
+    numbersContainer.innerHTML = '';
+
+    const numbers = [];
+    const current = currentIndex + 1; // Display as 1-based
+
+    if (totalFiles <= 7) {
+      // Show all numbers if 7 or fewer
+      for (let i = 1; i <= totalFiles; i++) {
+        numbers.push({ num: i, isEllipsis: false });
+      }
+    } else {
+      // Always show first number if current is not at the beginning
+      if (current > 4) {
+        numbers.push({ num: 1, isEllipsis: false });
+        numbers.push({ num: '...', isEllipsis: true });
+      }
+
+      // Show 3 numbers before current (if available)
+      for (let i = Math.max(1, current - 3); i < current; i++) {
+        if (current <= 4 || i > 1) { // Don't duplicate first number
+          numbers.push({ num: i, isEllipsis: false });
+        }
+      }
+
+      // Show current number (centered)
+      numbers.push({ num: current, isEllipsis: false });
+
+      // Show 3 numbers after current (if available)
+      for (let i = current + 1; i <= Math.min(totalFiles, current + 3); i++) {
+        if (current >= totalFiles - 3 || i < totalFiles) { // Don't duplicate last number
+          numbers.push({ num: i, isEllipsis: false });
+        }
+      }
+
+      // Always show last number if current is not at the end
+      if (current < totalFiles - 3) {
+        numbers.push({ num: '...', isEllipsis: true });
+        numbers.push({ num: totalFiles, isEllipsis: false });
+      }
+    }
+
+    numbers.forEach(item => {
+      const numberEl = document.createElement('div');
+      numberEl.className = 'dial-number';
+      if (item.isEllipsis) {
+        numberEl.className += ' ellipsis';
+        numberEl.textContent = item.num;
+      } else {
+        numberEl.textContent = item.num;
+        if (item.num === current) {
+          numberEl.classList.add('active');
+        }
+        numberEl.addEventListener('click', () => {
+          this.updateDialPosition(item.num - 1, true); // Animate on click
+          this.updateDialNumbers(item.num - 1); // Update numbers
+          this.selectMediaItem(item.num - 1);
+        });
+      }
+      numbersContainer.appendChild(numberEl);
+    });
+  },
+
+  /**
+   * Update dial thumb position and highlight current number
+   */
+  updateDialPosition(index, animate = false) {
+    const totalFiles = this.currentDialData?.totalFiles || 1;
+    const percentage = totalFiles > 1 ? index / (totalFiles - 1) : 0;
+
+    const track = this.elements.numberDialModal.querySelector('.dial-track');
+    const thumb = this.elements.numberDialModal.querySelector('#dialThumb');
+    const thumbWidth = thumb.offsetWidth;
+    const trackWidth = track.offsetWidth - thumbWidth;
+
+    const newLeft = (percentage * trackWidth);
+
+    if (animate) {
+      // Calculate animation duration based on distance
+      const currentLeft = parseInt(thumb.style.left) || 0;
+      const distance = Math.abs(newLeft - currentLeft);
+      const maxDistance = trackWidth;
+      const minDuration = 0.3;
+      const maxDuration = 0.6;
+      const duration = minDuration + (distance / maxDistance) * (maxDuration - minDuration);
+
+      thumb.style.transition = `left ${duration}s cubic-bezier(0.4, 0, 0.2, 1)`;
+      thumb.style.left = newLeft + 'px';
+
+      // Remove transition after animation
+      setTimeout(() => {
+        thumb.style.transition = '';
+      }, duration * 1000);
+    } else {
+      thumb.style.transition = '';
+      thumb.style.left = newLeft + 'px';
+    }
+
+    this.currentDialData.currentIndex = index;
+  },
+
+  /**
+   * Select a media item by index
+   */
+  selectMediaItem(index) {
+    if (window.appController) {
+      window.appController.goToIndex(index);
+    }
   }
 };
 

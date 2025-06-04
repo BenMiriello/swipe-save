@@ -14,13 +14,13 @@ const apiService = {
           'Pragma': 'no-cache'
         }
       });
-      
+
       if (!response.ok) {
         throw new Error(`Failed to fetch media files: ${response.status}`);
       }
-      
+
       const data = await response.json();
-      
+
       // Add original filesystem path (not just browser URL) to each file
       // This is for display purposes in the UI
       data.forEach(file => {
@@ -28,7 +28,7 @@ const apiService = {
           file.originalPath = file.name; // Store the original filename as the path
         }
       });
-      
+
       return data;
     } catch (error) {
       console.error('Error fetching media files:', error);
@@ -43,15 +43,15 @@ const apiService = {
    */
   downloadFile(file, filename) {
     if (!file) return;
-    
+
     try {
       const imageUrl = `${window.appConfig.getApiUrl()}${file.path}`;
-      
+
       // Create a temporary link element
       const downloadLink = document.createElement('a');
       downloadLink.href = imageUrl;
       downloadLink.download = filename || file.name; 
-      
+
       // Append to the body, click and remove
       document.body.appendChild(downloadLink);
       downloadLink.click();
@@ -68,7 +68,7 @@ const apiService = {
    */
   openFileInNewView(file) {
     if (!file) return;
-    
+
     try {
       const fileUrl = `${window.appConfig.getApiUrl()}${file.path}`;
       window.open(fileUrl, '_blank');
@@ -89,19 +89,19 @@ const apiService = {
       // Verify file still exists before taking action
       const allFiles = await this.fetchMediaFiles();
       const fileExists = allFiles.some(file => file.name === filename);
-      
+
       if (!fileExists) {
         console.warn(`File ${filename} no longer exists or is not in the current directory`);
         throw new Error(`File ${filename} not found. It may have been moved or deleted.`);
       }
-      
+
       // Add custom filename if set
       const requestData = { 
         filename,
         action,
         ...(customFilename && { customFilename })
       };
-      
+
       const response = await fetch(`${window.appConfig.getApiUrl()}/api/files/action`, {
         method: 'POST',
         headers: {
@@ -109,12 +109,12 @@ const apiService = {
         },
         body: JSON.stringify(requestData)
       });
-      
+
       if (!response.ok) {
         const errorData = await response.json();
         throw new Error(errorData.error || 'Action failed');
       }
-      
+
       return await response.json();
     } catch (error) {
       console.error('Error performing action:', error);
@@ -134,12 +134,12 @@ const apiService = {
           'Content-Type': 'application/json'
         }
       });
-      
+
       if (!response.ok) {
         const result = await response.json();
         throw new Error(result.error || 'Undo failed');
       }
-      
+
       return await response.json();
     } catch (error) {
       console.error('Error performing undo:', error);
@@ -154,11 +154,11 @@ const apiService = {
   async getConfig() {
     try {
       const response = await fetch(`${window.appConfig.getApiUrl()}/api/config`);
-      
+
       if (!response.ok) {
         throw new Error('Failed to get configuration');
       }
-      
+
       return await response.json();
     } catch (error) {
       console.error('Error getting config:', error);
@@ -180,12 +180,12 @@ const apiService = {
         },
         body: JSON.stringify(config)
       });
-      
+
       if (!response.ok) {
         const errorData = await response.json();
         throw new Error(errorData.error || 'Failed to update configuration');
       }
-      
+
       return await response.json();
     } catch (error) {
       console.error('Error updating config:', error);
@@ -201,19 +201,19 @@ const apiService = {
   async browseDirectory(dir) {
     try {
       const response = await fetch(`${window.appConfig.getApiUrl()}/api/browse?dir=${encodeURIComponent(dir)}`);
-      
+
       if (!response.ok) {
         const errorData = await response.json();
         throw new Error(errorData.error || 'Failed to browse directory');
       }
-      
+
       return await response.json();
     } catch (error) {
       console.error('Error browsing directory:', error);
       throw error;
     }
   },
-  
+
   /**
    * Get ComfyUI URL based on current hostname
    * @returns {string} ComfyUI URL
@@ -222,7 +222,7 @@ const apiService = {
     const currentUrl = new URL(window.location.href);
     return `${currentUrl.protocol}//${currentUrl.hostname}:8188`;
   },
-  
+
   /**
    * Load workflow in ComfyUI interface
    * @param {Object} file - Current file object
@@ -233,27 +233,27 @@ const apiService = {
   async loadInComfyUI(file, modifySeeds = false, comfyUrl = null) {
     try {
       console.log('Loading workflow in ComfyUI for file:', file.name);
-      
+
       // Get workflow data from the current image
       const workflowData = await this.getWorkflowFromImage(file);
-      
+
       if (!workflowData) {
         throw new Error('No workflow found in image metadata');
       }
-      
+
       // Modify seeds if requested
       if (modifySeeds) {
         this.modifyWorkflowSeeds(workflowData);
       }
-      
+
       // Get ComfyUI URL
       const targetUrl = comfyUrl || this.getComfyUIUrl();
       console.log('Opening ComfyUI at:', targetUrl);
-      
+
       // Create workflow filename
       const baseFilename = file.name.replace(/\.[^/.]+$/, '');
       const workflowFilename = `workflow_${baseFilename}.json`;
-      
+
       // Check if we've already downloaded this workflow
       const existingDownloads = this.getExistingWorkflows();
       if (!existingDownloads.includes(workflowFilename)) {
@@ -263,22 +263,22 @@ const apiService = {
       } else {
         console.log('Workflow already downloaded:', workflowFilename);
       }
-      
+
       // Open ComfyUI tab
       this.openComfyUITab(targetUrl);
-      
+
     } catch (error) {
       console.error('Error loading workflow in ComfyUI:', error);
       throw error;
     }
   },
-  
+
   /**
    * Download workflow with proper folder structure
    */
   async downloadWorkflow(workflowData, filename) {
     const workflowJson = JSON.stringify(workflowData, null, 2);
-    
+
     // Try multiple download methods for compatibility
     if (this.isMobile()) {
       // Mobile-friendly download
@@ -288,7 +288,7 @@ const apiService = {
       this.downloadForDesktop(workflowJson, filename);
     }
   },
-  
+
   /**
    * Mobile-compatible download
    */
@@ -297,21 +297,21 @@ const apiService = {
       // Create blob URL
       const blob = new Blob([content], { type: 'application/json' });
       const url = URL.createObjectURL(blob);
-      
+
       // Try multiple methods
       // Method 1: Direct window.open (works on some mobile browsers)
       const dataUrl = 'data:application/json;charset=utf-8,' + encodeURIComponent(content);
       const newWindow = window.open(dataUrl, '_blank');
-      
+
       if (!newWindow) {
         // Method 2: Create temporary link
         const link = document.createElement('a');
         link.href = url;
         link.download = filename;
         link.style.display = 'none';
-        
+
         document.body.appendChild(link);
-        
+
         // Force click
         if (link.click) {
           link.click();
@@ -320,20 +320,20 @@ const apiService = {
           const event = new MouseEvent('click');
           link.dispatchEvent(event);
         }
-        
+
         document.body.removeChild(link);
       }
-      
+
       // Clean up
       setTimeout(() => URL.revokeObjectURL(url), 1000);
-      
+
     } catch (error) {
       console.error('Mobile download failed:', error);
       // Fallback: copy to clipboard
       this.copyToClipboard(content, filename);
     }
   },
-  
+
   /**
    * Desktop download with folder structure
    */
@@ -341,23 +341,23 @@ const apiService = {
     try {
       const blob = new Blob([content], { type: 'application/json' });
       const url = URL.createObjectURL(blob);
-      
+
       const link = document.createElement('a');
       link.href = url;
       // Note: browsers may ignore folder structure in download attribute
       link.download = filename;
-      
+
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
-      
+
       URL.revokeObjectURL(url);
     } catch (error) {
       console.error('Desktop download failed:', error);
       throw error;
     }
   },
-  
+
   /**
    * Fallback: copy to clipboard
    */
@@ -373,14 +373,14 @@ const apiService = {
       console.error('Clipboard fallback failed:', error);
     }
   },
-  
+
   /**
    * Detect mobile device
    */
   isMobile() {
     return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
   },
-  
+
   /**
    * Open ComfyUI tab with mobile-friendly approach
    * @param {string} url - ComfyUI URL to open
@@ -390,15 +390,15 @@ const apiService = {
       if (this.isMobile()) {
         // Mobile approach - try multiple methods
         console.log('Opening ComfyUI on mobile device:', url);
-        
+
         // Method 1: Direct window.open with target
         const newWindow = window.open(url, '_blank', 'noopener,noreferrer');
-        
+
         if (!newWindow || newWindow.closed || typeof newWindow.closed === 'undefined') {
           // Method 2: Try without window features
           window.open(url, '_blank');
         }
-        
+
         // Method 3: Fallback - create temporary link and click
         setTimeout(() => {
           const link = document.createElement('a');
@@ -406,12 +406,12 @@ const apiService = {
           link.target = '_blank';
           link.rel = 'noopener noreferrer';
           link.style.display = 'none';
-          
+
           document.body.appendChild(link);
           link.click();
           document.body.removeChild(link);
         }, 100);
-        
+
       } else {
         // Desktop approach
         console.log('Opening ComfyUI on desktop:', url);
@@ -423,7 +423,7 @@ const apiService = {
       this.copyUrlToClipboard(url);
     }
   },
-  
+
   /**
    * Copy URL to clipboard as fallback
    */
@@ -439,7 +439,7 @@ const apiService = {
       alert(`Please manually open ComfyUI at:\n${url}`);
     }
   },
-  
+
   /**
    * Get existing workflow downloads
    */
@@ -450,7 +450,7 @@ const apiService = {
       return [];
     }
   },
-  
+
   /**
    * Save workflow download record
    */
@@ -465,7 +465,7 @@ const apiService = {
       console.error('Error saving workflow record:', error);
     }
   },
-  
+
   /**
    * Generate a unique client ID for ComfyUI
    * @returns {string} Client ID
@@ -473,7 +473,7 @@ const apiService = {
   generateClientId() {
     return 'swipe-save-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9);
   },
-  
+
   /**
    * Extract workflow from image metadata
    * @param {Object} file - File object
@@ -482,18 +482,18 @@ const apiService = {
   async getWorkflowFromImage(file) {
     try {
       const response = await fetch(`${window.appConfig.getApiUrl()}/api/workflow/${encodeURIComponent(file.name)}`);
-      
+
       if (!response.ok) {
         throw new Error('Failed to get workflow from image');
       }
-      
+
       return await response.json();
     } catch (error) {
       console.error('Error getting workflow from image:', error);
       return null;
     }
   },
-  
+
   /**
    * Queue workflow in ComfyUI via API
    * @param {Object} file - Current file object
@@ -504,7 +504,7 @@ const apiService = {
   async queueInComfyUI(file, modifySeeds = false, comfyUrl = null) {
     try {
       console.log('Queueing workflow in ComfyUI for file:', file.name);
-      
+
       const response = await fetch(`${window.appConfig.getApiUrl()}/api/queue-workflow`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -514,38 +514,38 @@ const apiService = {
           comfyUrl: comfyUrl
         })
       });
-      
+
       if (!response.ok) {
         const errorData = await response.json();
         throw new Error(errorData.error || 'Failed to queue workflow');
       }
-      
+
       const result = await response.json();
       console.log('Workflow queued successfully:', result);
-      
+
       // Open ComfyUI to show progress
       this.openComfyUITab(result.comfyUrl);
-      
+
       return result;
     } catch (error) {
       console.error('Error queueing workflow:', error);
       throw error;
     }
   },
-  
+
   /**
    * Modify seed values in workflow by appending zero
    * @param {Object} workflow - Workflow object to modify
    */
   modifyWorkflowSeeds(workflow) {
     if (!workflow || typeof workflow !== 'object') return;
-    
+
     console.log('Modifying seeds in workflow...');
     let seedCount = 0;
-    
+
     const modifySeeds = (obj) => {
       if (typeof obj !== 'object' || obj === null) return;
-      
+
       for (const key in obj) {
         if (key === 'seed' && typeof obj[key] === 'number') {
           const oldSeed = obj[key];
@@ -560,7 +560,7 @@ const apiService = {
         }
       }
     };
-    
+
     modifySeeds(workflow);
     console.log(`Total seeds modified: ${seedCount}`);
   }
