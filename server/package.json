@@ -4,6 +4,7 @@
   "description": "Server for managing ComfyUI media files",
   "main": "server.js",
   "scripts": {
+    "dev": "nodemon server.js",
     "start": "node server.js"
   },
   "dependencies": {
@@ -12,7 +13,11 @@
     "fs-extra": "^10.0.1",
     "moment": "^2.29.1",
     "node-fetch": "^2.7.0",
-    "png-chunks-extract": "^1.0.0",
-    "png-chunk-text": "^1.0.0"
+    "png-chunk-text": "^1.0.0",
+    "png-chunks-extract": "^1.0.0"
+  },
+  "devDependencies": {
+    "livereload": "^0.9.3",
+    "nodemon": "^3.1.10"
   }
 }

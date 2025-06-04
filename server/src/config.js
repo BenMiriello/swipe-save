@@ -50,31 +50,31 @@ const config = {
   get OUTPUT_DIR() {
     return currentConfig.sourceDir;
   },
-  
+
   get LOCAL_COPY_DIR() {
     return currentConfig.destinationDir;
   },
-  
+
   get LOG_DIR() {
     return path.resolve(process.env.HOME, 'Documents/swipe-save/logs');
   },
-  
+
   // Generate paths based on the base paths
   get DELETED_DIR() {
     return path.join(this.OUTPUT_DIR, 'deleted');
   },
-  
+
   get LOG_FILE() {
     const currentDate = moment().format('YYYYMMDD');
     return path.join(this.LOG_DIR, `selection_log_${currentDate}.json`);
   },
-  
+
   // Folder Structure
   bestWipFolder: 'best/wip',
-  
+
   // Server Configuration
   PORT: process.env.PORT || 8081,
-  
+
   // Config management
   getCurrentConfig: () => ({ ...currentConfig }),
   updateConfig: saveConfig

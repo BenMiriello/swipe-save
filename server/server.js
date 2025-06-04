@@ -5,9 +5,14 @@ const fileOps = require('./src/fileOperations');
 const config = require('./src/config');
 const { router } = require('./src/routes');
 
+if (process.env.NODE_ENV !== 'production') {
+  const livereload = require('livereload');
+  const liveReloadServer = livereload.createServer();
+  liveReloadServer.watch(path.join(__dirname, '..', 'public'));
+}
+
 const app = express();
 
-// Middleware
 app.use(cors({
   origin: true,
   credentials: true,
@@ -16,14 +21,11 @@ app.use(cors({
 }));
 app.use(express.json());
 
-// Create required directories
 fileOps.createRequiredDirectories();
 
-// Serve static files from the output directory
 app.use('/media', express.static(config.OUTPUT_DIR, {
   dotfiles: 'allow',
   setHeaders: (res, path) => {
-    // Set proper content type based on file extension
     if (path.endsWith('.png')) {
       res.set('Content-Type', 'image/png');
     } else if (path.endsWith('.mp4')) {
@@ -34,19 +36,24 @@ app.use('/media', express.static(config.OUTPUT_DIR, {
   }
 }));
 
-// Serve the frontend files from the public directory
 app.use(express.static(path.join(__dirname, '..', 'public')));
 
-// Add a route handler for the root path
 app.get('/', (req, res) => {
-  const indexPath = path.join(__dirname, '..', 'public', 'index.html');
-  res.sendFile(indexPath);
+  if (process.env.NODE_ENV !== 'production') {
+    const fs = require('fs');
+    const indexPath = path.join(__dirname, '..', 'public', 'index.html');
+    let html = fs.readFileSync(indexPath, 'utf8');
+    html = html.replace('</body>', 
+      '<script src="http://localhost:35729/livereload.js?snipver=1"></script></body>');
+    res.send(html);
+  } else {
+    const indexPath = path.join(__dirname, '..', 'public', 'index.html');
+    res.sendFile(indexPath);
+  }
 });
 
-// Apply API routes
 app.use(router);
 
-// Start the server
 app.listen(config.PORT, () => {
   console.log(`Server running on http://localhost:${config.PORT}`);
 });
