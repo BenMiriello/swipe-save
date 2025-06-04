@@ -8,6 +8,48 @@ const config = require('./config');
 // Action history for undo functionality
 const actionHistory = [];
 
+/**
+ * Get default ComfyUI URL based on request
+ */
+function getDefaultComfyUIUrl(req) {
+  const protocol = req.protocol || 'http';
+  const hostname = req.get('host').split(':')[0]; // Remove port if present
+  return `${protocol}://${hostname}:8188`;
+}
+
+/**
+ * Modify seed values in workflow by appending zero
+ */
+function modifyWorkflowSeeds(workflow) {
+  if (!workflow || typeof workflow !== 'object') return workflow;
+  
+  console.log('Modifying seeds in workflow...');
+  let seedCount = 0;
+  
+  const modifySeeds = (obj) => {
+    if (typeof obj !== 'object' || obj === null) return;
+    
+    for (const key in obj) {
+      if (key === 'seed' && typeof obj[key] === 'number') {
+        const oldSeed = obj[key];
+        obj[key] = parseInt(obj[key].toString() + '0');
+        console.log(`Modified seed: ${oldSeed} -> ${obj[key]}`);
+        seedCount++;
+      } else if (key === 'inputs' && typeof obj[key] === 'object') {
+        // Check inputs object specifically for KSampler nodes
+        modifySeeds(obj[key]);
+      } else if (typeof obj[key] === 'object') {
+        modifySeeds(obj[key]);
+      }
+    }
+  };
+  
+  modifySeeds(workflow);
+  console.log(`Total seeds modified: ${seedCount}`);
+  
+  return workflow;
+}
+
 // Get current configuration
 router.get('/api/config', (req, res) => {
   try {
@@ -181,6 +223,94 @@ router.get('/media/:filename', (req, res) => {
 // Get action history for undo
 router.get('/api/history', (req, res) => {
   res.json(actionHistory);
+});
+
+// Queue workflow in ComfyUI
+router.post('/api/queue-workflow', async (req, res) => {
+  try {
+    const { filename, modifySeeds, comfyUrl } = req.body;
+    
+    if (!filename) {
+      return res.status(400).json({ error: 'Filename is required' });
+    }
+    
+    const filePath = path.join(config.OUTPUT_DIR, filename);
+    
+    if (!fs.existsSync(filePath)) {
+      return res.status(404).json({ error: 'File not found' });
+    }
+    
+    // Extract workflow from image
+    const metadata = await fileOps.extractComfyMetadata(filePath, filename);
+    
+    // Try prompt first (API format), then workflow (GUI format)
+    let workflowData;
+    if (metadata.prompt) {
+      console.log('Using prompt (API format) for queuing');
+      workflowData = metadata.prompt;
+    } else if (metadata.workflow) {
+      console.log('Using workflow (GUI format) for queuing');
+      workflowData = metadata.workflow;
+    } else {
+      return res.status(404).json({ error: 'No workflow found in image metadata' });
+    }
+    
+    // Debug: Log workflow structure
+    console.log('Workflow type:', typeof workflowData);
+    console.log('Workflow keys:', Object.keys(workflowData).slice(0, 10));
+    
+    // Check if this looks like API format (numbered keys with class_type)
+    const firstKey = Object.keys(workflowData)[0];
+    const firstValue = workflowData[firstKey];
+    console.log('First key:', firstKey, 'First value type:', typeof firstValue);
+    if (firstValue && typeof firstValue === 'object' && firstValue.class_type) {
+      console.log('Detected API format workflow');
+    } else {
+      console.log('Detected GUI format workflow - this may cause issues');
+    }
+    
+    // Modify seeds if requested
+    if (modifySeeds) {
+      workflowData = modifyWorkflowSeeds(workflowData);
+      console.log('Seeds modified for queuing');
+    }
+    
+    // Generate client ID
+    const clientId = 'swipe-save-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9);
+    
+    // Determine ComfyUI URL
+    const targetUrl = comfyUrl || getDefaultComfyUIUrl(req);
+    
+    // Queue the workflow
+    const fetch = require('node-fetch');
+    const response = await fetch(`${targetUrl}/prompt`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        prompt: workflowData,
+        client_id: clientId
+      })
+    });
+    
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`ComfyUI API error: ${response.status} - ${errorText}`);
+    }
+    
+    const result = await response.json();
+    console.log('Workflow queued successfully:', result);
+    
+    res.json({ 
+      success: true, 
+      result: result,
+      comfyUrl: targetUrl,
+      modifiedSeeds: modifySeeds
+    });
+    
+  } catch (error) {
+    console.error('Error queueing workflow:', error);
+    res.status(500).json({ error: error.message });
+  }
 });
 
 // Extract workflow from image
