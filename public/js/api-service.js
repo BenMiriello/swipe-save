@@ -231,6 +231,8 @@ const apiService = {
    */
   async loadInComfyUI(file, modifySeeds = false) {
     try {
+      console.log('Loading workflow in ComfyUI for file:', file.name);
+      
       // Get workflow data from the current image
       const workflowData = await this.getWorkflowFromImage(file);
       
@@ -238,30 +240,47 @@ const apiService = {
         throw new Error('No workflow found in image metadata');
       }
       
+      console.log('Workflow data type:', typeof workflowData);
+      console.log('Workflow keys:', Object.keys(workflowData).slice(0, 5));
+      
       // Modify seeds if requested
       if (modifySeeds) {
         this.modifyWorkflowSeeds(workflowData);
+        console.log('Seeds modified');
       }
       
       // Send to ComfyUI using correct endpoint and format
       const comfyUIUrl = this.getComfyUIUrl();
       const clientId = this.generateClientId();
       
+      console.log('Sending to ComfyUI URL:', comfyUIUrl);
+      console.log('Client ID:', clientId);
+      
+      const requestBody = {
+        prompt: workflowData,
+        client_id: clientId
+      };
+      
+      console.log('Request body keys:', Object.keys(requestBody));
+      
       const response = await fetch(`${comfyUIUrl}/prompt`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({
-          prompt: workflowData,
-          client_id: clientId
-        })
+        body: JSON.stringify(requestBody)
       });
+      
+      console.log('ComfyUI response status:', response.status);
       
       if (!response.ok) {
         const errorText = await response.text();
-        throw new Error(`Failed to load workflow in ComfyUI: ${errorText}`);
+        console.error('ComfyUI error response:', errorText);
+        throw new Error(`Failed to load workflow in ComfyUI: ${response.status} - ${errorText}`);
       }
+      
+      const responseData = await response.json();
+      console.log('ComfyUI response data:', responseData);
       
       // Open ComfyUI in new tab
       window.open(comfyUIUrl, '_blank');
