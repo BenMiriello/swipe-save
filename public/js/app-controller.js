@@ -42,6 +42,8 @@ class AppController {
    * Initialize the application
    */
   init() {
+    // Expose globally for UI manager
+    window.appController = this;
     this.fetchMediaFiles();
   }
   

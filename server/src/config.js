@@ -1,12 +1,63 @@
 const path = require('path');
 const moment = require('moment');
+const fs = require('fs-extra');
 
-// Configuration
+// Config file path
+const CONFIG_FILE = path.resolve(process.env.HOME, 'Documents/swipe-save/app-config.json');
+
+// Default configuration
+const defaultConfig = {
+  sourceDir: path.resolve(process.env.HOME, 'Documents/ComfyUI/output'),
+  destinationDir: path.resolve(process.env.HOME, 'Documents/ComfyUI/output/swipe-save')
+};
+
+// Load saved config or use defaults
+function loadConfig() {
+  try {
+    if (fs.existsSync(CONFIG_FILE)) {
+      const saved = fs.readJsonSync(CONFIG_FILE);
+      return { ...defaultConfig, ...saved };
+    }
+  } catch (error) {
+    console.error('Error loading config, using defaults:', error);
+  }
+  return defaultConfig;
+}
+
+// Save config to file
+function saveConfig(newConfig) {
+  try {
+    const configDir = path.dirname(CONFIG_FILE);
+    if (!fs.existsSync(configDir)) {
+      fs.mkdirSync(configDir, { recursive: true });
+    }
+    const toSave = { ...currentConfig, ...newConfig };
+    fs.writeJsonSync(CONFIG_FILE, toSave, { spaces: 2 });
+    Object.assign(currentConfig, toSave);
+    return true;
+  } catch (error) {
+    console.error('Error saving config:', error);
+    return false;
+  }
+}
+
+// Current configuration
+let currentConfig = loadConfig();
+
+// Configuration object
 const config = {
-  // Directory Paths
-  OUTPUT_DIR: path.resolve(process.env.HOME, 'Documents/ComfyUI/output'),
-  LOCAL_COPY_DIR: path.resolve(process.env.HOME, 'Documents/ComfyUI/output/swipe-save'),
-  LOG_DIR: path.resolve(process.env.HOME, 'Documents/swipe-save/logs'),
+  // Dynamic directory paths
+  get OUTPUT_DIR() {
+    return currentConfig.sourceDir;
+  },
+  
+  get LOCAL_COPY_DIR() {
+    return currentConfig.destinationDir;
+  },
+  
+  get LOG_DIR() {
+    return path.resolve(process.env.HOME, 'Documents/swipe-save/logs');
+  },
   
   // Generate paths based on the base paths
   get DELETED_DIR() {
@@ -19,10 +70,14 @@ const config = {
   },
   
   // Folder Structure
-  bestWipFolder: 'best/wip',  // Updated path for best_wip folder
+  bestWipFolder: 'best/wip',
   
   // Server Configuration
-  PORT: process.env.PORT || 8081
+  PORT: process.env.PORT || 8081,
+  
+  // Config management
+  getCurrentConfig: () => ({ ...currentConfig }),
+  updateConfig: saveConfig
 };
 
 // Log the configuration paths

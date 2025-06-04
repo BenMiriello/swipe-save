@@ -120,6 +120,106 @@ h1 {
   background-color: #f5f5f5;
 }
 
+.options-dropdown .directory-info {
+  background-color: #f9f9f9;
+  font-size: 0.8rem;
+  color: #555;
+  font-style: italic;
+  cursor: default;
+}
+
+.options-dropdown .directory-info:hover {
+  background-color: #f9f9f9;
+}
+
+.options-dropdown .dir-path {
+  font-weight: 500;
+  color: #333;
+}
+
+.options-dropdown .separator {
+  height: 1px;
+  background-color: #ddd;
+  margin: 5px 0;
+  cursor: default;
+}
+
+.options-dropdown .separator:hover {
+  background-color: #ddd;
+}
+
+/* Directory Browser Modal */
+.browser-controls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 15px;
+  padding: 10px;
+  background-color: #f5f5f5;
+  border-radius: 4px;
+}
+
+.current-path {
+  flex: 1;
+  font-family: monospace;
+  font-size: 0.9rem;
+  background-color: white;
+  padding: 5px 8px;
+  border: 1px solid #ddd;
+  border-radius: 3px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.directory-list {
+  max-height: 400px;
+  overflow-y: auto;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  margin-bottom: 15px;
+}
+
+.directory-item {
+  display: flex;
+  align-items: center;
+  padding: 10px;
+  cursor: pointer;
+  border-bottom: 1px solid #eee;
+  transition: background-color 0.2s;
+}
+
+.directory-item:hover {
+  background-color: #f5f5f5;
+}
+
+.directory-item:last-child {
+  border-bottom: none;
+}
+
+.folder-icon {
+  margin-right: 8px;
+  font-size: 1.2rem;
+}
+
+.dir-name {
+  flex: 1;
+  font-size: 0.9rem;
+}
+
+.no-directories {
+  padding: 20px;
+  text-align: center;
+  color: #666;
+  font-style: italic;
+}
+
+.browser-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+}
+
 /* Filename path container */
 .filename-container {
   padding: 8px;
@@ -133,17 +233,14 @@ h1 {
 }
 
 /* Improved filename overlay style */
-.filename-container.overlay {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  background-color: rgba(0, 0, 0, 0.6);
-  color: white;
-  border-radius: 0;
-  z-index: 10;
+.filename-container {
+  position: static;
+  background-color: #f5f5f5;
+  color: #333;
+  border-radius: 8px 8px 0 0;
   padding: 8px 12px;
-  border: none;
+  border-bottom: 1px solid #ddd;
+  margin-bottom: 0;
 }
 
 .filename-path {
@@ -153,18 +250,8 @@ h1 {
   text-overflow: ellipsis;
 }
 
-/* Adjust filename text color for overlay */
-.overlay .filename-path {
-  color: rgba(255, 255, 255, 0.8);
-}
-
 .filename-path strong {
   color: #333;
-  font-weight: 600;
-}
-
-.overlay .filename-path strong {
-  color: white;
   font-weight: 600;
 }
 
@@ -314,16 +401,20 @@ video.media-content::-webkit-media-controls-timeline:hover {
   margin: 10px 0;
 }
 
-.counter-container {
-  font-size: 0.9rem;
-  color: #666;
-}
-
 .controls {
   display: flex;
   justify-content: center;
   gap: 10px;
+  flex: 1;
 }
+
+.counter-container {
+  width: 120px;
+  font-size: 0.9rem;
+  color: #666;
+}
+
+
 
 .btn {
   padding: 8px 16px;

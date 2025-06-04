@@ -41,13 +41,37 @@ The image is divided into a 3x3 grid of tap zones:
 - **Up Arrow**: Super Save - Complete
 - **Down Arrow**: Delete
 
-## Installation
+## Installation & Setup
 
 ### Prerequisites
-- Node.js and npm
+- Node.js (v14 or higher)
+- npm
 
-### Setup
+### Installation
 1. Clone this repository
+2. Install server dependencies:
+   ```bash
+   cd server
+   npm install
+   ```
+
+### Starting the Application
+1. Start the server:
+   ```bash
+   cd server
+   npm start
+   ```
+   Server will run on http://localhost:8081
+
+2. Open your browser to http://localhost:8081
+
+### Configuration
+The app defaults to:
+- **Source directory:** `~/Documents/ComfyUI/output`
+- **Destination directory:** `~/Documents/ComfyUI/output/swipe-save`
+- **Logs:** `~/Documents/swipe-save/logs`
+
+You can change source and destination directories using the Options menu (top left).
 
 ## Roadmap
 - Allow choosing which filepath to work from when sorting media

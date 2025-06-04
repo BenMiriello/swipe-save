@@ -29,8 +29,14 @@ const uiManager = {
     // Create the info modal if not already present
     this.createInfoModal();
     
+    // Create directory browser modal
+    this.createDirectoryBrowser();
+    
     // Initialize options menu
     this.initializeOptionsMenu();
+    
+    // Load current config
+    this.loadCurrentConfig();
   },
   
   /**
@@ -117,6 +123,92 @@ const uiManager = {
   },
   
   /**
+   * Create directory browser modal
+   */
+  createDirectoryBrowser() {
+    if (document.getElementById('directoryBrowser')) {
+      this.elements.directoryBrowser = document.getElementById('directoryBrowser');
+      return;
+    }
+    
+    const browserModal = document.createElement('div');
+    browserModal.id = 'directoryBrowser';
+    browserModal.className = 'modal';
+    browserModal.innerHTML = `
+      <div class="modal-content">
+        <span class="close-modal" id="closeBrowserModal">&times;</span>
+        <h2 id="browserTitle">Select Directory</h2>
+        <div class="browser-controls">
+          <div class="current-path" id="currentPath"></div>
+          <button id="upButton" class="btn btn-secondary">Up</button>
+        </div>
+        <div class="directory-list" id="directoryList">
+          Loading...
+        </div>
+        <div class="browser-actions">
+          <button id="selectDirectory" class="btn">Select This Directory</button>
+          <button id="cancelBrowser" class="btn btn-secondary">Cancel</button>
+        </div>
+      </div>
+    `;
+    
+    document.body.appendChild(browserModal);
+    this.elements.directoryBrowser = browserModal;
+    
+    // Close modal handlers
+    document.getElementById('closeBrowserModal').addEventListener('click', () => {
+      this.elements.directoryBrowser.style.display = 'none';
+    });
+    
+    window.addEventListener('click', (event) => {
+      if (event.target === this.elements.directoryBrowser) {
+        this.elements.directoryBrowser.style.display = 'none';
+      }
+    });
+  },
+  
+  /**
+   * Load and display current configuration
+   */
+  async loadCurrentConfig() {
+    try {
+      const config = await window.apiService.getConfig();
+      this.updateConfigDisplay(config);
+    } catch (error) {
+      console.error('Error loading config:', error);
+    }
+  },
+  
+  /**
+   * Update config display in options dropdown
+   */
+  updateConfigDisplay(config) {
+    const sourceInfo = document.getElementById('sourceInfo');
+    const destInfo = document.getElementById('destInfo');
+    
+    if (sourceInfo && config.sourceDir) {
+      const sourceDirSpan = sourceInfo.querySelector('.dir-path');
+      sourceDirSpan.textContent = this.shortenPath(config.sourceDir);
+      sourceDirSpan.title = config.sourceDir;
+    }
+    
+    if (destInfo && config.destinationDir) {
+      const destDirSpan = destInfo.querySelector('.dir-path');
+      destDirSpan.textContent = this.shortenPath(config.destinationDir);
+      destDirSpan.title = config.destinationDir;
+    }
+  },
+  
+  /**
+   * Shorten path for display
+   */
+  shortenPath(path) {
+    if (path.length <= 40) return path;
+    const parts = path.split('/');
+    return '.../' + parts.slice(-2).join('/');
+  },
+  
+  /**
    * Initialize options menu
    */
   initializeOptionsMenu() {
@@ -140,6 +232,11 @@ const uiManager = {
       optionsDropdown.className = 'options-dropdown';
       optionsDropdown.innerHTML = `
         <ul>
+          <li class="directory-info" id="sourceInfo">Sorting from: <span class="dir-path">Loading...</span></li>
+          <li id="browseSource">Browse Source Directory</li>
+          <li class="directory-info" id="destInfo">Saving to: <span class="dir-path">Loading...</span></li>
+          <li id="browseDestination">Browse Destination Directory</li>
+          <li class="separator"></li>
           <li id="customName">Custom Name</li>
           <li id="showInfo">Show Instructions</li>
         </ul>
@@ -183,6 +280,24 @@ const uiManager = {
     if (customNameEl) {
       customNameEl.addEventListener('click', () => {
         handlers.openFilenameModal();
+        this.elements.optionsDropdown.classList.remove('show');
+      });
+    }
+    
+    // Browse source directory
+    const browseSourceEl = document.getElementById('browseSource');
+    if (browseSourceEl) {
+      browseSourceEl.addEventListener('click', () => {
+        this.openDirectoryBrowser('source');
+        this.elements.optionsDropdown.classList.remove('show');
+      });
+    }
+    
+    // Browse destination directory
+    const browseDestEl = document.getElementById('browseDestination');
+    if (browseDestEl) {
+      browseDestEl.addEventListener('click', () => {
+        this.openDirectoryBrowser('destination');
         this.elements.optionsDropdown.classList.remove('show');
       });
     }
@@ -347,9 +462,9 @@ const uiManager = {
       mediaContent = this.createVideoElement(file, apiUrl);
     }
     
-    // Add filename path container with semi-transparent background
+    // Add filename path container above image
     const filenameContainer = document.createElement('div');
-    filenameContainer.className = 'filename-container overlay';
+    filenameContainer.className = 'filename-container';
     
     // Extract path and actual filesystem path instead of browser URL
     // Get the original path from file (which should be the filesystem path)
@@ -380,9 +495,9 @@ const uiManager = {
     const swipeInstruction = document.createElement('div');
     swipeInstruction.className = 'swipe-instruction';
     
-    // Assemble the media item
-    item.appendChild(mediaContent);
+    // Assemble the media item - filename first, then media content
     item.appendChild(filenameContainer);
+    item.appendChild(mediaContent);
     item.appendChild(tapZones);
     item.appendChild(swipeInstruction);
     
@@ -576,6 +691,128 @@ const uiManager = {
         }
       }, 300);
     }, 1000);
+  },
+  
+  /**
+   * Open directory browser
+   * @param {string} type - 'source' or 'destination'
+   */
+  async openDirectoryBrowser(type) {
+    this.currentBrowserType = type;
+    this.elements.directoryBrowser.style.display = 'block';
+    
+    const title = document.getElementById('browserTitle');
+    title.textContent = type === 'source' ? 'Select Source Directory' : 'Select Destination Directory';
+    
+    // Start with current config path or home directory
+    try {
+      const config = await window.apiService.getConfig();
+      const startPath = type === 'source' ? config.sourceDir : config.destinationDir;
+      await this.browseDirectory(startPath);
+    } catch (error) {
+      const homePath = '/Users/' + (window.navigator.userAgent.includes('Mac') ? process.env.USER || 'user' : 'user');
+      await this.browseDirectory(homePath);
+    }
+    
+    this.setupDirectoryBrowserHandlers();
+  },
+  
+  /**
+   * Browse a directory
+   * @param {string} path - Directory path to browse
+   */
+  async browseDirectory(path) {
+    const directoryList = document.getElementById('directoryList');
+    const currentPath = document.getElementById('currentPath');
+    const upButton = document.getElementById('upButton');
+    
+    try {
+      directoryList.innerHTML = 'Loading...';
+      const result = await window.apiService.browseDirectory(path);
+      
+      this.currentBrowserPath = result.currentPath;
+      currentPath.textContent = result.currentPath;
+      
+      // Enable/disable up button
+      upButton.disabled = !result.parentPath;
+      
+      // Create directory listing
+      directoryList.innerHTML = '';
+      
+      if (result.directories.length === 0) {
+        directoryList.innerHTML = '<div class="no-directories">No subdirectories found</div>';
+        return;
+      }
+      
+      result.directories.forEach(dir => {
+        const dirItem = document.createElement('div');
+        dirItem.className = 'directory-item';
+        dirItem.innerHTML = `
+          <span class="folder-icon">📁</span>
+          <span class="dir-name">${dir.name}</span>
+        `;
+        dirItem.addEventListener('click', () => {
+          this.browseDirectory(dir.path);
+        });
+        directoryList.appendChild(dirItem);
+      });
+    } catch (error) {
+      directoryList.innerHTML = `<div style="color: red;">Error: ${error.message}</div>`;
+    }
+  },
+  
+  /**
+   * Setup directory browser event handlers
+   */
+  setupDirectoryBrowserHandlers() {
+    // Up button
+    const upButton = document.getElementById('upButton');
+    upButton.onclick = async () => {
+      if (this.currentBrowserPath) {
+        const parentPath = this.currentBrowserPath.split('/').slice(0, -1).join('/') || '/';
+        await this.browseDirectory(parentPath);
+      }
+    };
+    
+    // Select directory button
+    const selectButton = document.getElementById('selectDirectory');
+    selectButton.onclick = async () => {
+      if (this.currentBrowserPath) {
+        await this.selectDirectory(this.currentBrowserPath, this.currentBrowserType);
+      }
+    };
+    
+    // Cancel button
+    const cancelButton = document.getElementById('cancelBrowser');
+    cancelButton.onclick = () => {
+      this.elements.directoryBrowser.style.display = 'none';
+    };
+  },
+  
+  /**
+   * Select a directory and update config
+   * @param {string} path - Selected directory path
+   * @param {string} type - 'source' or 'destination'
+   */
+  async selectDirectory(path, type) {
+    try {
+      const updateData = {};
+      updateData[type + 'Dir'] = path;
+      
+      const result = await window.apiService.updateConfig(updateData);
+      
+      if (result.success) {
+        this.updateConfigDisplay(result.config);
+        this.elements.directoryBrowser.style.display = 'none';
+        
+        // Refresh files if source directory changed
+        if (type === 'source' && window.appController) {
+          window.appController.fetchMediaFiles();
+        }
+      }
+    } catch (error) {
+      alert('Failed to update directory: ' + error.message);
+    }
   }
 };
 
