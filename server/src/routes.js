@@ -189,6 +189,8 @@ router.get('/api/workflow/:filename', async (req, res) => {
     const filename = decodeURIComponent(req.params.filename);
     const filePath = path.join(config.OUTPUT_DIR, filename);
     
+    console.log(`Extracting workflow from: ${filePath}`);
+    
     if (!fs.existsSync(filePath)) {
       return res.status(404).json({ error: 'File not found' });
     }
@@ -199,18 +201,28 @@ router.get('/api/workflow/:filename', async (req, res) => {
     
     // Extract metadata including workflow
     const metadata = await fileOps.extractComfyMetadata(filePath, filename);
+    console.log(`Metadata extracted:`, Object.keys(metadata));
     
     // Check if workflow was found
     if (metadata.workflow) {
       try {
-        // Try to parse the workflow JSON
-        const workflowData = JSON.parse(metadata.workflow);
-        res.json(workflowData);
+        // If it's already an object, return it directly
+        if (typeof metadata.workflow === 'object') {
+          res.json(metadata.workflow);
+        } else {
+          // Log what we're trying to parse
+          console.log(`Attempting to parse workflow string: ${metadata.workflow.substring(0, 100)}...`);
+          // Try to parse the workflow JSON
+          const workflowData = JSON.parse(metadata.workflow);
+          res.json(workflowData);
+        }
       } catch (parseError) {
-        console.error('Error parsing workflow JSON:', parseError);
-        res.status(500).json({ error: 'Invalid workflow JSON in image metadata' });
+        console.error('Error parsing workflow JSON:', parseError.message);
+        console.error('First 200 chars of workflow data:', metadata.workflow.substring(0, 200));
+        res.status(500).json({ error: 'Invalid workflow JSON in image metadata', preview: metadata.workflow.substring(0, 100) });
       }
     } else {
+      console.log(`Available metadata keys: ${Object.keys(metadata)}`);
       res.status(404).json({ error: 'No workflow found in image metadata' });
     }
   } catch (error) {

@@ -45,6 +45,8 @@ async function extractComfyMetadata(sourcePath, filename) {
       
       // Extract PNG chunks
       const chunks = extractChunks(buffer);
+      console.log(`Found ${chunks.length} PNG chunks in ${filename}`);
+      console.log(`Chunk types:`, chunks.map(c => c.name));
       
       // Look for text chunks containing ComfyUI data
       for (const chunk of chunks) {
@@ -52,6 +54,7 @@ async function extractComfyMetadata(sourcePath, filename) {
           try {
             // Parse the text chunk
             const textData = textChunk.decode(chunk.data);
+            console.log(`Found tEXt chunk with keyword: '${textData.keyword}'`);
             
             // Check for ComfyUI-specific metadata
             if (textData.keyword === 'workflow') {
