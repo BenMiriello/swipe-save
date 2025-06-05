@@ -268,6 +268,7 @@ class AppController {
           await window.apiService.loadInComfyUI(
             this.state.allFiles[this.state.currentIndex], 
             false,
+            controlMode,
             destination
           );
         }

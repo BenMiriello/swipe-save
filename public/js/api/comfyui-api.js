@@ -15,10 +15,11 @@ const comfyuiApi = {
    * Load workflow in ComfyUI interface
    * @param {Object} file - Current file object
    * @param {boolean} modifySeeds - Whether to modify seed values
+   * @param {string} controlAfterGenerate - Control after generate mode
    * @param {string} comfyUrl - Custom ComfyUI URL
    * @returns {Promise<void>}
    */
-  async loadInComfyUI(file, modifySeeds = false, comfyUrl = null) {
+  async loadInComfyUI(file, modifySeeds = false, controlAfterGenerate = 'increment', comfyUrl = null) {
     try {
       console.log('Loading workflow in ComfyUI for file:', file.name);
 
@@ -31,6 +32,9 @@ const comfyuiApi = {
       if (modifySeeds) {
         this.modifyWorkflowSeeds(workflowData);
       }
+      
+      // Always set control_after_generate to the selected value
+      this.modifyControlAfterGenerate(workflowData, controlAfterGenerate);
 
       const targetUrl = comfyUrl || this.getComfyUIUrl();
       console.log('Opening ComfyUI at:', targetUrl);
@@ -266,12 +270,29 @@ const comfyuiApi = {
   async queueInComfyUI(file, modifySeeds = false, controlAfterGenerate = 'increment', comfyUrl = null) {
     try {
       console.log('Queueing workflow in ComfyUI for file:', file.name);
+      console.log('Settings:', { modifySeeds, controlAfterGenerate });
+
+      // Get the workflow from the image
+      const workflowData = await this.getWorkflowFromImage(file);
+      
+      if (!workflowData) {
+        throw new Error('No workflow found in image metadata');
+      }
+
+      // Modify the workflow based on settings
+      if (modifySeeds) {
+        this.modifyWorkflowSeeds(workflowData);
+      }
+      
+      // Always set control_after_generate to the selected value
+      this.modifyControlAfterGenerate(workflowData, controlAfterGenerate);
 
       const response = await fetch(`${window.appConfig.getApiUrl()}/api/queue-workflow`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           filename: file.name,
+          workflow: workflowData, // Send the modified workflow
           modifySeeds: modifySeeds,
           controlAfterGenerate: controlAfterGenerate,
           comfyUrl: comfyUrl
@@ -307,7 +328,9 @@ const comfyuiApi = {
     let seedCount = 0;
 
     const generateRandomSeed = () => {
-      return Math.floor(Math.random() * 999999999) + 1;
+      // Use a conservative range: 1 to 2147483647 (2^31 - 1)
+      // This is well within ComfyUI's limits and commonly used for seeds
+      return Math.floor(Math.random() * 2147483647) + 1;
     };
 
     const modifySeeds = (obj) => {
@@ -342,25 +365,31 @@ const comfyuiApi = {
     console.log(`Modifying control_after_generate values to: ${controlMode}`);
     let controlCount = 0;
 
-    const modifyControls = (obj) => {
+    const modifyControls = (obj, path = '') => {
       if (typeof obj !== 'object' || obj === null) return;
 
       for (const key in obj) {
-        if (key === 'control_after_generate' && typeof obj[key] === 'string') {
+        const currentPath = path ? `${path}.${key}` : key;
+        
+        if (key === 'control_after_generate') {
           const oldControl = obj[key];
           obj[key] = controlMode;
-          console.log(`Modified control_after_generate: ${oldControl} -> ${obj[key]}`);
+          console.log(`Modified control_after_generate at ${currentPath}: ${oldControl} -> ${obj[key]}`);
           controlCount++;
         } else if (key === 'inputs' && typeof obj[key] === 'object') {
-          modifyControls(obj[key]);
+          modifyControls(obj[key], currentPath);
         } else if (typeof obj[key] === 'object') {
-          modifyControls(obj[key]);
+          modifyControls(obj[key], currentPath);
         }
       }
     };
 
     modifyControls(workflow);
     console.log(`Total control_after_generate values modified: ${controlCount}`);
+    
+    if (controlCount === 0) {
+      console.warn('No control_after_generate fields found in workflow');
+    }
   }
 };
 

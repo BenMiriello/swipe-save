@@ -42,8 +42,8 @@ const apiService = {
     return window.comfyuiApi.getComfyUIUrl();
   },
 
-  async loadInComfyUI(file, modifySeeds = false, comfyUrl = null) {
-    return window.comfyuiApi.loadInComfyUI(file, modifySeeds, comfyUrl);
+  async loadInComfyUI(file, modifySeeds = false, controlAfterGenerate = 'increment', comfyUrl = null) {
+    return window.comfyuiApi.loadInComfyUI(file, modifySeeds, controlAfterGenerate, comfyUrl);
   },
 
   async downloadWorkflow(workflowData, filename) {
