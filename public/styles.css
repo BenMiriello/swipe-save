@@ -28,6 +28,7 @@ body {
   align-items: center;
   position: relative;
   margin-bottom: 1rem;
+  margin: 10px;
 }
 
 h1 {
@@ -41,10 +42,11 @@ h1 {
   right: 0;
   display: flex;
   gap: 10px;
+  margin-right:10px;
 }
 
 .icon-button {
-  font-size: 1.44rem; /* 20% larger */
+  font-size: 1.5rem;
   background: none;
   border: none;
   color: #666;
@@ -54,7 +56,7 @@ h1 {
   justify-content: center;
   width: 36px;
   height: 36px;
-  border-radius: 50%;
+  border-radius: 8px;
   transition: background-color 0.2s;
 }
 
@@ -76,6 +78,7 @@ h1 {
   position: absolute;
   left: 0;
   z-index: 10;
+  margin-left: 10px;
 }
 
 .options-container .btn-options {
@@ -730,6 +733,8 @@ video.media-content[data-hide-controls]::-webkit-media-controls-volume-slider {
 
 .modal-content h2 {
   margin-bottom: 15px;
+  text-align: center;
+  position: relative;
 }
 
 .modal-content h3 {
@@ -757,7 +762,7 @@ video.media-content[data-hide-controls]::-webkit-media-controls-volume-slider {
 
 .modal-content button {
   padding: 8px 16px;
-  background-color: #4CAF50;
+  background-color: #2984e5;
   color: white;
   border: none;
   border-radius: 4px;
@@ -765,7 +770,7 @@ video.media-content[data-hide-controls]::-webkit-media-controls-volume-slider {
 }
 
 .modal-content button:hover {
-  background-color: #45a049;
+  background-color: #005dc0;
 }
 
 /* ComfyUI Modal Styling */
@@ -790,7 +795,7 @@ video.media-content[data-hide-controls]::-webkit-media-controls-volume-slider {
 }
 
 .open-comfy-btn {
-  background-color: #28a745;
+  background-color: #007bff;
   color: white;
   border: none;
   padding: 6px 12px;
@@ -798,16 +803,24 @@ video.media-content[data-hide-controls]::-webkit-media-controls-volume-slider {
   cursor: pointer;
   font-size: 0.9rem;
   font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 4px;
 }
 
 .open-comfy-btn:hover {
-  background-color: #218838;
+  background-color: #0056b3;
+}
+
+.open-comfy-btn svg {
+  width: 14px;
+  height: 14px;
 }
 
 .destination-input {
   display: flex;
   gap: 10px;
-  margin-bottom: 15px;
+  margin-bottom: 0px;
   align-items: center;
 }
 
@@ -819,23 +832,24 @@ video.media-content[data-hide-controls]::-webkit-media-controls-volume-slider {
   font-family: monospace;
   font-size: 0.9rem;
   height: 36px;
+  margin-bottom: 0px;
 }
 
 .btn-small {
   padding: 8px 12px;
   font-size: 0.85rem;
-  background-color: #007bff;
+  background-color: #28a745;
   color: white;
   border: none;
   border-radius: 4px;
   cursor: pointer;
   transition: background-color 0.2s;
-  height: auto;
+  height: 36px;
   line-height: 1.2;
 }
 
 .btn-small:hover {
-  background-color: #0056b3;
+  background-color: #218838;
 }
 
 .saved-destinations {
@@ -873,16 +887,59 @@ video.media-content[data-hide-controls]::-webkit-media-controls-volume-slider {
 .destination-delete {
   padding: 3px 6px;
   font-size: 0.7rem;
-  background-color: white;
-  color: #dc3545;
-  border: 1px solid #dc3545;
+  background-color: #dc3545 !important;
+  color: white !important;
+  border: 1px solid #dc3545 !important;
   border-radius: 2px;
   cursor: pointer;
   margin-left: 8px;
 }
 
 .destination-delete:hover {
-  background-color: #fff5f5;
+  background-color: #c82333 !important;
+  border-color: #c82333 !important;
+}
+
+/* More Options Dropdown */
+.more-options {
+  margin-top: 10px;
+}
+
+.more-options-toggle {
+  background: none;
+  border: none;
+  color: #666;
+  cursor: pointer;
+  font-size: 0.9rem;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 0;
+  margin-left: 2px;
+}
+
+.more-options-toggle:hover {
+  color: #333;
+}
+
+.more-options-toggle .caret {
+  font-size: 0.8rem;
+  transition: transform 0.2s;
+}
+
+.more-options-toggle.expanded .caret {
+  transform: rotate(90deg);
+}
+
+.more-options-content {
+  display: none;
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid #ddd;
+}
+
+.more-options-content.show {
+  display: block;
 }
 
 /* New Workflow Actions Styling */
@@ -1108,10 +1165,10 @@ video.media-content[data-hide-controls]::-webkit-media-controls-volume-slider {
   transition: transform 0.5s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-.run-btn:after {
+/* .run-btn:after {
   content: '\279C';
   font-size: 14px;
-}
+} */
 
 /* Open Button */
 .open-btn {

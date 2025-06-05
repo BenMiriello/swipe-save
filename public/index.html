@@ -59,26 +59,39 @@
   <div id="comfyuiModal" class="modal">
     <div class="modal-content">
       <span class="close-modal">&times;</span>
-      <h2 style="text-align: center;">Run Workflow</h2>
+      <h2>Run Workflow</h2>
       
       <div class="comfyui-destination">
         <div class="destination-header">
           <h3>Forward to:</h3>
-          <button id="openComfyUI" class="open-comfy-btn" style="display: none;">Open ></button>
+          <button id="openComfyUI" class="open-comfy-btn" style="display: none;">
+            Open >
+            <!-- <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="9 18 15 12 9 6"></polyline>
+            </svg> -->
+          </button>
         </div>
         <div class="destination-input">
           <input type="text" id="comfyuiDestination" placeholder="Enter ComfyUI URL">
           <button id="saveDestination" class="btn btn-small" style="display: none;">Save</button>
         </div>
-        <div class="saved-destinations" id="savedDestinations">
-          <!-- Saved destinations will appear here -->
+        <div class="more-options" id="moreOptionsContainer" style="display: none;">
+          <div class="more-options-toggle" id="moreOptionsToggle">
+            More options
+            <span class="caret">▶</span>
+          </div>
+          <div class="more-options-content" id="moreOptionsContent">
+            <div class="saved-destinations" id="savedDestinations">
+              <!-- Additional options will appear here when expanded -->
+            </div>
+          </div>
         </div>
       </div>
       
       <div class="workflow-actions">
         <div class="action-row">
           <div class="action-controls">
-            <span class="action-label">Queue:</span>
+            <!-- <span class="action-label">Queue:</span> -->
             <div class="number-picker">
               <button class="number-btn" data-action="decrement"></button>
               <input type="number" id="queueCount" value="1" min="1" max="99">
@@ -93,11 +106,13 @@
             <span class="toggle-text">New Seed</span>
           </div>
           <div class="run-buttons">
-            <button id="queueRun" class="run-btn">Run </button>
+            <button id="queueRun" class="run-btn">
+              Queue >
+            </button>
           </div>
         </div>
         
-        <div class="action-row">
+        <!-- <div class="action-row">
           <div class="action-controls">
             <span class="action-label">Load:</span>
             <div class="number-picker">
@@ -109,7 +124,7 @@
           <div class="run-buttons">
             <button id="loadRun" class="run-btn">Run </button>
           </div>
-        </div>
+        </div> -->
       </div>
       
       <div id="comfyuiError" class="comfyui-error" style="display: none;"></div>

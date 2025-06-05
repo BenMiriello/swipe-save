@@ -966,27 +966,40 @@ const uiManager = {
   initializeComfyUIDestinations() {
     const input = document.getElementById('comfyuiDestination');
     const saveBtn = document.getElementById('saveDestination');
+    const openBtn = document.getElementById('openComfyUI');
+    const moreOptionsToggle = document.getElementById('moreOptionsToggle');
+    const moreOptionsContent = document.getElementById('moreOptionsContent');
 
     if (input && saveBtn) {
       // Load saved destinations
-      this.loadSavedDestinations();
+      const saved = this.loadSavedDestinations();
 
-      // Set default destination
-      if (!input.value) {
+      // Only set default if no saved destinations exist
+      if (!input.value && saved.length === 0) {
         input.value = this.getDefaultComfyUIUrl();
+      } else if (!input.value && saved.length > 0) {
+        input.value = saved[0];
       }
 
       // Store original value to detect changes
       input.originalValue = input.value;
 
+      // Show open button when there's a URL
+      if (openBtn && input.value.trim()) {
+        openBtn.style.display = 'flex';
+      }
+
       // Show save button when input changes
       input.addEventListener('input', () => {
         const hasChanged = input.value.trim() !== input.originalValue;
         saveBtn.style.display = hasChanged ? 'inline-block' : 'none';
+        
+        // Show/hide open button based on URL presence
+        if (openBtn) {
+          openBtn.style.display = input.value.trim() ? 'flex' : 'none';
+        }
 
-        // Refresh destination list when input changes
-        const saved = this.loadSavedDestinations();
-        this.renderDestinations(saved);
+        // Don't refresh destination list when input changes - only on save
       });
 
       // Save destination on button click
@@ -1004,6 +1017,32 @@ const uiManager = {
           saveBtn.style.display = 'none';
         }
       });
+
+      // Open ComfyUI button handler
+      if (openBtn) {
+        openBtn.addEventListener('click', () => {
+          const url = input.value.trim();
+          if (url) {
+            window.open(url, '_blank');
+          }
+        });
+      }
+
+      // More options toggle
+      if (moreOptionsToggle && moreOptionsContent) {
+        moreOptionsToggle.addEventListener('click', () => {
+          const isExpanded = moreOptionsContent.classList.contains('show');
+          const destinationItems = document.querySelectorAll('.destination-item');
+          
+          moreOptionsContent.classList.toggle('show');
+          moreOptionsToggle.classList.toggle('expanded');
+          
+          // Show/hide destination items
+          destinationItems.forEach(item => {
+            item.style.display = moreOptionsContent.classList.contains('show') ? 'flex' : 'none';
+          });
+        });
+      }
     }
   },
 
@@ -1021,11 +1060,11 @@ const uiManager = {
   loadSavedDestinations() {
     try {
       const saved = JSON.parse(localStorage.getItem('comfyui-destinations') || '[]');
-      const defaultUrl = this.getDefaultComfyUIUrl();
-
-      // Ensure default is always included
-      if (!saved.includes(defaultUrl)) {
-        saved.unshift(defaultUrl);
+      
+      // Don't automatically add default URL unless no destinations exist
+      if (saved.length === 0) {
+        const defaultUrl = this.getDefaultComfyUIUrl();
+        saved.push(defaultUrl);
         localStorage.setItem('comfyui-destinations', JSON.stringify(saved));
       }
 
@@ -1092,6 +1131,8 @@ const uiManager = {
    */
   selectDestination(url) {
     const input = document.getElementById('comfyuiDestination');
+    const openBtn = document.getElementById('openComfyUI');
+    
     if (input) {
       input.value = url;
       input.originalValue = url;
@@ -1100,6 +1141,11 @@ const uiManager = {
       const saveBtn = document.getElementById('saveDestination');
       if (saveBtn) {
         saveBtn.style.display = 'none';
+      }
+      
+      // Show open button
+      if (openBtn) {
+        openBtn.style.display = 'flex';
       }
 
       // Refresh destination list to hide currently selected one
@@ -1113,20 +1159,34 @@ const uiManager = {
    */
   renderDestinations(destinations) {
     const container = document.getElementById('savedDestinations');
+    const moreOptionsContainer = document.getElementById('moreOptionsContainer');
+    
     if (!container) return;
 
     container.innerHTML = '';
 
     // Get current destination to avoid showing it as an option
     const currentDestination = this.getSelectedDestination();
+    const availableDestinations = destinations.filter(url => url !== currentDestination && url.trim() !== currentDestination.trim());
 
-    destinations.forEach(url => {
-      // Don't show the currently selected destination as an option
-      if (url === currentDestination) return;
+    console.log('Current destination:', currentDestination);
+    console.log('All destinations:', destinations);
+    console.log('Available destinations:', availableDestinations);
 
+    // Show/hide more options based on whether there are additional destinations
+    if (moreOptionsContainer) {
+      if (availableDestinations.length > 0) {
+        moreOptionsContainer.style.display = 'block';
+      } else {
+        moreOptionsContainer.style.display = 'none';
+      }
+    }
+
+    availableDestinations.forEach(url => {
       const item = document.createElement('div');
       item.className = 'destination-item';
       item.dataset.url = url;
+      item.style.display = 'none'; // Hidden by default
 
       const text = document.createElement('span');
       text.className = 'destination-text';
@@ -1156,7 +1216,7 @@ const uiManager = {
    */
   getSelectedDestination() {
     const input = document.getElementById('comfyuiDestination');
-    return input ? input.value.trim() : this.getDefaultComfyUIUrl();
+    return input ? input.value.trim() : '';
   },
 
   /**
