@@ -211,12 +211,12 @@ const coreUIManager = {
       });
     }
 
-    const prevButton = document.querySelector('.controls .btn-secondary:first-child');
+    const prevButton = document.querySelector('.btn-nav:first-child');
     if (prevButton) {
       prevButton.addEventListener('click', handlers.showPrevious);
     }
 
-    const nextButton = document.querySelector('.controls .btn-secondary:last-child');
+    const nextButton = document.querySelector('.btn-nav:last-child');
     if (nextButton) {
       nextButton.addEventListener('click', handlers.showNext);
     }

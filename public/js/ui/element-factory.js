@@ -150,16 +150,20 @@ const elementFactory = {
       const controls = document.createElement('div');
       controls.className = 'controls';
 
+      const navContainer = document.createElement('div');
+      navContainer.className = 'nav-container';
+
       const prevButton = document.createElement('button');
-      prevButton.className = 'btn btn-secondary';
+      prevButton.className = 'btn btn-nav';
       prevButton.textContent = 'Previous';
 
       const nextButton = document.createElement('button');
-      nextButton.className = 'btn btn-secondary';
+      nextButton.className = 'btn btn-nav';
       nextButton.textContent = 'Next';
 
-      controls.appendChild(prevButton);
-      controls.appendChild(nextButton);
+      navContainer.appendChild(prevButton);
+      navContainer.appendChild(nextButton);
+      controls.appendChild(navContainer);
 
       const counterContainer = document.createElement('div');
       counterContainer.className = 'counter-container';
