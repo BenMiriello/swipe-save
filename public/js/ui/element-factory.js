@@ -143,9 +143,9 @@ const elementFactory = {
       const bottomControls = document.createElement('div');
       bottomControls.className = 'bottom-controls';
 
-      const counterContainer = document.createElement('div');
-      counterContainer.className = 'counter-container';
-      counterContainer.textContent = 'No images';
+      const undoButton = document.createElement('button');
+      undoButton.className = 'btn btn-undo';
+      undoButton.textContent = 'Undo';
 
       const controls = document.createElement('div');
       controls.className = 'controls';
@@ -158,20 +158,16 @@ const elementFactory = {
       nextButton.className = 'btn btn-secondary';
       nextButton.textContent = 'Next';
 
-      const undoButton = document.createElement('button');
-      undoButton.className = 'btn btn-undo';
-      undoButton.textContent = 'Undo';
-
       controls.appendChild(prevButton);
-      controls.appendChild(undoButton);
       controls.appendChild(nextButton);
 
-      const spacer = document.createElement('div');
-      spacer.className = 'spacer';
+      const counterContainer = document.createElement('div');
+      counterContainer.className = 'counter-container';
+      counterContainer.textContent = 'No images';
 
-      bottomControls.appendChild(counterContainer);
+      bottomControls.appendChild(undoButton);
       bottomControls.appendChild(controls);
-      bottomControls.appendChild(spacer);
+      bottomControls.appendChild(counterContainer);
 
       const container = document.querySelector('.container');
       container.appendChild(bottomControls);

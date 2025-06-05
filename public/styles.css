@@ -240,6 +240,11 @@ h1 {
   white-space: nowrap;
 }
 
+.current-path:focus {
+  outline: none;
+  border-color: #007bff;
+}
+
 .directory-list {
   max-height: 400px;
   overflow-y: auto;
@@ -285,7 +290,29 @@ h1 {
 .browser-actions {
   display: flex;
   gap: 10px;
-  justify-content: flex-end;
+  justify-content: space-between;
+}
+
+.btn-use-default {
+  background-color: #6c757d;
+  color: white;
+}
+
+.btn-use-default:hover {
+  background-color: #5a6268;
+}
+
+#upButton {
+  background-color: #6c757d;
+  color: #f8f9fa;
+  border: 2px solid #f8f9fa;
+  padding: 8px 12px;
+  min-width: auto;
+  font-size: 16px;
+}
+
+#upButton:hover {
+  background-color: #5a6268;
 }
 
 /* Filename path container */
@@ -533,17 +560,30 @@ video.media-content[data-hide-controls]::-webkit-media-controls-volume-slider {
 }
 
 .controls .btn {
-  width: 80px;
+  width: 92px;
   text-align: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .counter-container {
-  width: 120px;
+  min-width: 120px;
   font-size: 0.9rem;
-  color: #666;
+  color: #333;
   cursor: pointer;
   user-select: none;
   position: relative;
+  padding: 8px 16px;
+  background-color: white;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  text-align: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 36px;
+  box-sizing: border-box;
 }
 
 /* Number Dial Modal */
@@ -722,7 +762,13 @@ video.media-content[data-hide-controls]::-webkit-media-controls-volume-slider {
   font-size: 28px;
   font-weight: bold;
   cursor: pointer;
-  margin-top: -10px;
+  margin-right: 8px;
+  position: relative;
+  z-index: 1001;
+  line-height: 1;
+  padding: 0;
+  background: none;
+  border: none;
 }
 
 .close-modal:hover,
@@ -735,6 +781,21 @@ video.media-content[data-hide-controls]::-webkit-media-controls-volume-slider {
   margin-bottom: 15px;
   text-align: center;
   position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.modal-content h2::before {
+  content: '';
+  width: 32px;
+  height: 32px;
+  visibility: hidden;
+}
+
+.modal-content h2 .modal-title {
+  flex: 1;
+  text-align: center;
 }
 
 .modal-content h3 {

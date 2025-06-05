@@ -24,8 +24,10 @@ const modalManager = {
     infoModal.className = 'modal';
     infoModal.innerHTML = `
       <div class="modal-content">
-        <span class="close-modal" id="closeInfoModal">&times;</span>
-        <h2>Instructions</h2>
+        <h2>
+          <span class="modal-title">Instructions</span>
+          <span class="close-modal" id="closeInfoModal">&times;</span>
+        </h2>
         <div class="instructions-content">
           ${window.appConfig.instructionsContent}
         </div>
@@ -87,18 +89,20 @@ const modalManager = {
     browserModal.className = 'modal';
     browserModal.innerHTML = `
       <div class="modal-content">
-        <span class="close-modal" id="closeBrowserModal">&times;</span>
-        <h2 id="browserTitle">Select Directory</h2>
+        <h2>
+          <span class="modal-title" id="browserTitle">Select Directory</span>
+          <span class="close-modal" id="closeBrowserModal">&times;</span>
+        </h2>
         <div class="browser-controls">
-          <div class="current-path" id="currentPath"></div>
-          <button id="upButton" class="btn btn-secondary">Up</button>
+          <input type="text" class="current-path" id="currentPath" placeholder="Enter or browse path...">
+          <button id="upButton" class="btn btn-secondary">↑</button>
         </div>
         <div class="directory-list" id="directoryList">
           Loading...
         </div>
         <div class="browser-actions">
+          <button id="useDefaultDirectory" class="btn btn-use-default">Use Default</button>
           <button id="selectDirectory" class="btn">Select This Directory</button>
-          <button id="cancelBrowser" class="btn btn-secondary">Cancel</button>
         </div>
       </div>
     `;

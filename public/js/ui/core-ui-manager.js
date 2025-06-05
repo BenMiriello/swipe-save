@@ -54,14 +54,12 @@ const coreUIManager = {
               <span class="dir-label">From:</span>
               <span class="dir-path-clickable" id="sourcePathClickable" title="Click to browse">Loading...</span>
             </div>
-            <button class="use-default-btn" id="useDefaultSource">Use Default</button>
           </li>
           <li class="directory-row">
             <div class="dir-info">
               <span class="dir-label">To:</span>
               <span class="dir-path-clickable" id="destPathClickable" title="Click to browse">Loading...</span>
             </div>
-            <button class="use-default-btn" id="useDefaultDest">Use Default</button>
           </li>
           <li class="separator"></li>
           <li id="customName">Custom Name</li>
@@ -161,22 +159,6 @@ const coreUIManager = {
       });
     }
 
-    const useDefaultSourceEl = document.getElementById('useDefaultSource');
-    if (useDefaultSourceEl) {
-      useDefaultSourceEl.addEventListener('click', async () => {
-        await window.directoryBrowser.useDefaultDirectory('source');
-        this.elements.optionsDropdown.classList.remove('show');
-      });
-    }
-
-    const useDefaultDestEl = document.getElementById('useDefaultDest');
-    if (useDefaultDestEl) {
-      useDefaultDestEl.addEventListener('click', async () => {
-        await window.directoryBrowser.useDefaultDirectory('destination');
-        this.elements.optionsDropdown.classList.remove('show');
-      });
-    }
-
     const showInfoEl = document.getElementById('showInfo');
     if (showInfoEl) {
       showInfoEl.addEventListener('click', () => {
@@ -229,12 +211,12 @@ const coreUIManager = {
       });
     }
 
-    const prevButton = document.querySelector('.btn-secondary:first-child');
+    const prevButton = document.querySelector('.controls .btn-secondary:first-child');
     if (prevButton) {
       prevButton.addEventListener('click', handlers.showPrevious);
     }
 
-    const nextButton = document.querySelector('.btn-secondary:last-of-type');
+    const nextButton = document.querySelector('.controls .btn-secondary:last-child');
     if (nextButton) {
       nextButton.addEventListener('click', handlers.showNext);
     }

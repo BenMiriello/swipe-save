@@ -43,7 +43,7 @@ const directoryBrowser = {
       const result = await window.apiService.browseDirectory(path);
 
       this.currentBrowserPath = result.currentPath;
-      currentPath.textContent = result.currentPath;
+      currentPath.value = result.currentPath;
 
       upButton.disabled = !result.parentPath;
 
@@ -83,6 +83,16 @@ const directoryBrowser = {
       }
     };
 
+    const currentPath = document.getElementById('currentPath');
+    currentPath.addEventListener('keypress', async (e) => {
+      if (e.key === 'Enter') {
+        const path = currentPath.value.trim();
+        if (path) {
+          await this.browseDirectory(path);
+        }
+      }
+    });
+
     const selectButton = document.getElementById('selectDirectory');
     selectButton.onclick = async () => {
       if (this.currentBrowserPath) {
@@ -90,10 +100,13 @@ const directoryBrowser = {
       }
     };
 
-    const cancelButton = document.getElementById('cancelBrowser');
-    cancelButton.onclick = () => {
-      document.getElementById('directoryBrowser').style.display = 'none';
-    };
+    const useDefaultButton = document.getElementById('useDefaultDirectory');
+    if (useDefaultButton) {
+      useDefaultButton.onclick = async () => {
+        await this.useDefaultDirectory(this.currentBrowserType);
+        // Don't close modal - just update the display
+      };
+    }
   },
 
   /**
