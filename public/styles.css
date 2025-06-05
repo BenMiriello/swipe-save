@@ -557,10 +557,12 @@ video.media-content[data-hide-controls]::-webkit-media-controls-volume-slider {
 }
 
 .controls {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
   display: flex;
   justify-content: center;
   align-items: center;
-  flex: 1;
 }
 
 .nav-container {
@@ -584,9 +586,9 @@ video.media-content[data-hide-controls]::-webkit-media-controls-volume-slider {
 }
 
 .btn-undo {
-  color: #dc3545;
-  background-color: white;
-  border: 2px solid #dc3545;
+  background-color: white !important;
+  color: #de2020 !important;
+  border: 2px solid #da7777 !important;
 }
 
 .btn-undo:hover {
@@ -1042,11 +1044,12 @@ video.media-content[data-hide-controls]::-webkit-media-controls-volume-slider {
   display: flex;
   align-items: center;
   padding: 4px;
-  margin-bottom: 4px;
+  margin-bottom: 8px;
 }
 
 .action-row:last-child {
   margin-bottom: 0;
+  justify-content: flex-end;
 }
 
 .action-label {

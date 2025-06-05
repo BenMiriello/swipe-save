@@ -24,7 +24,11 @@ class AppController {
     window.uiManager.setupEventHandlers({
       openFilenameModal: this.openFilenameModal.bind(this),
       saveCustomFilename: this.saveCustomFilename.bind(this),
-      openComfyUIModal: this.openComfyUIModal.bind(this)
+      openComfyUIModal: this.openComfyUIModal.bind(this),
+      showPrevious: this.showPreviousImage.bind(this),
+      showNext: this.showNextImage.bind(this),
+      undoLastAction: this.undoLastAction.bind(this),
+      downloadCurrentFile: this.downloadCurrentFile.bind(this)
     });
 
     // Setup additional UI controls
@@ -356,15 +360,14 @@ class AppController {
 
       input.addEventListener('input', () => {
         let value = parseInt(input.value);
-        if (isNaN(value) || value < 1) {
-          input.value = 1;
-        } else if (value > 99) {
+        if (!isNaN(value) && value > 99) {
           input.value = 99;
         }
       });
 
       input.addEventListener('blur', () => {
-        if (!input.value || input.value === '') {
+        let value = parseInt(input.value);
+        if (isNaN(value) || value < 1 || !input.value || input.value === '') {
           input.value = 1;
         }
       });
