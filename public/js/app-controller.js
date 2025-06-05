@@ -3,14 +3,6 @@
  */
 class AppController {
   constructor() {
-    // State management
-    this.state = {
-      allFiles: [],
-      currentIndex: 0,
-      customFilename: null,
-      isLoading: false
-    };
-
     // Initialize UI manager
     window.uiManager.initializeUI();
 
@@ -35,7 +27,7 @@ class AppController {
       openComfyUIModal: this.openComfyUIModal.bind(this)
     });
 
-    // Setup additional UI elements
+    // Setup additional UI controls
     this.setupUIControls();
   }
 
@@ -49,10 +41,16 @@ class AppController {
   }
 
   /**
+   * Get current state (for backward compatibility)
+   */
+  get state() {
+    return window.stateManager.getState();
+  }
+
+  /**
    * Setup additional UI controls (buttons, etc.)
    */
   setupUIControls() {
-    // Set up header buttons if they exist
     const reloadIcon = document.querySelector('.reload-icon');
     if (reloadIcon) {
       reloadIcon.addEventListener('click', this.fetchMediaFiles.bind(this));
@@ -68,7 +66,6 @@ class AppController {
       saveIcon.addEventListener('click', this.downloadCurrentFile.bind(this));
     }
 
-    // Setup navigation buttons
     const prevButton = document.querySelector('.btn-secondary:first-child');
     if (prevButton) {
       prevButton.addEventListener('click', this.showPreviousImage.bind(this));
@@ -79,7 +76,6 @@ class AppController {
       nextButton.addEventListener('click', this.showNextImage.bind(this));
     }
 
-    // Setup undo button
     const undoButton = document.querySelector('.btn-undo');
     if (undoButton) {
       undoButton.addEventListener('click', this.undoLastAction.bind(this));
@@ -91,85 +87,39 @@ class AppController {
    */
   async fetchMediaFiles() {
     try {
-      this.state.isLoading = true;
+      window.stateManager.updateState({ isLoading: true });
       window.uiManager.showLoading();
 
-      this.state.allFiles = await window.apiService.fetchMediaFiles();
+      const files = await window.apiService.fetchMediaFiles();
+      window.stateManager.setFiles(files);
 
-      if (this.state.allFiles.length === 0) {
+      if (files.length === 0) {
         window.uiManager.showEmptyState();
         window.uiManager.updateImageCounter(0, 0);
         return;
       }
 
-      // Reset to first image when refreshing
-      this.state.currentIndex = 0;
-      this.state.customFilename = null;
-      this.displayCurrentImage();
+      window.navigationController.displayCurrentImage();
     } catch (error) {
       console.error('Error fetching media files:', error);
       window.uiManager.showError(error.message || 'Failed to load media files');
     } finally {
-      this.state.isLoading = false;
+      window.stateManager.updateState({ isLoading: false });
     }
-  }
-
-  /**
-   * Display the current image
-   */
-  displayCurrentImage() {
-    if (this.state.allFiles.length === 0) {
-      window.uiManager.showEmptyState();
-      window.uiManager.updateImageCounter(0, 0);
-      return;
-    }
-
-    const file = this.state.allFiles[this.state.currentIndex];
-    const mediaList = document.getElementById('mediaList');
-    mediaList.innerHTML = '';
-
-    // Create and add the media item
-    const mediaItem = window.uiManager.createMediaItem(
-      file, 
-      this.state.customFilename, 
-      window.appConfig.getApiUrl()
-    );
-    mediaList.appendChild(mediaItem);
-
-    // Setup interactions
-    window.interactionHandler.setupSwipeHandlers();
-    window.interactionHandler.setupTapHandlers();
-
-    // Setup pinch zoom for images
-    window.uiManager.setupPinchZoom();
-
-    // Update counter
-    window.uiManager.updateImageCounter(
-      this.state.currentIndex, 
-      this.state.allFiles.length
-    );
   }
 
   /**
    * Show the previous image
    */
   showPreviousImage() {
-    if (this.state.allFiles.length === 0) return;
-
-    this.state.customFilename = null; // Reset custom filename
-    this.state.currentIndex = (this.state.currentIndex - 1 + this.state.allFiles.length) % this.state.allFiles.length;
-    this.displayCurrentImage();
+    window.navigationController.showPreviousImage();
   }
 
   /**
    * Show the next image
    */
   showNextImage() {
-    if (this.state.allFiles.length === 0) return;
-
-    this.state.customFilename = null; // Reset custom filename
-    this.state.currentIndex = (this.state.currentIndex + 1) % this.state.allFiles.length;
-    this.displayCurrentImage();
+    window.navigationController.showNextImage();
   }
 
   /**
@@ -177,12 +127,7 @@ class AppController {
    * @param {number} index - Index to navigate to
    */
   goToIndex(index) {
-    if (this.state.allFiles.length === 0) return;
-    if (index < 0 || index >= this.state.allFiles.length) return;
-
-    this.state.customFilename = null; // Reset custom filename
-    this.state.currentIndex = index;
-    this.displayCurrentImage();
+    window.navigationController.goToIndex(index);
   }
 
   /**
@@ -190,110 +135,25 @@ class AppController {
    * @param {string} action - Action to perform
    */
   async performAction(action) {
-    if (this.state.allFiles.length === 0) return;
-
-    const file = this.state.allFiles[this.state.currentIndex];
-    const filename = file.name;
-    const mediaItem = document.querySelector('.media-item');
-
-    if (!mediaItem) return;
-
-    // Show visual feedback
-    window.uiManager.showActionFeedback(mediaItem, action);
-
-    try {
-      // Call API to perform the action
-      await window.apiService.performAction(filename, action, this.state.customFilename);
-
-      // Move to next image after successful action
-      setTimeout(() => {
-        // Remove current file from array
-        this.state.allFiles.splice(this.state.currentIndex, 1);
-
-        // Reset custom filename for next image
-        this.state.customFilename = null;
-
-        // If there are no more files, show empty state
-        if (this.state.allFiles.length === 0) {
-          window.uiManager.showEmptyState();
-          window.uiManager.updateImageCounter(0, 0);
-          return;
-        }
-
-        // If we're at the end of the array, go back one
-        if (this.state.currentIndex >= this.state.allFiles.length) {
-          this.state.currentIndex = this.state.allFiles.length - 1;
-        }
-
-        // Display the next image
-        this.displayCurrentImage();
-      }, 300);
-    } catch (error) {
-      console.error('Error performing action:', error);
-      // Remove visual feedback on error
-      window.uiManager.hideActionFeedback(mediaItem, action);
-    }
+    return window.actionController.performAction(action);
   }
 
   /**
    * Undo the last action
    */
   async undoLastAction() {
-    try {
-      // Call API to undo last action
-      const result = await window.apiService.undoLastAction();
-
-      if (result.undoneAction) {
-        // Refresh the media files and try to show the image that was restored
-        const undoneFilename = result.undoneAction.filename;
-
-        // Keep track of the current filename to possibly restore it later
-        const currentFilename = this.state.allFiles[this.state.currentIndex]?.name;
-
-        // Fetch updated files
-        this.state.allFiles = await window.apiService.fetchMediaFiles();
-
-        if (this.state.allFiles.length === 0) {
-          window.uiManager.showEmptyState();
-          window.uiManager.updateImageCounter(0, 0);
-          return;
-        }
-
-        // Try to find and show the undone file in the refreshed list
-        if (undoneFilename) {
-          const undoneIndex = this.state.allFiles.findIndex(file => file.name === undoneFilename);
-          if (undoneIndex !== -1) {
-            this.state.currentIndex = undoneIndex;
-          } else if (currentFilename) {
-            // If undone file not found, try to keep the current position
-            const currentFileIndex = this.state.allFiles.findIndex(file => file.name === currentFilename);
-            if (currentFileIndex !== -1) {
-              this.state.currentIndex = currentFileIndex;
-            } else {
-              this.state.currentIndex = 0; // Fallback to first image
-            }
-          } else {
-            this.state.currentIndex = 0; // Fallback to first image
-          }
-        }
-
-        this.state.customFilename = null;
-        this.displayCurrentImage();
-      }
-    } catch (error) {
-      console.error('Error performing undo:', error);
-      alert('Failed to undo the last action: ' + error.message);
-    }
+    return window.actionController.undoLastAction();
   }
 
   /**
    * Open the filename modal for renaming
    */
   openFilenameModal() {
-    if (this.state.allFiles.length === 0) return;
+    const state = window.stateManager.getState();
+    if (state.allFiles.length === 0) return;
 
-    const currentFile = this.state.allFiles[this.state.currentIndex];
-    window.uiManager.showFilenameModal(currentFile.name, this.state.customFilename);
+    const currentFile = state.allFiles[state.currentIndex];
+    window.uiManager.showFilenameModal(currentFile.name, state.customFilename);
   }
 
   /**
@@ -301,29 +161,21 @@ class AppController {
    * @param {string} filename - New filename
    */
   saveCustomFilename(filename) {
-    this.state.customFilename = filename;
-    // Refresh display to show new filename
-    this.displayCurrentImage();
+    window.actionController.saveCustomFilename(filename);
   }
 
   /**
    * Download the current file
    */
   downloadCurrentFile() {
-    if (this.state.allFiles.length === 0) return;
-
-    const currentFile = this.state.allFiles[this.state.currentIndex];
-    window.apiService.downloadFile(currentFile, this.state.customFilename);
+    window.actionController.downloadCurrentFile();
   }
 
   /**
    * Open current file in new tab/window
    */
   openFileInNewView() {
-    if (this.state.allFiles.length === 0) return;
-
-    const currentFile = this.state.allFiles[this.state.currentIndex];
-    window.apiService.openFileInNewView(currentFile);
+    window.actionController.openFileInNewView();
   }
 
   /**
@@ -346,12 +198,12 @@ class AppController {
    * Open ComfyUI modal
    */
   openComfyUIModal() {
-    if (this.state.allFiles.length === 0) return;
+    const state = window.stateManager.getState();
+    if (state.allFiles.length === 0) return;
 
     window.uiManager.showComfyUIModal();
     window.uiManager.initializeComfyUIDestinations();
 
-    // Setup modal button handlers
     this.setupComfyUIModalHandlers();
   }
 
@@ -370,7 +222,6 @@ class AppController {
       loadRun.onclick = () => this.handleRunAction('load');
     }
 
-    // Make New Seed text clickable
     const newSeedText = document.querySelector('.toggle-text');
     const newSeedToggle = document.getElementById('newSeedToggle');
     if (newSeedText && newSeedToggle) {
@@ -379,7 +230,6 @@ class AppController {
       };
     }
 
-    // Setup number pickers
     this.setupNumberPickers();
   }
 
@@ -395,10 +245,6 @@ class AppController {
     const useNewSeed = type === 'queue' ? newSeedToggle.checked : false;
     const destination = window.uiManager.getSelectedDestination();
 
-    console.log('Queue Debug - Selected destination:', destination);
-    console.log('Queue Debug - Count:', count, 'UseNewSeed:', useNewSeed);
-
-    // Set button to waiting state
     this.setButtonState(button, 'waiting', 'Waiting');
 
     try {
@@ -420,7 +266,6 @@ class AppController {
         }
       }
 
-      // Success state
       this.setButtonState(button, 'success', 'Success!');
       this.addResultLog(count, useNewSeed, false);
 
@@ -509,7 +354,6 @@ class AppController {
       let holdInterval = null;
       let holdTimeout = null;
 
-      // Handle input validation - cap at 99 and replace empty with 1
       input.addEventListener('input', () => {
         let value = parseInt(input.value);
         if (isNaN(value) || value < 1) {
@@ -550,7 +394,6 @@ class AppController {
         holdInterval = null;
       };
 
-      // Increment button
       incrementBtn.onclick = increment;
       incrementBtn.onmousedown = () => startHold(increment);
       incrementBtn.onmouseup = stopHold;
@@ -558,7 +401,6 @@ class AppController {
       incrementBtn.ontouchstart = () => startHold(increment);
       incrementBtn.ontouchend = stopHold;
 
-      // Decrement button
       decrementBtn.onclick = decrement;
       decrementBtn.onmousedown = () => startHold(decrement);
       decrementBtn.onmouseup = stopHold;
@@ -566,43 +408,6 @@ class AppController {
       decrementBtn.ontouchstart = () => startHold(decrement);
       decrementBtn.ontouchend = stopHold;
     });
-  }
-
-  /**
-   * Load current image workflow in ComfyUI
-   * @param {boolean} modifySeeds - Whether to modify seed values
-   */
-  async loadInComfyUI(modifySeeds) {
-    if (this.state.allFiles.length === 0) return;
-
-    const currentFile = this.state.allFiles[this.state.currentIndex];
-    const destination = window.uiManager.getSelectedDestination();
-
-    window.uiManager.hideComfyUIModal();
-
-    try {
-      await window.apiService.loadInComfyUI(currentFile, modifySeeds, destination);
-    } catch (error) {
-      alert('Failed to load workflow in ComfyUI: ' + error.message);
-    }
-  }
-
-  /**
-   * Queue current image workflow in ComfyUI
-   * @param {boolean} modifySeeds - Whether to modify seed values
-   */
-  async queueInComfyUI(modifySeeds) {
-    if (this.state.allFiles.length === 0) return;
-
-    const currentFile = this.state.allFiles[this.state.currentIndex];
-    const destination = window.uiManager.getSelectedDestination();
-
-    try {
-      await window.apiService.queueInComfyUI(currentFile, modifySeeds, destination);
-      // Success handled by button state management - no popup
-    } catch (error) {
-      throw error; // Let calling function handle the error
-    }
   }
 
   /**
@@ -626,7 +431,6 @@ class AppController {
       resultItem.textContent = `Queued workflow to run ${count} ${timeCount} with ${seedText}`;
     }
 
-    // Insert at the beginning (most recent first)
     resultsContainer.insertBefore(resultItem, resultsContainer.firstChild);
   }
 }
