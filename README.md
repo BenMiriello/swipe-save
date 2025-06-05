@@ -90,6 +90,7 @@ You can change source and destination directories using the Options menu (top le
 - [x] Allow modifying a few parameters (seed and quantity) when queueing
 - [x] Allow changing and saving the comfyui path to forward to
 - [x] Show log of actions taken, successful or not, in 'Run Workflow' modal
+- [x] Migrate comfyui integration component to Alpine.js
 
 ### UI Improvements
 - [ ] Improve and clean up UI
@@ -112,6 +113,9 @@ You can change source and destination directories using the Options menu (top le
 ### ComfyUI Integration
 - [ ] Allow modifying more fields in the workflow when queueing, such as prompts, steps
 - [ ] Allow loading a workflow in comfyui (not just queueing and linking)
+- [ ] Allow viewing current queue
+- [ ] Allow removing items from current queue
+- [ ] Allow loading workflows from current queue
 - [ ] Allow adding simple nodes and connections such as importing an image (such as the current image) and using that as the source and setting the denoising level
 - [ ] Allow inpainting
 - [ ] Develop more advanced workflow editing and simplified view of workflows
