@@ -15,7 +15,7 @@ function getDefaultComfyUIUrl(req) {
 }
 
 /**
- * Modify seed values in workflow by appending zero
+ * Modify seed values in workflow with random numbers
  */
 function modifyWorkflowSeeds(workflow) {
   if (!workflow || typeof workflow !== 'object') return workflow;
@@ -23,13 +23,19 @@ function modifyWorkflowSeeds(workflow) {
   console.log('Modifying seeds in workflow...');
   let seedCount = 0;
 
+  const generateRandomSeed = () => {
+    // Use a conservative range: 1 to 2147483647 (2^31 - 1)
+    // This is well within ComfyUI's limits and commonly used for seeds
+    return Math.floor(Math.random() * 2147483647) + 1;
+  };
+
   const modifySeeds = (obj) => {
     if (typeof obj !== 'object' || obj === null) return;
 
     for (const key in obj) {
       if (key === 'seed' && typeof obj[key] === 'number') {
         const oldSeed = obj[key];
-        obj[key] = parseInt(obj[key].toString() + '0');
+        obj[key] = generateRandomSeed();
         console.log(`Modified seed: ${oldSeed} -> ${obj[key]}`);
         seedCount++;
       } else if (key === 'inputs' && typeof obj[key] === 'object') {
@@ -46,10 +52,50 @@ function modifyWorkflowSeeds(workflow) {
   return workflow;
 }
 
+/**
+ * Modify control_after_generate values in workflow
+ */
+function modifyControlAfterGenerate(workflow, controlMode = 'increment') {
+  if (!workflow || typeof workflow !== 'object') return workflow;
+
+  console.log(`Modifying control_after_generate values to: ${controlMode}`);
+  let controlCount = 0;
+
+  const modifyControls = (obj, path = '') => {
+    if (typeof obj !== 'object' || obj === null) return;
+
+    for (const key in obj) {
+      const currentPath = path ? `${path}.${key}` : key;
+      
+      if (key === 'control_after_generate') {
+        const oldControl = obj[key];
+        obj[key] = controlMode;
+        console.log(`Modified control_after_generate at ${currentPath}: ${oldControl} -> ${obj[key]}`);
+        controlCount++;
+      } else if (key === 'inputs' && typeof obj[key] === 'object') {
+        modifyControls(obj[key], currentPath);
+      } else if (typeof obj[key] === 'object') {
+        modifyControls(obj[key], currentPath);
+      }
+    }
+  };
+
+  modifyControls(workflow);
+  console.log(`Total control_after_generate values modified: ${controlCount}`);
+  
+  if (controlCount === 0) {
+    console.warn('No control_after_generate fields found in workflow');
+  }
+
+  return workflow;
+}
+
 // Queue workflow in ComfyUI
 router.post('/api/queue-workflow', async (req, res) => {
   try {
-    const { filename, modifySeeds, comfyUrl } = req.body;
+    const { filename, modifySeeds, controlAfterGenerate, comfyUrl } = req.body;
+
+    console.log('Queue request received:', { filename, modifySeeds, controlAfterGenerate, comfyUrl });
 
     if (!filename) {
       return res.status(400).json({ error: 'Filename is required' });
@@ -91,6 +137,11 @@ router.post('/api/queue-workflow', async (req, res) => {
       console.log('Seeds modified for queuing');
     }
 
+    if (controlAfterGenerate) {
+      workflowData = modifyControlAfterGenerate(workflowData, controlAfterGenerate);
+      console.log(`Control after generate set to: ${controlAfterGenerate}`);
+    }
+
     const clientId = 'swipe-save-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9);
 
     const targetUrl = comfyUrl || getDefaultComfyUIUrl(req);
@@ -122,7 +173,8 @@ router.post('/api/queue-workflow', async (req, res) => {
       success: true, 
       result: result,
       comfyUrl: targetUrl,
-      modifiedSeeds: modifySeeds
+      modifiedSeeds: modifySeeds,
+      controlAfterGenerate: controlAfterGenerate
     });
 
   } catch (error) {

@@ -22,6 +22,7 @@ const comfyuiApi = {
   async loadInComfyUI(file, modifySeeds = false, controlAfterGenerate = 'increment', comfyUrl = null) {
     try {
       console.log('Loading workflow in ComfyUI for file:', file.name);
+      console.log('Settings:', { modifySeeds, controlAfterGenerate });
 
       const workflowData = await this.getWorkflowFromImage(file);
 
@@ -272,27 +273,11 @@ const comfyuiApi = {
       console.log('Queueing workflow in ComfyUI for file:', file.name);
       console.log('Settings:', { modifySeeds, controlAfterGenerate });
 
-      // Get the workflow from the image
-      const workflowData = await this.getWorkflowFromImage(file);
-      
-      if (!workflowData) {
-        throw new Error('No workflow found in image metadata');
-      }
-
-      // Modify the workflow based on settings
-      if (modifySeeds) {
-        this.modifyWorkflowSeeds(workflowData);
-      }
-      
-      // Always set control_after_generate to the selected value
-      this.modifyControlAfterGenerate(workflowData, controlAfterGenerate);
-
       const response = await fetch(`${window.appConfig.getApiUrl()}/api/queue-workflow`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           filename: file.name,
-          workflow: workflowData, // Send the modified workflow
           modifySeeds: modifySeeds,
           controlAfterGenerate: controlAfterGenerate,
           comfyUrl: comfyUrl
