@@ -53,6 +53,11 @@ class AppController {
    */
   setupUIControls() {
     // Set up header buttons if they exist
+    const reloadIcon = document.querySelector('.reload-icon');
+    if (reloadIcon) {
+      reloadIcon.addEventListener('click', this.fetchMediaFiles.bind(this));
+    }
+
     const refreshIcon = document.querySelector('.refresh-icon');
     if (refreshIcon) {
       refreshIcon.addEventListener('click', this.fetchMediaFiles.bind(this));
@@ -417,10 +422,12 @@ class AppController {
 
       // Success state
       this.setButtonState(button, 'success', 'Success!');
+      this.addResultLog(count, useNewSeed, false);
 
     } catch (error) {
       console.error(`Error in ${type} action:`, error);
       this.setButtonState(button, 'error', 'Error occurred', error.message || 'Unknown error occurred');
+      this.addResultLog(count, useNewSeed, true, error.message);
     }
   }
 
@@ -482,9 +489,9 @@ class AppController {
       }
 
       setTimeout(() => {
-        button.textContent = 'Run >';
+        button.textContent = 'Queue >';
         button.className = 'run-btn';
-      }, 1500);
+      }, 2000);
     }
   }
 
@@ -596,6 +603,31 @@ class AppController {
     } catch (error) {
       throw error; // Let calling function handle the error
     }
+  }
+
+  /**
+   * Add result to the log
+   */
+  addResultLog(count, useNewSeed, isError, errorMessage = null) {
+    const resultsContainer = document.getElementById('comfyuiResults');
+    if (!resultsContainer) return;
+
+    const resultItem = document.createElement('div');
+    resultItem.className = 'result-item';
+    
+    if (isError) {
+      resultItem.classList.add('error');
+      const timeCount = count === 1 ? 'time' : 'times';
+      const seedText = useNewSeed ? 'new seed' : 'original seed';
+      resultItem.textContent = `An error occurred queueing workflow to run ${count} ${timeCount} with ${seedText}`;
+    } else {
+      const timeCount = count === 1 ? 'time' : 'times';
+      const seedText = useNewSeed ? 'new seeds' : 'original seed';
+      resultItem.textContent = `Queued workflow to run ${count} ${timeCount} with ${seedText}`;
+    }
+
+    // Insert at the beginning (most recent first)
+    resultsContainer.insertBefore(resultItem, resultsContainer.firstChild);
   }
 }
 
