@@ -110,34 +110,6 @@ const uiManager = {
   },
 
   /**
-   * Show ComfyUI modal
-   */
-  showComfyUIModal() {
-    window.modalManager.showComfyUIModal();
-  },
-
-  /**
-   * Hide ComfyUI modal
-   */
-  hideComfyUIModal() {
-    window.modalManager.hideComfyUIModal();
-  },
-
-  /**
-   * Initialize ComfyUI destination management
-   */
-  initializeComfyUIDestinations() {
-    window.comfyuiManager.initializeComfyUIDestinations();
-  },
-
-  /**
-   * Get currently selected ComfyUI destination
-   */
-  getSelectedDestination() {
-    return window.comfyuiManager.getSelectedDestination();
-  },
-
-  /**
    * Update config display in options dropdown
    */
   updateConfigDisplay(config) {

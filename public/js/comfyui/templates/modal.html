@@ -1,0 +1,133 @@
+<!-- ComfyUI Modal with Alpine.js -->
+<div id="comfyuiModal" 
+     class="comfyui-modal" 
+     x-data="workflowModal()"
+     x-show="$store.comfyWorkflow.isModalOpen"
+     x-transition.opacity>
+  
+  <div class="comfyui-modal-content" @click.away="closeModal()">
+    <!-- Modal Header -->
+    <div class="comfyui-modal-header">
+      <h2 class="comfyui-modal-title">Run Workflow</h2>
+      <button class="comfyui-modal-close" @click="closeModal()">&times;</button>
+    </div>
+
+    <!-- Destination Section -->
+    <div class="comfyui-destination-section">
+      <div class="comfyui-destination-header">
+        <h3 class="comfyui-destination-title">Forward to:</h3>
+        <button class="comfy-btn comfy-btn-primary comfy-btn-small" @click="openComfyUI()">
+          Open >
+        </button>
+      </div>
+
+      <div class="comfy-destination-input-group">
+        <input type="text" 
+               class="comfy-input monospace"
+               x-model="$store.comfyDestinations.selectedDestination"
+               placeholder="Enter ComfyUI URL">
+        <button class="comfy-btn comfy-btn-success comfy-btn-small" 
+                @click="$store.comfyDestinations.addDestination($store.comfyDestinations.selectedDestination)"
+                x-show="!$store.comfyDestinations.destinations.includes($store.comfyDestinations.selectedDestination)">
+          Save
+        </button>
+      </div>
+
+      <!-- More Options -->
+      <template x-if="$store.comfyDestinations.destinations.filter(url => url !== $store.comfyDestinations.selectedDestination).length > 0">
+        <div>
+          <button class="comfy-more-options-toggle" 
+                  @click="$store.comfyDestinations.toggleMoreOptions()"
+                  :aria-expanded="$store.comfyDestinations.showMoreOptions">
+            More options
+            <span class="comfy-more-options-caret">▶</span>
+          </button>
+
+          <div x-show="$store.comfyDestinations.showMoreOptions" x-transition>
+            <div class="comfy-destination-list">
+              <template x-for="destination in $store.comfyDestinations.destinations.filter(url => url !== $store.comfyDestinations.selectedDestination)">
+                <div class="comfy-destination-item" @click="$store.comfyDestinations.selectDestination(destination)">
+                  <span class="comfy-destination-text" x-text="destination"></span>
+                  <button class="comfy-destination-delete" 
+                          @click.stop="$store.comfyDestinations.removeDestination(destination)">
+                    Delete
+                  </button>
+                </div>
+              </template>
+            </div>
+          </div>
+        </div>
+      </template>
+    </div>
+
+    <!-- Settings Section -->
+    <div class="comfyui-settings-section" x-data="settingsPanel()">
+      <!-- Quantity -->
+      <div class="comfy-setting-row">
+        <div class="comfy-setting-container">
+          <span class="comfy-setting-label">Quantity</span>
+          <div class="comfy-number-picker">
+            <button class="comfy-number-btn" @click="decrementQuantity()">‹</button>
+            <input type="number" 
+                   class="comfy-number-input"
+                   x-model.number="$store.comfyWorkflow.settings.quantity"
+                   @blur="validateQuantity()"
+                   min="1" max="99">
+            <button class="comfy-number-btn" @click="incrementQuantity()">›</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- New Seed -->
+      <div class="comfy-setting-row">
+        <div class="comfy-setting-container">
+          <span class="comfy-setting-label">New Seed</span>
+          <label class="comfy-toggle">
+            <input type="checkbox" 
+                   x-model="$store.comfyWorkflow.settings.modifySeeds"
+                   @change="toggleNewSeed()">
+            <span class="comfy-toggle-slider"></span>
+          </label>
+        </div>
+      </div>
+
+      <!-- Control After Generate -->
+      <div class="comfy-setting-row">
+        <div class="comfy-setting-container">
+          <span class="comfy-setting-label">Control After Generate</span>
+          <select class="comfy-select" 
+                  x-model="$store.comfyWorkflow.settings.controlAfterGenerate"
+                  @change="updateControlAfterGenerate($event.target.value)">
+            <option value="increment">Increment</option>
+            <option value="randomize">Randomize</option>
+            <option value="decrement">Decrement</option>
+            <option value="fixed">Fixed</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Action Buttons -->
+      <div class="comfy-actions-section">
+        <button class="comfy-btn comfy-btn-primary"
+                :class="getButtonClasses('queue')"
+                @click="handleQueue()"
+                :disabled="isProcessing"
+                x-text="getButtonText('queue')">
+        </button>
+      </div>
+    </div>
+
+    <!-- Error Display -->
+    <div x-show="error" class="comfyui-error" x-text="error"></div>
+
+    <!-- Results Log -->
+    <div x-show="$store.comfyWorkflow.results.length > 0" class="comfyui-results">
+      <template x-for="result in $store.comfyWorkflow.results" :key="result.timestamp">
+        <div class="comfyui-result-item" :class="{ 'error': result.isError }">
+          <span x-text="result.message"></span>
+          <span class="comfyui-result-timestamp" x-text="result.timestamp"></span>
+        </div>
+      </template>
+    </div>
+  </div>
+</div>

@@ -5,6 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>ComfyUI Media Viewer</title>
   <link rel="stylesheet" href="styles.css">
+  <!-- ComfyUI Module Styles -->
+  <link rel="stylesheet" href="js/comfyui/styles/modal.css">
+  <link rel="stylesheet" href="js/comfyui/styles/components.css">
   
   <!-- Early error handler initialization -->
   <script>
@@ -60,101 +63,137 @@
     </div>
   </div>
 
-  <!-- Modal for ComfyUI -->
-  <div id="comfyuiModal" class="modal">
-    <div class="modal-content">
-      <h2>
-        <span class="modal-title">Run Workflow</span>
-        <span class="close-modal">&times;</span>
-      </h2>
-      
-      <div class="comfyui-destination">
-        <div class="destination-header">
-          <h3>Forward to:</h3>
-          <button id="openComfyUI" class="open-comfy-btn" style="display: none;">
+  <!-- Modal for ComfyUI (Alpine.js) -->
+  <div id="comfyuiModal" 
+       class="comfyui-modal" 
+       x-data="workflowModal()"
+       x-show="$store.comfyWorkflow.isModalOpen"
+       x-transition.opacity
+       style="display: none;">
+    
+    <div class="comfyui-modal-content" @click.away="closeModal()">
+      <!-- Modal Header -->
+      <div class="comfyui-modal-header">
+        <h2 class="comfyui-modal-title">Run Workflow</h2>
+        <button class="comfyui-modal-close" @click="closeModal()">&times;</button>
+      </div>
+
+      <!-- Destination Section -->
+      <div class="comfyui-destination-section">
+        <div class="comfyui-destination-header">
+          <h3 class="comfyui-destination-title">Forward to:</h3>
+          <button class="comfy-btn comfy-btn-primary comfy-btn-small" @click="openComfyUI()">
             Open >
-            <!-- <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <polyline points="9 18 15 12 9 6"></polyline>
-            </svg> -->
           </button>
         </div>
-        <div class="destination-input">
-          <input type="text" id="comfyuiDestination" placeholder="Enter ComfyUI URL">
-          <button id="saveDestination" class="btn btn-small" style="display: none;">Save</button>
+
+        <div class="comfy-destination-input-group">
+          <input type="text" 
+                 class="comfy-input monospace"
+                 x-model="$store.comfyDestinations.selectedDestination"
+                 placeholder="Enter ComfyUI URL">
+          <button class="comfy-btn comfy-btn-success comfy-btn-small" 
+                  @click="$store.comfyDestinations ? $store.comfyDestinations.addDestination($store.comfyDestinations.selectedDestination) : null"
+                  x-show="$store.comfyDestinations && $store.comfyDestinations.selectedDestination && $store.comfyDestinations.selectedDestination.trim() && !$store.comfyDestinations.destinations.includes($store.comfyDestinations.selectedDestination)"
+            Save
+          </button>
         </div>
-        <div class="more-options" id="moreOptionsContainer" style="display: none;">
-          <div class="more-options-toggle" id="moreOptionsToggle">
-            More options
-            <span class="caret">▶</span>
-          </div>
-          <div class="more-options-content" id="moreOptionsContent">
-            <div class="saved-destinations" id="savedDestinations">
-              <!-- Additional options will appear here when expanded -->
+
+        <!-- More Options -->
+        <template x-if="$store.comfyDestinations && $store.comfyDestinations.destinations && $store.comfyDestinations.destinations.filter(url => url !== $store.comfyDestinations.selectedDestination).length > 0">
+          <div>
+            <button class="comfy-more-options-toggle" 
+                    @click="$store.comfyDestinations ? $store.comfyDestinations.toggleMoreOptions() : null"
+                    :aria-expanded="$store.comfyDestinations ? $store.comfyDestinations.showMoreOptions : false">
+              More options
+              <span class="comfy-more-options-caret">▶</span>
+            </button>
+
+            <div x-show="$store.comfyDestinations ? $store.comfyDestinations.showMoreOptions : false" x-transition>
+              <div class="comfy-destination-list">
+                <template x-for="destination in ($store.comfyDestinations ? $store.comfyDestinations.destinations.filter(url => url !== $store.comfyDestinations.selectedDestination) : [])">
+                  <div class="comfy-destination-item" @click="$store.comfyDestinations ? $store.comfyDestinations.selectDestination(destination) : null">
+                    <span class="comfy-destination-text" x-text="destination"></span>
+                    <button class="comfy-destination-delete" 
+                            @click.stop="$store.comfyDestinations ? $store.comfyDestinations.removeDestination(destination) : null">
+                      Delete
+                    </button>
+                  </div>
+                </template>
+              </div>
             </div>
           </div>
-        </div>
+        </template>
       </div>
-      
-      <div class="workflow-actions">
-        <div class="action-row">
-          <div class="queue-option-container quantity">
-            <span class="queue-option-text">Quantity</span>
-            <div class="number-picker">
-              <button class="number-btn" data-action="decrement"></button>
-              <input type="number" id="queueCount" value="1" min="1" max="99">
-              <button class="number-btn" data-action="increment"></button>
+
+      <!-- Settings Section -->
+      <div class="comfyui-settings-section" x-data="settingsPanel()">
+        <!-- Quantity -->
+        <div class="comfy-setting-row">
+          <div class="comfy-setting-container">
+            <span class="comfy-setting-label">Quantity</span>
+            <div class="comfy-number-picker">
+              <button class="comfy-number-btn" @click="decrementQuantity()">‹</button>
+              <input type="number" 
+                     class="comfy-number-input"
+                     x-model.number="$store.comfyWorkflow.settings.quantity"
+                     @blur="validateQuantity()"
+                     min="1" max="99">
+              <button class="comfy-number-btn" @click="incrementQuantity()">›</button>
             </div>
           </div>
         </div>
-        
-        <div class="action-row">
-          <div class="queue-option-container seed">
-            <span class="queue-option-text">New Seed</span>
-            <label class="toggle-container">
-              <input type="checkbox" id="newSeedToggle" checked>
-              <span class="toggle-slider"></span>
+
+        <!-- New Seed -->
+        <div class="comfy-setting-row">
+          <div class="comfy-setting-container">
+            <span class="comfy-setting-label">New Seed</span>
+            <label class="comfy-toggle">
+              <input type="checkbox" 
+                     x-model="$store.comfyWorkflow.settings.modifySeeds"
+                     @change="toggleNewSeed()">
+              <span class="comfy-toggle-slider"></span>
             </label>
           </div>
         </div>
-        
-        <div class="action-row">
-          <div class="queue-option-container control-after">
-            <span class="queue-option-text">Control After Generate</span>
-            <select id="controlAfterGenerate" class="control-select">
-              <option value="increment" selected>Increment</option>
+
+        <!-- Control After Generate -->
+        <div class="comfy-setting-row">
+          <div class="comfy-setting-container">
+            <span class="comfy-setting-label">Control After Generate</span>
+            <select class="comfy-select" 
+                    x-model="$store.comfyWorkflow.settings.controlAfterGenerate"
+                    @change="updateControlAfterGenerate($event.target.value)">
+              <option value="increment">Increment</option>
               <option value="randomize">Randomize</option>
               <option value="decrement">Decrement</option>
               <option value="fixed">Fixed</option>
             </select>
           </div>
         </div>
-        
-        <div class="action-row">
-          <div class="run-buttons">
-            <button id="queueRun" class="run-btn">
-              Queue >
-            </button>
-          </div>
+
+        <!-- Action Buttons -->
+        <div class="comfy-actions-section">
+          <button class="comfy-btn comfy-btn-primary"
+                  :class="getButtonClasses('queue')"
+                  @click="handleQueue()"
+                  :disabled="isProcessing"
+                  x-text="getButtonText('queue')">
+          </button>
         </div>
-        
-        <!-- <div class="action-row">
-          <span class="action-label">Load:</span>
-          <div class="action-controls">
-            <div class="number-picker">
-              <button class="number-btn" data-action="decrement"></button>
-              <input type="number" id="loadCount" value="1" min="1" max="99">
-              <button class="number-btn" data-action="increment"></button>
-            </div>
-          </div>
-          <div class="run-buttons">
-            <button id="loadRun" class="run-btn">Run </button>
-          </div>
-        </div> -->
       </div>
-      
-      <div id="comfyuiError" class="comfyui-error" style="display: none;"></div>
-      <div id="comfyuiResults" class="comfyui-results">
-        <!-- Results log will appear here -->
+
+      <!-- Error Display -->
+      <div x-show="error" class="comfyui-error" x-text="error"></div>
+
+      <!-- Results Log -->
+      <div x-show="$store.comfyWorkflow ? $store.comfyWorkflow.results.length > 0 : false" class="comfyui-results">
+        <template x-for="result in ($store.comfyWorkflow ? $store.comfyWorkflow.results : [])" :key="result.timestamp">
+          <div class="comfyui-result-item" :class="{ 'error': result.isError }">
+            <span x-text="result.message"></span>
+            <span class="comfyui-result-timestamp" x-text="result.timestamp"></span>
+          </div>
+        </template>
       </div>
     </div>
   </div>
@@ -170,15 +209,24 @@
   <!-- API modules (load before main api-service coordinator) -->
   <script src="js/api/file-api.js"></script>
   <script src="js/api/config-api.js"></script>
-  <script src="js/api/comfyui-api.js"></script>
   <script src="js/api-service.js"></script>
+  
+  <!-- ComfyUI Module (Alpine.js) -->
+  <script src="js/comfyui/services/api-client.js"></script>
+  <script src="js/comfyui/services/storage-service.js"></script>
+  <script src="js/comfyui/utils/workflow-analyzer.js"></script>
+  <script src="js/comfyui/utils/validation.js"></script>
+  <script src="js/comfyui/components/workflow-modal.js"></script>
+  <!-- Load ComfyUI scripts first, then Alpine.js -->
+  <script src="js/comfyui/index.js"></script>
+  <script src="js/comfyui/test.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.1/dist/cdn.min.js" defer></script>
   
   <!-- UI modules (load before main ui-manager coordinator) -->
   <script src="js/ui/core-ui-manager.js"></script>
   <script src="js/ui/element-factory.js"></script>
   <script src="js/ui/modal-manager.js"></script>
   <script src="js/ui/directory-browser.js"></script>
-  <script src="js/ui/comfyui-manager.js"></script>
   <script src="js/ui-manager.js"></script>
   
   <!-- Controller modules -->

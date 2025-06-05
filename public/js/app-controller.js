@@ -205,240 +205,48 @@ class AppController {
     const state = window.stateManager.getState();
     if (state.allFiles.length === 0) return;
 
-    window.uiManager.showComfyUIModal();
-    window.uiManager.initializeComfyUIDestinations();
-
-    this.setupComfyUIModalHandlers();
+    const currentFile = state.allFiles[state.currentIndex];
+    window.comfyUIModule.openWorkflowModal(currentFile);
   }
 
   /**
-   * Setup ComfyUI modal button handlers
+   * Setup ComfyUI modal button handlers (legacy - now handled by Alpine.js)
    */
   setupComfyUIModalHandlers() {
-    const queueRun = document.getElementById('queueRun');
-    const loadRun = document.getElementById('loadRun');
-
-    if (queueRun) {
-      queueRun.onclick = () => this.handleRunAction('queue');
-    }
-
-    if (loadRun) {
-      loadRun.onclick = () => this.handleRunAction('load');
-    }
-
-    const newSeedText = document.querySelector('.toggle-text');
-    const newSeedToggle = document.getElementById('newSeedToggle');
-    if (newSeedText && newSeedToggle) {
-      newSeedText.onclick = () => {
-        newSeedToggle.checked = !newSeedToggle.checked;
-      };
-    }
-
-    this.setupNumberPickers();
+    // ComfyUI modal is now handled by Alpine.js module
+    // This method is kept for compatibility but does nothing
   }
 
   /**
-   * Handle run action (queue or load)
+   * Handle run action (queue or load) - legacy method
    */
   async handleRunAction(type) {
-    const button = document.getElementById(type + 'Run');
-    const countInput = document.getElementById(type + 'Count');
-    const newSeedToggle = document.getElementById('newSeedToggle');
-    const controlAfterGenerate = document.getElementById('controlAfterGenerate');
-
-    const count = parseInt(countInput.value) || 1;
-    const useNewSeed = type === 'queue' ? newSeedToggle.checked : false;
-    const controlMode = controlAfterGenerate ? controlAfterGenerate.value : 'increment';
-    const destination = window.uiManager.getSelectedDestination();
-
-    this.setButtonState(button, 'waiting', 'Waiting');
-
-    try {
-      if (type === 'queue') {
-        for (let i = 0; i < count; i++) {
-          await window.apiService.queueInComfyUI(
-            this.state.allFiles[this.state.currentIndex], 
-            useNewSeed,
-            controlMode,
-            destination
-          );
-        }
-      } else {
-        for (let i = 0; i < count; i++) {
-          await window.apiService.loadInComfyUI(
-            this.state.allFiles[this.state.currentIndex], 
-            false,
-            controlMode,
-            destination
-          );
-        }
-      }
-
-      this.setButtonState(button, 'success', 'Success!');
-      this.addResultLog(count, useNewSeed, controlMode, false);
-
-    } catch (error) {
-      console.error(`Error in ${type} action:`, error);
-      this.setButtonState(button, 'error', 'Error occurred', error.message || 'Unknown error occurred');
-      this.addResultLog(count, useNewSeed, controlMode, true, error.message);
-    }
+    // ComfyUI actions are now handled by Alpine.js module
+    // This method is kept for compatibility but does nothing
   }
 
   /**
-   * Set button state with animations
+   * Set button state with animations - legacy method
    */
   setButtonState(button, state, text, errorMessage = null) {
-    const runButtons = button.parentElement;
-    const errorDiv = document.getElementById('comfyuiError');
-
-    if (state === 'waiting') {
-      button.textContent = text;
-      button.className = 'run-btn waiting';
-      if (errorDiv) errorDiv.style.display = 'none';
-
-    } else if (state === 'success') {
-      button.textContent = text;
-      button.className = 'run-btn success';
-      if (errorDiv) errorDiv.style.display = 'none';
-
-      setTimeout(() => {
-        button.textContent = button.id === 'queueRun' ? 'Queue:' : 'Load:';
-        button.classList.add('shrinking');
-
-        const openBtn = document.createElement('button');
-        openBtn.className = 'open-btn';
-        openBtn.textContent = '→';
-        openBtn.onclick = () => {
-          const destination = window.uiManager.getSelectedDestination();
-          window.apiService.openComfyUITab(destination);
-        };
-
-        runButtons.appendChild(openBtn);
-
-        setTimeout(() => {
-          button.style.transform = 'scaleX(0.6)';
-          openBtn.classList.add('show');
-        }, 50);
-
-        setTimeout(() => {
-          button.style.transform = '';
-          button.textContent = 'Run >';
-          button.className = 'run-btn';
-          button.classList.remove('shrinking');
-          if (openBtn.parentElement) {
-            openBtn.remove();
-          }
-        }, 3000);
-
-      }, 1000);
-
-    } else if (state === 'error') {
-      button.textContent = text;
-      button.className = 'run-btn error';
-
-      if (errorDiv && errorMessage) {
-        errorDiv.textContent = errorMessage;
-        errorDiv.style.display = 'block';
-      }
-
-      setTimeout(() => {
-        button.textContent = 'Queue >';
-        button.className = 'run-btn';
-      }, 2000);
-    }
+    // Button state management is now handled by Alpine.js module
+    // This method is kept for compatibility but does nothing
   }
 
   /**
-   * Setup number picker controls
+   * Setup number picker controls - legacy method
    */
   setupNumberPickers() {
-    const pickers = document.querySelectorAll('.number-picker');
-
-    pickers.forEach(picker => {
-      const input = picker.querySelector('input[type="number"]');
-      const decrementBtn = picker.querySelector('[data-action="decrement"]');
-      const incrementBtn = picker.querySelector('[data-action="increment"]');
-
-      let holdInterval = null;
-      let holdTimeout = null;
-
-      input.addEventListener('input', () => {
-        let value = parseInt(input.value);
-        if (!isNaN(value) && value > 99) {
-          input.value = 99;
-        }
-      });
-
-      input.addEventListener('blur', () => {
-        let value = parseInt(input.value);
-        if (isNaN(value) || value < 1 || !input.value || input.value === '') {
-          input.value = 1;
-        }
-      });
-
-      const increment = () => {
-        const current = parseInt(input.value) || 1;
-        const max = 99;
-        input.value = Math.min(current + 1, max);
-      };
-
-      const decrement = () => {
-        const current = parseInt(input.value) || 1;
-        const min = 1;
-        input.value = Math.max(current - 1, min);
-      };
-
-      const startHold = (action) => {
-        holdTimeout = setTimeout(() => {
-          holdInterval = setInterval(action, 100);
-        }, 500);
-      };
-
-      const stopHold = () => {
-        if (holdTimeout) clearTimeout(holdTimeout);
-        if (holdInterval) clearInterval(holdInterval);
-        holdTimeout = null;
-        holdInterval = null;
-      };
-
-      incrementBtn.onclick = increment;
-      incrementBtn.onmousedown = () => startHold(increment);
-      incrementBtn.onmouseup = stopHold;
-      incrementBtn.onmouseleave = stopHold;
-      incrementBtn.ontouchstart = () => startHold(increment);
-      incrementBtn.ontouchend = stopHold;
-
-      decrementBtn.onclick = decrement;
-      decrementBtn.onmousedown = () => startHold(decrement);
-      decrementBtn.onmouseup = stopHold;
-      decrementBtn.onmouseleave = stopHold;
-      decrementBtn.ontouchstart = () => startHold(decrement);
-      decrementBtn.ontouchend = stopHold;
-    });
+    // Number picker controls are now handled by Alpine.js module
+    // This method is kept for compatibility but does nothing
   }
 
   /**
-   * Add result to the log
+   * Add result to the log - legacy method
    */
   addResultLog(count, useNewSeed, controlMode = 'increment', isError, errorMessage = null) {
-    const resultsContainer = document.getElementById('comfyuiResults');
-    if (!resultsContainer) return;
-
-    const resultItem = document.createElement('div');
-    resultItem.className = 'result-item';
-    
-    if (isError) {
-      resultItem.classList.add('error');
-      const timeCount = count === 1 ? 'time' : 'times';
-      const seedText = useNewSeed ? 'new seed' : 'original seed';
-      resultItem.textContent = `An error occurred queueing workflow to run ${count} ${timeCount} with ${seedText} and ${controlMode} control`;
-    } else {
-      const timeCount = count === 1 ? 'time' : 'times';
-      const seedText = useNewSeed ? 'new seeds' : 'original seed';
-      resultItem.textContent = `Queued workflow to run ${count} ${timeCount} with ${seedText} and ${controlMode} control`;
-    }
-
-    resultsContainer.insertBefore(resultItem, resultsContainer.firstChild);
+    // Result logging is now handled by Alpine.js module
+    // This method is kept for compatibility but does nothing
   }
 }
 

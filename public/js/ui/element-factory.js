@@ -2,7 +2,7 @@
  * Factory for creating DOM elements
  */
 const elementFactory = {
-  
+
   /**
    * Create a media item element for display
    * @param {Object} file - Media file object

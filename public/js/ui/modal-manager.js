@@ -146,27 +146,6 @@ const modalManager = {
   },
 
   /**
-   * Show ComfyUI modal
-   */
-  showComfyUIModal() {
-    if (!this.elements.comfyuiModal) {
-      this.elements.comfyuiModal = document.getElementById('comfyuiModal');
-    }
-    if (this.elements.comfyuiModal) {
-      this.elements.comfyuiModal.style.display = "block";
-    }
-  },
-
-  /**
-   * Hide ComfyUI modal
-   */
-  hideComfyUIModal() {
-    if (this.elements.comfyuiModal) {
-      this.elements.comfyuiModal.style.display = "none";
-    }
-  },
-
-  /**
    * Open number dial modal
    */
   openNumberDial() {

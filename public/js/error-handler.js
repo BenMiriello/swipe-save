@@ -21,19 +21,21 @@ const errorHandler = {
    * @param {ErrorEvent} event - Error event
    */
   handleGlobalError(event) {
-    console.error('Global error:', {
-      message: event.message,
-      filename: event.filename,
-      lineno: event.lineno,
-      colno: event.colno,
-      error: event.error
-    });
+    const errorInfo = {
+      message: event?.message || 'Unknown error',
+      filename: event?.filename || 'Unknown file',
+      lineno: event?.lineno || 0,
+      colno: event?.colno || 0,
+      error: event?.error || null
+    };
+    
+    console.error('Global error:', errorInfo);
 
     // Show error in UI if appropriate
-    if (event.error && event.error.message && window.uiManager) {
+    if (errorInfo.error?.message && window.uiManager) {
       const mediaList = document.getElementById('mediaList');
       if (mediaList && mediaList.innerHTML.includes('Loading...')) {
-        window.uiManager.showError(`${event.error.message} - Please try refreshing the page.`);
+        window.uiManager.showError(`${errorInfo.error.message} - Please try refreshing the page.`);
       }
     }
   },
