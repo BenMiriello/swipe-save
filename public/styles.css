@@ -978,8 +978,8 @@ video.media-content[data-hide-controls]::-webkit-media-controls-volume-slider {
   margin-right: 10px;
 }
 
-/* New Seed Container */
-.new-seed-container {
+/* Queue Option Containers */
+.queue-option-container {
   display: flex;
   align-items: center;
   gap: 8px;
@@ -987,6 +987,14 @@ video.media-content[data-hide-controls]::-webkit-media-controls-volume-slider {
   background-color: #f8f9fa;
   border: 2px solid #dee2e6;
   border-radius: 6px;
+}
+
+.queue-option-container.seed {
+  padding: 5px 10px;
+}
+
+.queue-option-container.quantity {
+  padding: 4.5px 10px;
 }
 
 /* Toggle Styling */
@@ -1047,15 +1055,15 @@ video.media-content[data-hide-controls]::-webkit-media-controls-volume-slider {
 }
 
 .number-btn {
-  background-color: #d8d8d8 !important;
+  background-color: transparent !important;
+  color: #030303 !important;
   border: none;
-  padding: 4px;
-  cursor: pointer;
+  padding: 4px 12px !important;
+  cursor: pointer !important;
   font-size: 12px;
-  color: #0d0d0d !important;
-  transition: background-color 0.2s;
+  transition: color 0.2s;
   user-select: none;
-  width: 16px;
+  width: 12px;
   height: 32px;
   display: flex;
   align-items: center;
@@ -1063,11 +1071,11 @@ video.media-content[data-hide-controls]::-webkit-media-controls-volume-slider {
 }
 
 .number-btn:hover {
-  background-color: #e9ecef;
+  color: #333;
 }
 
 .number-btn:active {
-  background-color: #dee2e6;
+  color: #000;
 }
 
 .number-btn[data-action="decrement"] {
@@ -1086,8 +1094,8 @@ video.media-content[data-hide-controls]::-webkit-media-controls-volume-slider {
 
 .number-picker input[type="number"] {
   border: none;
-  padding: 6px 8px;
-  width: 40px;
+  padding: 4px 6px;
+  width: 32px;
   text-align: center;
   font-size: 0.9rem;
   font-family: inherit;
