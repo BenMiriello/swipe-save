@@ -954,7 +954,7 @@ video.media-content[data-hide-controls]::-webkit-media-controls-volume-slider {
 .action-row {
   display: flex;
   align-items: center;
-  padding: 8px;
+  padding: 4px;
   margin-bottom: 4px;
 }
 
@@ -990,11 +990,11 @@ video.media-content[data-hide-controls]::-webkit-media-controls-volume-slider {
 }
 
 .queue-option-container.seed {
-  padding: 5px 10px;
+  padding: 6px 10px;
 }
 
 .queue-option-container.quantity {
-  padding: 4.5px 10px;
+  padding: 4px 10px;
 }
 
 /* Toggle Styling */
@@ -1041,6 +1041,9 @@ video.media-content[data-hide-controls]::-webkit-media-controls-volume-slider {
   font-size: 0.85rem;
   color: #333;
   user-select: none;
+}
+
+.queue-option-text.clickable {
   cursor: pointer;
 }
 
@@ -1052,30 +1055,32 @@ video.media-content[data-hide-controls]::-webkit-media-controls-volume-slider {
   border-radius: 4px;
   overflow: hidden;
   background-color: white;
+  height: 26px;
 }
 
 .number-btn {
   background-color: transparent !important;
-  color: #030303 !important;
-  border: none;
-  padding: 4px 12px !important;
+  color: #666 !important;
+  border: none !important;
+  padding: 0 !important;
   cursor: pointer !important;
-  font-size: 12px;
-  transition: color 0.2s;
-  user-select: none;
-  width: 12px;
-  height: 32px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  font-size: 12px !important;
+  transition: color 0.2s !important;
+  user-select: none !important;
+  width: 16px !important;
+  height: 26px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  margin: 0 !important;
 }
 
 .number-btn:hover {
-  color: #333;
+  color: #333 !important;
 }
 
 .number-btn:active {
-  color: #000;
+  color: #000 !important;
 }
 
 .number-btn[data-action="decrement"] {
@@ -1094,14 +1099,14 @@ video.media-content[data-hide-controls]::-webkit-media-controls-volume-slider {
 
 .number-picker input[type="number"] {
   border: none;
-  padding: 4px 6px;
+  padding: 0 4px;
   width: 32px;
   text-align: center;
   font-size: 0.9rem;
   font-family: inherit;
   background-color: white;
   margin: 0;
-  height: 32px;
+  height: 26px;
 }
 
 .number-picker input[type="number"]:focus {
