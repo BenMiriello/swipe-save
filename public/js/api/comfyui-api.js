@@ -284,7 +284,8 @@ const comfyuiApi = {
       const result = await response.json();
       console.log('Workflow queued successfully:', result);
 
-      this.openComfyUITab(result.comfyUrl);
+      // Let's skip this until we can actually load the workflow.
+      // this.openComfyUITab(result.comfyUrl);
 
       return result;
     } catch (error) {
