@@ -259,10 +259,11 @@ const comfyuiApi = {
    * Queue workflow in ComfyUI via API
    * @param {Object} file - Current file object
    * @param {boolean} modifySeeds - Whether to modify seed values
+   * @param {string} controlAfterGenerate - Control after generate mode
    * @param {string} comfyUrl - Custom ComfyUI URL
    * @returns {Promise<void>}
    */
-  async queueInComfyUI(file, modifySeeds = false, comfyUrl = null) {
+  async queueInComfyUI(file, modifySeeds = false, controlAfterGenerate = 'increment', comfyUrl = null) {
     try {
       console.log('Queueing workflow in ComfyUI for file:', file.name);
 
@@ -272,6 +273,7 @@ const comfyuiApi = {
         body: JSON.stringify({
           filename: file.name,
           modifySeeds: modifySeeds,
+          controlAfterGenerate: controlAfterGenerate,
           comfyUrl: comfyUrl
         })
       });
@@ -295,7 +297,7 @@ const comfyuiApi = {
   },
 
   /**
-   * Modify seed values in workflow by appending zero
+   * Modify seed values in workflow with random numbers
    * @param {Object} workflow - Workflow object to modify
    */
   modifyWorkflowSeeds(workflow) {
@@ -304,13 +306,17 @@ const comfyuiApi = {
     console.log('Modifying seeds in workflow...');
     let seedCount = 0;
 
+    const generateRandomSeed = () => {
+      return Math.floor(Math.random() * 999999999) + 1;
+    };
+
     const modifySeeds = (obj) => {
       if (typeof obj !== 'object' || obj === null) return;
 
       for (const key in obj) {
         if (key === 'seed' && typeof obj[key] === 'number') {
           const oldSeed = obj[key];
-          obj[key] = parseInt(obj[key].toString() + '0');
+          obj[key] = generateRandomSeed();
           console.log(`Modified seed: ${oldSeed} -> ${obj[key]}`);
           seedCount++;
         } else if (key === 'inputs' && typeof obj[key] === 'object') {
@@ -323,6 +329,38 @@ const comfyuiApi = {
 
     modifySeeds(workflow);
     console.log(`Total seeds modified: ${seedCount}`);
+  },
+
+  /**
+   * Modify control_after_generate values in workflow
+   * @param {Object} workflow - Workflow object to modify
+   * @param {string} controlMode - Control mode: 'increment', 'randomize', 'decrement', 'fixed'
+   */
+  modifyControlAfterGenerate(workflow, controlMode = 'increment') {
+    if (!workflow || typeof workflow !== 'object') return;
+
+    console.log(`Modifying control_after_generate values to: ${controlMode}`);
+    let controlCount = 0;
+
+    const modifyControls = (obj) => {
+      if (typeof obj !== 'object' || obj === null) return;
+
+      for (const key in obj) {
+        if (key === 'control_after_generate' && typeof obj[key] === 'string') {
+          const oldControl = obj[key];
+          obj[key] = controlMode;
+          console.log(`Modified control_after_generate: ${oldControl} -> ${obj[key]}`);
+          controlCount++;
+        } else if (key === 'inputs' && typeof obj[key] === 'object') {
+          modifyControls(obj[key]);
+        } else if (typeof obj[key] === 'object') {
+          modifyControls(obj[key]);
+        }
+      }
+    };
+
+    modifyControls(workflow);
+    console.log(`Total control_after_generate values modified: ${controlCount}`);
   }
 };
 

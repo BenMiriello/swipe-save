@@ -189,8 +189,12 @@ const modalManager = {
 
     this.setupDialNumbers(totalFiles);
     this.updateDialNumbers(currentIndex);
-    this.updateDialPosition(currentIndex);
     this.elements.numberDialModal.style.display = 'block';
+    
+    // Position after modal is visible and elements have proper dimensions
+    requestAnimationFrame(() => {
+      this.updateDialPosition(currentIndex, false);
+    });
   },
 
   /**
@@ -321,31 +325,37 @@ const modalManager = {
     const numbers = [];
     const current = currentIndex + 1;
 
-    if (totalFiles <= 7) {
+    if (totalFiles <= 5) {
+      // Show all numbers if 5 or fewer
       for (let i = 1; i <= totalFiles; i++) {
         numbers.push({ num: i, isEllipsis: false });
       }
     } else {
-      if (current > 4) {
+      // Show first number and ellipsis if current is far from start
+      if (current > 3) {
         numbers.push({ num: 1, isEllipsis: false });
         numbers.push({ num: '...', isEllipsis: true });
       }
 
-      for (let i = Math.max(1, current - 3); i < current; i++) {
-        if (current <= 4 || i > 1) {
+      // Show 2 numbers before current (if current > 3)
+      for (let i = Math.max(1, current - 2); i < current; i++) {
+        if (current <= 3 || i > 1) {
           numbers.push({ num: i, isEllipsis: false });
         }
       }
 
+      // Show current number
       numbers.push({ num: current, isEllipsis: false });
 
-      for (let i = current + 1; i <= Math.min(totalFiles, current + 3); i++) {
-        if (current >= totalFiles - 3 || i < totalFiles) {
+      // Show 2 numbers after current (if current < totalFiles - 2)
+      for (let i = current + 1; i <= Math.min(totalFiles, current + 2); i++) {
+        if (current >= totalFiles - 2 || i < totalFiles) {
           numbers.push({ num: i, isEllipsis: false });
         }
       }
 
-      if (current < totalFiles - 3) {
+      // Show ellipsis and last number if current is far from end
+      if (current < totalFiles - 2) {
         numbers.push({ num: '...', isEllipsis: true });
         numbers.push({ num: totalFiles, isEllipsis: false });
       }
@@ -381,15 +391,28 @@ const modalManager = {
 
     const track = this.elements.numberDialModal.querySelector('.dial-track');
     const thumb = this.elements.numberDialModal.querySelector('#dialThumb');
+    
+    if (!track || !thumb) {
+      console.warn('Track or thumb element not found');
+      return;
+    }
+    
     const thumbWidth = thumb.offsetWidth;
-    const trackWidth = track.offsetWidth - thumbWidth;
-
-    const newLeft = (percentage * trackWidth);
+    const trackWidth = track.offsetWidth;
+    
+    // If elements don't have dimensions yet, try again in a moment
+    if (trackWidth === 0 || thumbWidth === 0) {
+      setTimeout(() => this.updateDialPosition(index, animate), 10);
+      return;
+    }
+    
+    const availableWidth = trackWidth - thumbWidth;
+    const newLeft = Math.max(0, Math.min(percentage * availableWidth, availableWidth));
 
     if (animate) {
       const currentLeft = parseInt(thumb.style.left) || 0;
       const distance = Math.abs(newLeft - currentLeft);
-      const maxDistance = trackWidth;
+      const maxDistance = availableWidth;
       const minDuration = 0.3;
       const maxDuration = 0.6;
       const duration = minDuration + (distance / maxDistance) * (maxDuration - minDuration);

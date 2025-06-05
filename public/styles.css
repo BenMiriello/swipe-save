@@ -629,12 +629,12 @@ video.media-content[data-hide-controls]::-webkit-media-controls-volume-slider {
 
 .number-dial-container {
   position: absolute;
-  bottom: 100px;
+  bottom: 15px;
   left: 50%;
   transform: translateX(-50%);
   background-color: white;
   border-radius: 12px;
-  padding: 20px;
+  padding: 15px;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
   width: 420px;
   max-width: 90vw;
@@ -649,7 +649,7 @@ video.media-content[data-hide-controls]::-webkit-media-controls-volume-slider {
   height: 36px;
   background-color: #f0f0f0;
   border-radius: 18px;
-  margin: 20px 0;
+  margin: 0 0 15px 0;
   overflow: hidden;
   touch-action: pan-x;
 }
@@ -1081,6 +1081,26 @@ video.media-content[data-hide-controls]::-webkit-media-controls-volume-slider {
 
 .queue-option-container.seed {
   padding: 6px 10px;
+}
+
+.queue-option-container.control-after {
+  padding: 6px 10px;
+}
+
+.control-select {
+  padding: 4px 8px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  background-color: white;
+  font-size: 0.85rem;
+  color: #333;
+  cursor: pointer;
+  min-width: 100px;
+}
+
+.control-select:focus {
+  outline: none;
+  border-color: #007bff;
 }
 
 .queue-option-container.quantity {

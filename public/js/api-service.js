@@ -90,12 +90,16 @@ const apiService = {
     return window.comfyuiApi.getWorkflowFromImage(file);
   },
 
-  async queueInComfyUI(file, modifySeeds = false, comfyUrl = null) {
-    return window.comfyuiApi.queueInComfyUI(file, modifySeeds, comfyUrl);
+  async queueInComfyUI(file, modifySeeds = false, controlAfterGenerate = 'increment', comfyUrl = null) {
+    return window.comfyuiApi.queueInComfyUI(file, modifySeeds, controlAfterGenerate, comfyUrl);
   },
 
   modifyWorkflowSeeds(workflow) {
     return window.comfyuiApi.modifyWorkflowSeeds(workflow);
+  },
+
+  modifyControlAfterGenerate(workflow, controlMode) {
+    return window.comfyuiApi.modifyControlAfterGenerate(workflow, controlMode);
   }
 };
 

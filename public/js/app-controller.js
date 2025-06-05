@@ -244,9 +244,11 @@ class AppController {
     const button = document.getElementById(type + 'Run');
     const countInput = document.getElementById(type + 'Count');
     const newSeedToggle = document.getElementById('newSeedToggle');
+    const controlAfterGenerate = document.getElementById('controlAfterGenerate');
 
     const count = parseInt(countInput.value) || 1;
     const useNewSeed = type === 'queue' ? newSeedToggle.checked : false;
+    const controlMode = controlAfterGenerate ? controlAfterGenerate.value : 'increment';
     const destination = window.uiManager.getSelectedDestination();
 
     this.setButtonState(button, 'waiting', 'Waiting');
@@ -257,6 +259,7 @@ class AppController {
           await window.apiService.queueInComfyUI(
             this.state.allFiles[this.state.currentIndex], 
             useNewSeed,
+            controlMode,
             destination
           );
         }
@@ -271,12 +274,12 @@ class AppController {
       }
 
       this.setButtonState(button, 'success', 'Success!');
-      this.addResultLog(count, useNewSeed, false);
+      this.addResultLog(count, useNewSeed, controlMode, false);
 
     } catch (error) {
       console.error(`Error in ${type} action:`, error);
       this.setButtonState(button, 'error', 'Error occurred', error.message || 'Unknown error occurred');
-      this.addResultLog(count, useNewSeed, true, error.message);
+      this.addResultLog(count, useNewSeed, controlMode, true, error.message);
     }
   }
 
@@ -416,7 +419,7 @@ class AppController {
   /**
    * Add result to the log
    */
-  addResultLog(count, useNewSeed, isError, errorMessage = null) {
+  addResultLog(count, useNewSeed, controlMode = 'increment', isError, errorMessage = null) {
     const resultsContainer = document.getElementById('comfyuiResults');
     if (!resultsContainer) return;
 
@@ -427,11 +430,11 @@ class AppController {
       resultItem.classList.add('error');
       const timeCount = count === 1 ? 'time' : 'times';
       const seedText = useNewSeed ? 'new seed' : 'original seed';
-      resultItem.textContent = `An error occurred queueing workflow to run ${count} ${timeCount} with ${seedText}`;
+      resultItem.textContent = `An error occurred queueing workflow to run ${count} ${timeCount} with ${seedText} and ${controlMode} control`;
     } else {
       const timeCount = count === 1 ? 'time' : 'times';
       const seedText = useNewSeed ? 'new seeds' : 'original seed';
-      resultItem.textContent = `Queued workflow to run ${count} ${timeCount} with ${seedText}`;
+      resultItem.textContent = `Queued workflow to run ${count} ${timeCount} with ${seedText} and ${controlMode} control`;
     }
 
     resultsContainer.insertBefore(resultItem, resultsContainer.firstChild);
