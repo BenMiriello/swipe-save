@@ -585,3 +585,188 @@
   font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
   word-break: break-all;
 }
+
+/* Queue Viewer Styles */
+.comfyui-queue-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--comfy-spacing-sm) var(--comfy-spacing-md);
+  border-bottom: 1px solid var(--comfy-border-light);
+  background-color: var(--comfy-bg-tertiary);
+}
+
+.comfyui-queue-content {
+  padding: var(--comfy-spacing-md);
+}
+
+.comfyui-queue-empty {
+  text-align: center;
+  color: var(--comfy-text-secondary);
+  font-style: italic;
+  padding: var(--comfy-spacing-lg);
+}
+
+.comfyui-queue-list {
+  display: flex;
+  gap: var(--comfy-spacing-sm);
+  overflow-x: auto;
+  padding-bottom: var(--comfy-spacing-xs);
+  scrollbar-width: thin;
+}
+
+.comfyui-queue-list::-webkit-scrollbar {
+  height: 6px;
+}
+
+.comfyui-queue-list::-webkit-scrollbar-track {
+  background: var(--comfy-bg-tertiary);
+  border-radius: 3px;
+}
+
+.comfyui-queue-list::-webkit-scrollbar-thumb {
+  background: var(--comfy-border-medium);
+  border-radius: 3px;
+}
+
+.comfyui-queue-list::-webkit-scrollbar-thumb:hover {
+  background: var(--comfy-border-dark);
+}
+
+.comfyui-queue-item {
+  flex-shrink: 0;
+  width: 60px;
+  height: 60px;
+  border: 2px solid var(--comfy-border-light);
+  border-radius: var(--comfy-radius-md);
+  background-color: var(--comfy-bg-primary);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+}
+
+.comfyui-queue-item:hover {
+  border-color: var(--comfy-primary);
+  background-color: var(--comfy-bg-hover);
+}
+
+.comfyui-queue-item.active {
+  border-color: var(--comfy-success);
+  background-color: rgba(40, 167, 69, 0.1);
+}
+
+.comfyui-queue-item.active .comfyui-queue-item-indicator {
+  background-color: var(--comfy-success);
+  animation: comfy-pulse 1.5s infinite;
+}
+
+.comfyui-queue-item-indicator {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background-color: var(--comfy-border-medium);
+  margin-bottom: 4px;
+}
+
+.comfyui-queue-item-id {
+  font-size: 0.7rem;
+  color: var(--comfy-text-secondary);
+  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+  text-align: center;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  width: 100%;
+  padding: 0 2px;
+}
+
+.comfyui-queue-controls {
+  padding: 0 var(--comfy-spacing-md) var(--comfy-spacing-md);
+  display: flex;
+  justify-content: center;
+}
+
+/* Queue Detail Modal Styles */
+.comfyui-details-modal {
+  z-index: 1001; /* Higher than main modal */
+}
+
+.comfyui-details-content {
+  max-width: 600px;
+  max-height: 80vh;
+  width: 90vw;
+  margin: 10vh auto;
+}
+
+.comfyui-details-body {
+  max-height: 400px;
+  overflow-y: auto;
+  padding: var(--comfy-spacing-md);
+  border-bottom: 1px solid var(--comfy-border-light);
+}
+
+.comfyui-json-display {
+  background-color: var(--comfy-bg-tertiary);
+  border: 1px solid var(--comfy-border-light);
+  border-radius: var(--comfy-radius-sm);
+  padding: var(--comfy-spacing-md);
+  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+  font-size: 0.8rem;
+  line-height: 1.4;
+  color: var(--comfy-text-primary);
+  white-space: pre-wrap;
+  word-break: break-all;
+  margin: 0;
+  overflow-x: auto;
+}
+
+.comfyui-details-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--comfy-spacing-md);
+  padding: var(--comfy-spacing-md);
+}
+
+/* Confirmation Modal Styles */
+.comfyui-confirm-modal {
+  z-index: 1002; /* Higher than details modal */
+}
+
+.comfyui-confirm-content {
+  max-width: 400px;
+  width: 90vw;
+  margin: 20vh auto;
+}
+
+.comfyui-confirm-body {
+  padding: var(--comfy-spacing-lg) var(--comfy-spacing-md);
+  text-align: center;
+  border-bottom: 1px solid var(--comfy-border-light);
+}
+
+.comfyui-confirm-body p {
+  margin: 0;
+  color: var(--comfy-text-primary);
+  line-height: 1.5;
+}
+
+.comfyui-confirm-actions {
+  display: flex;
+  justify-content: center;
+  gap: var(--comfy-spacing-md);
+  padding: var(--comfy-spacing-md);
+}
+
+/* Warning button variant */
+.comfy-btn-warning {
+  background-color: var(--comfy-warning);
+  color: white;
+}
+
+.comfy-btn-warning:hover:not(:disabled) {
+  background-color: var(--comfy-warning-hover);
+}

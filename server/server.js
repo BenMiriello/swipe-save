@@ -7,8 +7,15 @@ const { router } = require('./src/routes');
 
 if (process.env.NODE_ENV !== 'production') {
   const livereload = require('livereload');
-  const liveReloadServer = livereload.createServer();
-  liveReloadServer.watch(path.join(__dirname, '..', 'public'));
+  const liveReloadServer = livereload.createServer({
+    exts: ['html', 'css', 'js', 'json'],
+    debug: true
+  });
+  liveReloadServer.watch([
+    path.join(__dirname, '..', 'public'),
+    path.join(__dirname, 'src')
+  ]);
+  console.log('LiveReload server started');
 }
 
 const app = express();
@@ -36,7 +43,21 @@ app.use('/media', express.static(config.OUTPUT_DIR, {
   }
 }));
 
-app.use(express.static(path.join(__dirname, '..', 'public')));
+// Disable caching in development
+if (process.env.NODE_ENV !== 'production') {
+  app.use(express.static(path.join(__dirname, '..', 'public'), {
+    etag: false,
+    lastModified: false,
+    setHeaders: (res, path) => {
+      res.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+      res.set('Pragma', 'no-cache');
+      res.set('Expires', '0');
+      res.set('Surrogate-Control', 'no-store');
+    }
+  }));
+} else {
+  app.use(express.static(path.join(__dirname, '..', 'public')));
+}
 
 app.get('/', (req, res) => {
   if (process.env.NODE_ENV !== 'production') {

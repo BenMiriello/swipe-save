@@ -256,6 +256,135 @@ function initializeComfyUI() {
     }
   }));
 
+  // Register queue viewer component
+  Alpine.data('queueViewer', () => ({
+    // State
+    queueItems: [],
+    isLoading: false,
+    selectedItem: null,
+    selectedItemJson: '',
+    showItemDetails: false,
+    showCancelAllModal: false,
+    showCancelItemModal: false,
+
+    // Initialize component
+    init() {
+      this.$watch('$store.comfyWorkflow.isModalOpen', (isOpen) => {
+        if (isOpen) {
+          this.refreshQueue();
+        }
+      });
+    },
+
+    // Refresh queue data from ComfyUI
+    async refreshQueue() {
+      if (this.isLoading) return;
+      
+      this.isLoading = true;
+      try {
+        const comfyUrl = Alpine.store('comfyDestinations').selectedDestination;
+        const response = await fetch(`/api/comfyui-queue?comfyUrl=${encodeURIComponent(comfyUrl)}`);
+        
+        if (!response.ok) {
+          throw new Error(`Failed to fetch queue: ${response.status}`);
+        }
+        
+        const queueData = await response.json();
+        
+        // Combine running and pending queue items
+        const running = queueData.queue_running || [];
+        const pending = queueData.queue_pending || [];
+        
+        // Queue format: [id, prompt_data] for each item
+        this.queueItems = [...running, ...pending];
+        
+        console.log('Queue refreshed:', this.queueItems.length, 'items');
+        
+      } catch (error) {
+        console.error('Error fetching queue:', error);
+        this.queueItems = [];
+      } finally {
+        this.isLoading = false;
+      }
+    },
+
+    // Open queue item details modal
+    openItemDetails(item) {
+      this.selectedItem = item;
+      this.selectedItemJson = JSON.stringify(item, null, 2);
+      this.showItemDetails = true;
+    },
+
+    // Cancel all queue items
+    async cancelAllItems() {
+      try {
+        const comfyUrl = Alpine.store('comfyDestinations').selectedDestination;
+        
+        // Get all item IDs
+        const itemIds = this.queueItems.map(item => item[0]);
+        
+        const response = await fetch('/api/comfyui-queue/cancel', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            comfyUrl,
+            cancel: itemIds
+          })
+        });
+        
+        if (!response.ok) {
+          throw new Error(`Failed to cancel queue: ${response.status}`);
+        }
+        
+        // Refresh queue after cancellation
+        await this.refreshQueue();
+        this.showCancelAllModal = false;
+        
+        console.log('All queue items cancelled');
+        
+      } catch (error) {
+        console.error('Error cancelling all queue items:', error);
+      }
+    },
+
+    // Cancel selected queue item
+    async cancelSelectedItem() {
+      if (!this.selectedItem) return;
+      
+      try {
+        const comfyUrl = Alpine.store('comfyDestinations').selectedDestination;
+        const itemId = this.selectedItem[0];
+        
+        const response = await fetch('/api/comfyui-queue/cancel', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            comfyUrl,
+            cancel: [itemId]
+          })
+        });
+        
+        if (!response.ok) {
+          throw new Error(`Failed to cancel item: ${response.status}`);
+        }
+        
+        // Refresh queue and close modals
+        await this.refreshQueue();
+        this.showCancelItemModal = false;
+        this.showItemDetails = false;
+        
+        console.log('Queue item cancelled:', itemId);
+        
+      } catch (error) {
+        console.error('Error cancelling queue item:', error);
+      }
+    }
+  }));
+
   // Register settings panel component
   Alpine.data('settingsPanel', () => ({
     incrementQuantity() {

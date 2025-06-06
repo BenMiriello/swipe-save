@@ -183,6 +183,64 @@ router.post('/api/queue-workflow', async (req, res) => {
   }
 });
 
+// Get ComfyUI queue status
+router.get('/api/comfyui-queue', async (req, res) => {
+  try {
+    const { comfyUrl } = req.query;
+    const targetUrl = comfyUrl || getDefaultComfyUIUrl(req);
+    
+    console.log('Fetching ComfyUI queue from:', `${targetUrl}/queue`);
+    
+    const fetch = require('node-fetch');
+    const response = await fetch(`${targetUrl}/queue`);
+    
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`ComfyUI API error: ${response.status} - ${errorText}`);
+    }
+    
+    const queueData = await response.json();
+    console.log('Queue data fetched successfully');
+    
+    res.json(queueData);
+    
+  } catch (error) {
+    console.error('Error fetching ComfyUI queue:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Cancel ComfyUI queue items
+router.post('/api/comfyui-queue/cancel', async (req, res) => {
+  try {
+    const { comfyUrl, cancel } = req.body;
+    const targetUrl = comfyUrl || getDefaultComfyUIUrl(req);
+    
+    console.log('Cancelling ComfyUI queue items:', cancel);
+    
+    const fetch = require('node-fetch');
+    const response = await fetch(`${targetUrl}/queue`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ cancel })
+    });
+    
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`ComfyUI API error: ${response.status} - ${errorText}`);
+    }
+    
+    const result = await response.json();
+    console.log('Queue items cancelled successfully');
+    
+    res.json(result);
+    
+  } catch (error) {
+    console.error('Error cancelling queue items:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Extract workflow from image
 router.get('/api/workflow/:filename', async (req, res) => {
   try {

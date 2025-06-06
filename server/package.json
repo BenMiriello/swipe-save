@@ -4,7 +4,7 @@
   "description": "Server for managing ComfyUI media files",
   "main": "server.js",
   "scripts": {
-    "dev": "nodemon server.js",
+    "dev": "nodemon --watch . --watch ../public --ext js,html,css,json server.js",
     "start": "node server.js"
   },
   "dependencies": {

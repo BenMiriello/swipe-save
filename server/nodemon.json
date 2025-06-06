@@ -1,0 +1,12 @@
+{
+  "watch": [
+    ".",
+    "../public"
+  ],
+  "ext": "js,html,css,json",
+  "ignore": [
+    "node_modules/",
+    "../public/styles.css.map"
+  ],
+  "verbose": true
+}

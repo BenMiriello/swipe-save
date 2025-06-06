@@ -69,6 +69,9 @@ npm run dev         # Development with nodemon hot reload
 - `/api/queue-workflow` - ComfyUI workflow queuing
 - `/media/*` - Static media file serving
 
+### CORS Considerations:
+- ComfyUI API calls must be proxied through our Express server to avoid CORS errors
+
 ## Current Development Focus
 
 **Active Branch**: `alpine-comfyui-integration`

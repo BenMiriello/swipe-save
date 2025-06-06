@@ -126,6 +126,125 @@
         </template>
       </div>
 
+      <!-- Active Queue Section -->
+      <div class="comfyui-section" x-data="queueViewer()">
+        <div class="comfyui-queue-header">
+          <h3 class="comfyui-section-title">Active Queue</h3>
+          <button class="comfy-btn comfy-btn-warning comfy-btn-small" 
+                  @click="showCancelAllModal = true"
+                  x-show="queueItems.length > 0">
+            Cancel All
+          </button>
+        </div>
+        
+        <div class="comfyui-queue-content">
+          <template x-if="queueItems.length === 0">
+            <div class="comfyui-queue-empty">No items in queue</div>
+          </template>
+          
+          <template x-if="queueItems.length > 0">
+            <div class="comfyui-queue-list">
+              <template x-for="(item, index) in queueItems" :key="item[0]">
+                <div class="comfyui-queue-item" 
+                     :class="{ 'active': index === 0 }"
+                     @click="openItemDetails(item)">
+                  <div class="comfyui-queue-item-indicator"></div>
+                  <div class="comfyui-queue-item-id" x-text="item[0]"></div>
+                </div>
+              </template>
+            </div>
+          </template>
+        </div>
+        
+        <!-- Refresh button -->
+        <div class="comfyui-queue-controls">
+          <button class="comfy-btn comfy-btn-secondary comfy-btn-small" 
+                  @click="refreshQueue()"
+                  :disabled="isLoading">
+            <span x-show="!isLoading">Refresh</span>
+            <span x-show="isLoading">Loading...</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Queue Item Details Modal -->
+      <div x-show="showItemDetails" 
+           class="comfyui-modal comfyui-details-modal"
+           x-transition.opacity
+           @click.self="showItemDetails = false">
+        <div class="comfyui-modal-content comfyui-details-content">
+          <div class="comfyui-modal-header">
+            <h3>Queue Item Details</h3>
+            <button class="comfyui-modal-close" @click="showItemDetails = false">&times;</button>
+          </div>
+          
+          <div class="comfyui-details-body">
+            <pre class="comfyui-json-display" x-text="selectedItemJson"></pre>
+          </div>
+          
+          <div class="comfyui-details-actions">
+            <button class="comfy-btn comfy-btn-warning" 
+                    @click="showCancelItemModal = true">
+              Cancel Item
+            </button>
+            <button class="comfy-btn comfy-btn-secondary" 
+                    @click="showItemDetails = false">
+              Close
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Cancel All Confirmation Modal -->
+      <div x-show="showCancelAllModal" 
+           class="comfyui-modal comfyui-confirm-modal"
+           x-transition.opacity
+           @click.self="showCancelAllModal = false">
+        <div class="comfyui-modal-content comfyui-confirm-content">
+          <div class="comfyui-modal-header">
+            <h3>Cancel All Queue Items?</h3>
+          </div>
+          <div class="comfyui-confirm-body">
+            <p>This will cancel all pending queue items. This action cannot be undone.</p>
+          </div>
+          <div class="comfyui-confirm-actions">
+            <button class="comfy-btn comfy-btn-warning" 
+                    @click="cancelAllItems()">
+              Cancel All
+            </button>
+            <button class="comfy-btn comfy-btn-secondary" 
+                    @click="showCancelAllModal = false">
+              Keep Queue
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Cancel Item Confirmation Modal -->
+      <div x-show="showCancelItemModal" 
+           class="comfyui-modal comfyui-confirm-modal"
+           x-transition.opacity
+           @click.self="showCancelItemModal = false">
+        <div class="comfyui-modal-content comfyui-confirm-content">
+          <div class="comfyui-modal-header">
+            <h3>Cancel Queue Item?</h3>
+          </div>
+          <div class="comfyui-confirm-body">
+            <p>This will cancel the selected queue item. This action cannot be undone.</p>
+          </div>
+          <div class="comfyui-confirm-actions">
+            <button class="comfy-btn comfy-btn-warning" 
+                    @click="cancelSelectedItem()">
+              Cancel Item
+            </button>
+            <button class="comfy-btn comfy-btn-secondary" 
+                    @click="showCancelItemModal = false">
+              Keep Item
+            </button>
+          </div>
+        </div>
+      </div>
+
       <!-- Settings Section -->
       <div class="comfyui-settings-section" x-data="settingsPanel()">
         <!-- Quantity -->
