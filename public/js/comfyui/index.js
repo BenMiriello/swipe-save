@@ -129,6 +129,7 @@ document.addEventListener('alpine:init', () => {
     showCancelAllModal: false,
     showCancelItemModal: false,
     autoRefreshInterval: null,
+    lastQueueCount: 0,
 
     init() {
       console.log('Queue viewer store initialized');
@@ -138,8 +139,8 @@ document.addEventListener('alpine:init', () => {
       if (this.autoRefreshInterval) return;
       this.autoRefreshInterval = setInterval(() => {
         this.refreshQueue();
-      }, 5000); // Refresh every 5 seconds
-      console.log('Queue auto-refresh started (5s interval)');
+      }, 2000); // Refresh every 2 seconds
+      console.log('Queue auto-refresh started (2s interval)');
     },
 
     stopAutoRefresh() {
@@ -172,19 +173,10 @@ document.addEventListener('alpine:init', () => {
         // Queue format: [id, prompt_data] for each item
         this.queueItems = [...running, ...pending];
         
-        console.log('Queue refreshed:', this.queueItems.length, 'items');
-        
-        // Log detailed queue item information
-        if (this.queueItems.length > 0) {
-          console.log('Queue items details:');
-          this.queueItems.forEach((item, index) => {
-            const [id, promptData] = item;
-            console.log(`  Item ${index + 1}:`, {
-              id: id,
-              promptKeys: Object.keys(promptData || {}),
-              promptData: promptData
-            });
-          });
+        // Only log when queue count changes to reduce noise
+        if (this.queueItems.length !== this.lastQueueCount) {
+          console.log('Queue updated:', this.queueItems.length, 'items');
+          this.lastQueueCount = this.queueItems.length;
         }
         
       } catch (error) {
@@ -334,11 +326,22 @@ function initializeComfyUI() {
     isProcessing: false,
     error: null,
     buttonStates: { queue: 'idle' },
+    allowClickAway: false,
     
     init() {
       if (window.location.hostname === 'localhost') {
         console.log('Workflow modal component initialized');
       }
+      
+      // Enable click-away after modal is fully settled
+      this.$watch('$store.comfyWorkflow.isModalOpen', (isOpen) => {
+        if (isOpen) {
+          this.allowClickAway = false;
+          setTimeout(() => {
+            this.allowClickAway = true;
+          }, 3000); // Wait 3 seconds before allowing click-away
+        }
+      });
     },
     
     closeModal() {
@@ -478,9 +481,16 @@ function initializeComfyUI() {
       
       this.$watch('$store.comfyWorkflow.isModalOpen', (isOpen) => {
         if (isOpen) {
-          this.$store.queueViewer.refreshQueue();
-          this.$store.queueViewer.startAutoRefresh();
+          console.log('ComfyUI modal opened - starting queue polling');
+          // Add small delay to allow modal to fully initialize before polling
+          setTimeout(() => {
+            if (this.$store.comfyWorkflow.isModalOpen) { // Double-check modal is still open
+              this.$store.queueViewer.refreshQueue();
+              this.$store.queueViewer.startAutoRefresh();
+            }
+          }, 100);
         } else {
+          console.log('ComfyUI modal closed - stopping queue polling');
           this.$store.queueViewer.stopAutoRefresh();
         }
       });
@@ -567,6 +577,37 @@ function initializeComfyUI() {
 }
 
   initializeComfyUI();
+  
+  // Global keyboard shortcuts for modals
+  document.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape') {
+      // Close modals in priority order (innermost first)
+      if (Alpine.store('queueViewer')?.showCancelItemModal) {
+        Alpine.store('queueViewer').showCancelItemModal = false;
+      } else if (Alpine.store('queueViewer')?.showCancelAllModal) {
+        Alpine.store('queueViewer').showCancelAllModal = false;
+      } else if (Alpine.store('queueViewer')?.showItemDetails) {
+        Alpine.store('queueViewer').showItemDetails = false;
+      } else if (Alpine.store('comfyWorkflow')?.isModalOpen) {
+        Alpine.store('comfyWorkflow').closeModal();
+      }
+    }
+    
+    // Cmd+Enter to queue workflow when modal is open
+    if (event.key === 'Enter' && (event.metaKey || event.ctrlKey)) {
+      if (Alpine.store('comfyWorkflow')?.isModalOpen) {
+        event.preventDefault();
+        // Find the workflow modal component and trigger queue
+        const modalElement = document.querySelector('[x-data*="workflowModal"]');
+        if (modalElement && modalElement._x_dataStack) {
+          const component = modalElement._x_dataStack.find(stack => stack.handleQueue);
+          if (component && !component.isProcessing) {
+            component.handleQueue();
+          }
+        }
+      }
+    }
+  });
 });
 
 

@@ -86,15 +86,7 @@ You can change source and destination directories using the Options menu (top le
 - [x] Allow setting custom to and from file paths
 - [x] Add initial logging of metadata and decisions taken for future use and training
 - [x] Improved file browsing within directory with slider and page picker
-- [x] Allow forwarding (queueing) workflow in comfyui
-- [x] Allow modifying a few parameters (seed and quantity) when queueing
-- [x] Allow changing and saving the comfyui path to forward to
-- [x] Show log of actions taken, successful or not, in 'Run Workflow' modal
-- [x] Migrate comfyui integration component to Alpine.js
-
-### UI Improvements
-- [ ] Improve and clean up UI
-- [ ] Dark mode
+- [x] Improve and clean up UI (Done enough for now)
 
 ### Sorting
 - [ ] Ability to turn logging on and off
@@ -111,16 +103,23 @@ You can change source and destination directories using the Options menu (top le
 - [ ] Allow setting tags in metadata
 
 ### ComfyUI Integration
+- [x] Allow forwarding (queueing) workflow in comfyui
+- [x] Allow modifying a few parameters (seed and quantity) when queueing
+- [x] Allow changing and saving the comfyui path to forward to
+- [x] Show log of actions taken, successful or not, in 'Run Workflow' modal
+- [x] Migrate comfyui integration component to Alpine.js
+- [x] Comfyui live queue viewer
+- [x] At-a-glance view of Run Workflow settings
+- [x] At-a-glance view of queue
+- [x] Allow clearing ComfyUI queue (clearing individual items is not possible yet due to comfyui api limitations)
+- [ ] Edit and queue workflows without losing node formatting
 - [ ] Allow modifying more fields in the workflow when queueing, such as prompts, steps
 - [ ] Allow loading a workflow in comfyui (not just queueing and linking)
-- [ ] Allow viewing current queue
 - [ ] Show details for different queue items
-- [ ] Allow removing items from current queue
 - [ ] Allow loading workflows from current queue
 - [ ] Allow adding simple nodes and connections such as importing an image (such as the current image) and using that as the source and setting the denoising level
 - [ ] Copy text to app clipboard
-- [ ] Save and queue saved workflows
-- [ ] Edit and queue workflows without losing node formatting
+- [ ] Save workflows and queue saved workflows
 - [ ] Add model (checkpoint, lora) fields as options to modify - need to access file list for this
 - [ ] Allow inpainting
 - [ ] Develop more advanced workflow editing and simplified view of workflows
@@ -128,6 +127,9 @@ You can change source and destination directories using the Options menu (top le
 - [ ] Allow saving prompt snippets
 - [ ] Allow sorting and suggesting prompt snippets based on model, project, other context
 - [ ] Integrate improved wildcard system in prompting
+
+### UI Improvements
+- [ ] Dark mode
 
 ### General Use & Deployment
 - [ ] Generalize features to work just for photo sorting as well

@@ -71,7 +71,7 @@
        x-transition.opacity
        style="display: none;">
     
-    <div class="comfyui-modal-content" @click.away="!$store.queueViewer?.showItemDetails && closeModal()">
+    <div class="comfyui-modal-content" @click.away="allowClickAway && $store.queueViewer && !$store.queueViewer.showItemDetails && !$store.queueViewer.showCancelAllModal && !$store.queueViewer.showCancelItemModal ? closeModal() : null">
       <!-- Modal Header -->
       <div class="comfyui-modal-header">
         <h2 class="comfyui-modal-title">Run Workflow</h2>
@@ -139,14 +139,33 @@
             Active Queue
             <span x-show="!isQueueExpanded && queueItems.length === 0" class="comfyui-status-summary">empty</span>
             <span x-show="!isQueueExpanded && queueItems.length > 0" class="comfyui-queue-indicators">
+              <!-- Show active dot for running item -->
               <span class="comfyui-header-dot active"></span>
-              <template x-for="(item, index) in queueItems.slice(1)" :key="item[0]">
+              
+              <!-- Show grey dots: max 3 for pending items -->
+              <template x-for="index in Math.min(3, queueItems.length - 1)" :key="index">
                 <span class="comfyui-header-dot"></span>
               </template>
+              
+              <!-- Show status text -->
+              <span class="comfyui-queue-overflow"
+                    x-text="(() => {
+                      const running = 1;
+                      const queued = queueItems.length - 1;
+                      const hasOverflow = queued > 3;
+                      const prefix = hasOverflow ? '... ' : '';
+                      
+                      if (queued === 0) {
+                        return `${prefix}${running} running`;
+                      } else {
+                        return `${prefix}${running} running and ${queued} queued`;
+                      }
+                    })()">
+              </span>
             </span>
           </h3>
           <button class="comfy-btn comfy-btn-warning comfy-btn-small" 
-                  @click.stop="showCancelAllModal = true"
+                  @click.stop="$store.queueViewer.showCancelAllModal = true"
                   x-show="queueItems.length > 0 && isQueueExpanded">
             Clear Queue
           </button>
@@ -257,13 +276,13 @@
 
   <!-- Queue Detail Modals (using global store) -->
   <!-- Queue Item Details Modal -->
-  <div x-show="$store.queueViewer?.showItemDetails" 
+  <div x-show="$store.queueViewer?.showItemDetails === true" 
        class="comfyui-modal comfyui-details-modal"
        x-transition.opacity
        @click.self="$store.queueViewer.showItemDetails = false"
-       x-init="console.log('Details modal initialized')"
-       x-effect="console.log('Details modal visibility changed:', $store.queueViewer?.showItemDetails)"
-       style="display: none;">
+       x-init="$store.queueViewer && ($store.queueViewer.showItemDetails = false)"
+       style="display: none;"
+       x-cloak>
     <div class="comfyui-modal-content comfyui-details-content" @click.stop>
       <div class="comfyui-modal-header">
         <h3>Queue Item Details</h3>
@@ -294,11 +313,13 @@
   </div>
 
   <!-- Cancel All Confirmation Modal -->
-  <div x-show="$store.queueViewer?.showCancelAllModal" 
+  <div x-show="$store.queueViewer?.showCancelAllModal === true" 
        class="comfyui-modal comfyui-confirm-modal"
        x-transition.opacity
        @click.self="$store.queueViewer.showCancelAllModal = false"
-       style="display: none;">
+       x-init="$store.queueViewer && ($store.queueViewer.showCancelAllModal = false)"
+       style="display: none;"
+       x-cloak>
     <div class="comfyui-modal-content comfyui-confirm-content">
       <div class="comfyui-modal-header">
         <h3>Clear Queue?</h3>
@@ -320,17 +341,19 @@
   </div>
 
   <!-- Cancel Item Confirmation Modal -->
-  <div x-show="$store.queueViewer?.showCancelItemModal" 
+  <div x-show="$store.queueViewer?.showCancelItemModal === true" 
        class="comfyui-modal comfyui-confirm-modal"
        x-transition.opacity
        @click.self="$store.queueViewer.showCancelItemModal = false"
+       x-init="$store.queueViewer && ($store.queueViewer.showCancelItemModal = false)"
+       style="display: none;"
+       x-cloak
        x-data="{ 
          async cancelItem() { 
            console.log('cancelItem() wrapper called'); 
            await $store.queueViewer.cancelSelectedItem(); 
          } 
-       }"
-       style="display: none;">
+       }">
     <div class="comfyui-modal-content comfyui-confirm-content">
       <div class="comfyui-modal-header">
         <h3>Cancel Queue Item?</h3>

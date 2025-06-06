@@ -348,17 +348,26 @@
   align-items: center;
 }
 
+.comfyui-queue-overflow {
+  font-size: 0.8rem;
+  color: var(--comfy-text-secondary);
+  font-style: italic;
+  font-weight: normal;
+  margin-left: 0.5em;
+}
+
 .comfyui-header-dot {
   width: 8px;
   height: 8px;
   border-radius: 50%;
   background-color: var(--comfy-border-medium);
   display: inline-block;
+  flex-shrink: 0;
 }
 
 .comfyui-header-dot.active {
   background-color: var(--comfy-success);
-  animation: comfy-queue-pulse 1.5s infinite ease-in-out;
+  animation: comfy-queue-pulse 2s infinite ease-in-out;
 }
 
 /* Button State Animations */
@@ -369,11 +378,11 @@
 
 @keyframes comfy-queue-pulse {
   0%, 100% { 
-    background-color: #248a2e; /* 10% darker green */
+    background-color: #207c29; /* 10% darker green */
     transform: scale(1);
   }
   50% { 
-    background-color: #2eb740; /* 10% lighter green */
+    background-color: #37dc4d; /* 20% lighter green */
     transform: scale(1.1);
   }
 }
@@ -709,7 +718,7 @@
 
 .comfyui-queue-item.active .comfyui-queue-item-indicator {
   background-color: var(--comfy-success);
-  animation: comfy-queue-pulse 1.5s infinite ease-in-out;
+  animation: comfy-queue-pulse 2s infinite ease-in-out;
 }
 
 .comfyui-queue-item-indicator {
