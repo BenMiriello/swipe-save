@@ -78,7 +78,7 @@ You can change source and destination directories using the Options menu (top le
 
 ## Roadmap
 
-### Completed
+### MVP
 - [x] Allow setting custom filename
 - [x] Add keyboard controls and key mappings
 - [x] Allow viewing and downloading file through center click and icon in top right
@@ -87,20 +87,6 @@ You can change source and destination directories using the Options menu (top le
 - [x] Add initial logging of metadata and decisions taken for future use and training
 - [x] Improved file browsing within directory with slider and page picker
 - [x] Improve and clean up UI (Done enough for now)
-
-### Sorting
-- [ ] Ability to turn logging on and off
-- [ ] Ability to set custom categories, directories or filenames to cardinal directions
-- [ ] Ability to select and perform sorting actions on multiple files using updated file picker
-- [ ] Update file browser, including to allow viewing files
-- [ ] Generalize process of setting source and destination directories away from comfyui
-- [ ] Sort by additional parameters
-
-### Tagging
-- [ ] Allow suggesting tags based on workflow prompt metadata
-- [ ] Allow choosing and creating tags for projects, categories, etc
-- [ ] Allow setting tags in filenames
-- [ ] Allow setting tags in metadata
 
 ### ComfyUI Integration
 - [x] Allow forwarding (queueing) workflow in comfyui
@@ -128,12 +114,31 @@ You can change source and destination directories using the Options menu (top le
 - [ ] Allow sorting and suggesting prompt snippets based on model, project, other context
 - [ ] Integrate improved wildcard system in prompting
 
+### Sorting
+- [ ] Ability to turn logging on and off
+- [ ] Ability to set custom categories, directories or filenames to cardinal directions
+- [ ] Ability to select and perform sorting actions on multiple files using updated file picker
+- [ ] Update file browser, including to allow viewing files
+- [ ] Generalize process of setting source and destination directories away from comfyui
+- [ ] Sort by additional parameters
+
+### Tagging
+- [ ] Allow suggesting tags based on workflow prompt metadata
+- [ ] Allow choosing and creating tags for projects, categories, etc
+- [ ] Allow setting tags in filenames
+- [ ] Allow setting tags in metadata
+
+### Technical
+- [ ] Port rest of app over into Alpine.js
+- [ ] Improve and centralize state management
+- [ ] Add unit testing
+
 ### UI Improvements
 - [ ] Dark mode
 
-### General Use & Deployment
+### Preparing for General Use
 - [ ] Generalize features to work just for photo sorting as well
-- [ ] Develop plan for easy linking of file system to hosted instance
+- [ ] Develop plan for easy ways to link to people's file system and comfyui instances
 
 ### Automated Sorting
 - [ ] Develop mvp plan for an auto-sorting tool which uses selections users make to train a model that learns their preferences, and which can run sorting for them on their permission and review

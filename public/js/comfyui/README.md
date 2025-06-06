@@ -1,1 +1,228 @@
-# ComfyUI Module - Alpine.js Integration\n\nThis module encapsulates all ComfyUI functionality using Alpine.js for reactive state management and component-based architecture.\n\n## Architecture\n\n### Directory Structure\n```\njs/comfyui/\n├── index.js                 # Main module entry point\n├── components/\n│   └── workflow-modal.js    # Alpine.js components\n├── services/\n│   ├── api-client.js        # ComfyUI API interactions\n│   └── storage-service.js   # Local storage management\n├── utils/\n│   ├── workflow-analyzer.js # Workflow analysis utilities\n│   └── validation.js       # Parameter validation\n├── styles/\n│   ├── modal.css           # Modal-specific styles\n│   └── components.css      # Reusable component styles\n└── templates/\n    └── modal.html          # Reference template (not loaded)\n```\n\n### Key Components\n\n#### 1. Main Module (`index.js`)\n- Initializes Alpine.js integration\n- Sets up global stores for state management\n- Provides public API for opening/closing modal\n\n#### 2. Alpine.js Stores\n- **comfyWorkflow**: Manages workflow state, settings, and results\n- **comfyDestinations**: Manages ComfyUI destination URLs\n\n#### 3. Services\n- **apiClient**: Handles all ComfyUI API calls\n- **storage**: Manages localStorage operations\n\n#### 4. Utilities\n- **workflowAnalyzer**: Foundation for future text editing features\n- **validation**: Parameter and workflow validation\n\n## Usage\n\n### Opening the Modal\n```javascript\n// From the main app\nconst currentFile = getCurrentFile();\nwindow.comfyUIModule.openWorkflowModal(currentFile);\n```\n\n### Accessing Store Data\n```javascript\n// In Alpine.js components\nthis.$store.comfyWorkflow.settings.quantity\nthis.$store.comfyDestinations.selectedDestination\n```\n\n### API Calls\n```javascript\n// Queue workflow\nawait window.comfyUIServices.apiClient.queueWorkflow(\n  file, \n  modifySeeds, \n  controlAfterGenerate, \n  comfyUrl\n);\n```\n\n## State Management\n\n### Workflow Store Structure\n```javascript\n{\n  currentFile: null,\n  isModalOpen: false,\n  settings: {\n    quantity: 1,\n    modifySeeds: true,\n    controlAfterGenerate: 'increment',\n    comfyUrl: 'http://localhost:8188'\n  },\n  results: [\n    {\n      message: 'Queued workflow...',\n      isError: false,\n      timestamp: '10:30:45 AM'\n    }\n  ]\n}\n```\n\n### Destinations Store Structure\n```javascript\n{\n  destinations: ['http://localhost:8188'],\n  selectedDestination: 'http://localhost:8188',\n  showMoreOptions: false\n}\n```\n\n## Styling System\n\n### CSS Custom Properties\nThe module uses CSS custom properties for consistent theming:\n\n```css\n:root {\n  --comfy-primary: #007bff;\n  --comfy-success: #28a745;\n  --comfy-error: #dc3545;\n  --comfy-bg-primary: #ffffff;\n  --comfy-text-primary: #333333;\n  /* ... more variables */\n}\n```\n\n### Component Classes\n- `comfy-btn` - Standard button styling\n- `comfy-input` - Input field styling\n- `comfy-toggle` - Toggle switch styling\n- `comfy-setting-container` - Setting row container\n\n## Future Extensions\n\n### Text Field Editing\nThe workflow analyzer provides foundation for text field detection:\n\n```javascript\n// Analyze workflow for text fields\nconst analysis = window.comfyUIServices.workflowAnalyzer.analyzeWorkflow(workflow);\nconsole.log(analysis.textFields); // Array of editable text fields\n```\n\n### Node Ordering\nImplement topological sorting for logical node order:\n\n```javascript\n// Order nodes for editing interface\nconst orderedNodes = window.comfyUIServices.workflowAnalyzer.orderNodesForEditing(\n  analysis.nodes,\n  analysis.connections\n);\n```\n\n### Adding New Components\n1. Create component function in `components/workflow-modal.js`\n2. Register with Alpine: `Alpine.data('componentName', componentFunction)`\n3. Use in HTML: `<div x-data=\"componentName()\">`\n\n### Adding New Services\n1. Create service file in `services/`\n2. Add to `window.comfyUIServices` namespace\n3. Import in `index.html` before `index.js`\n\n## Integration Points\n\n### With Main App\n- `window.comfyUIModule.openWorkflowModal(file)` - Open modal\n- `window.comfyUIModule.isModalOpen` - Check modal state\n\n### With Existing Code\n- Old ComfyUI functions are stubbed for compatibility\n- App controller methods are kept but do nothing\n- New Alpine.js modal replaces old vanilla JS modal\n\n## Best Practices\n\n### File Size Guidelines\n- Keep components under 150 lines\n- Split complex logic into separate utilities\n- Use small, focused service files\n\n### State Management\n- Use Alpine stores for cross-component state\n- Keep component-specific state in component data\n- Validate all user inputs before updating state\n\n### Error Handling\n- Always validate parameters before API calls\n- Display user-friendly error messages\n- Log detailed errors to console for debugging\n\n### Styling\n- Use CSS custom properties for theming\n- Create reusable component classes\n- Follow existing naming conventions (`comfy-*`)\n\n## Migration Notes\n\n### What Changed\n- Modal HTML completely rewritten for Alpine.js\n- State management moved to Alpine stores\n- API calls moved to dedicated service\n- Old vanilla JS files backed up with `.backup` extension\n\n### Compatibility\n- Old API methods are stubbed to prevent errors\n- App controller maintains same public interface\n- All functionality equivalent to previous implementation\n\n### Performance\n- Alpine.js adds ~15KB gzipped\n- No build step required\n- Reactive updates more efficient than manual DOM manipulation\n\n## Troubleshooting\n\n### Common Issues\n1. **Modal not opening**: Check that Alpine.js is loaded and `window.comfyUIModule` exists\n2. **Store not updating**: Ensure Alpine.js is fully initialized before accessing stores\n3. **Styles not applying**: Verify CSS files are loaded after main styles\n\n### Debug Commands\n```javascript\n// Check module status\nconsole.log(window.comfyUIModule.isInitialized);\n\n// Check store state\nconsole.log(Alpine.store('comfyWorkflow'));\n\n// Test API client\nwindow.comfyUIServices.apiClient.getDefaultComfyUIUrl();\n```\n\nThis modular architecture provides a solid foundation for extending ComfyUI functionality while maintaining clean separation of concerns and excellent developer experience.\n
+# ComfyUI Module - Alpine.js Integration
+
+This module encapsulates all ComfyUI functionality using Alpine.js for reactive state management and component-based architecture.
+
+## Architecture
+
+### Directory Structure
+```
+js/comfyui/
+├── index.js                 # Main module entry point
+├── components/
+│   └── workflow-modal.js    # Alpine.js components
+├── services/
+│   ├── api-client.js        # ComfyUI API interactions
+│   └── storage-service.js   # Local storage management
+├── utils/
+│   ├── workflow-analyzer.js # Workflow analysis utilities
+│   └── validation.js       # Parameter validation
+├── styles/
+│   ├── modal.css           # Modal-specific styles
+│   └── components.css      # Reusable component styles
+└── templates/
+    └── modal.html          # Reference template (not loaded)
+```
+
+### Key Components
+
+#### 1. Main Module (`index.js`)
+- Initializes Alpine.js integration
+- Sets up global stores for state management
+- Provides public API for opening/closing modal
+
+#### 2. Alpine.js Stores
+- **comfyWorkflow**: Manages workflow state, settings, and results
+- **comfyDestinations**: Manages ComfyUI destination URLs
+
+#### 3. Services
+- **apiClient**: Handles all ComfyUI API calls
+- **storage**: Manages localStorage operations
+
+#### 4. Utilities
+- **workflowAnalyzer**: Foundation for future text editing features
+- **validation**: Parameter and workflow validation
+
+## Usage
+
+### Opening the Modal
+```javascript
+// From the main app
+const currentFile = getCurrentFile();
+window.comfyUIModule.openWorkflowModal(currentFile);
+```
+
+### Accessing Store Data
+```javascript
+// In Alpine.js components
+this.$store.comfyWorkflow.settings.quantity
+this.$store.comfyDestinations.selectedDestination
+```
+
+### API Calls
+```javascript
+// Queue workflow
+await window.comfyUIServices.apiClient.queueWorkflow(
+  file, 
+  modifySeeds, 
+  controlAfterGenerate, 
+  comfyUrl
+);
+```
+
+## State Management
+
+### Workflow Store Structure
+```javascript
+{
+  currentFile: null,
+  isModalOpen: false,
+  settings: {
+    quantity: 1,
+    modifySeeds: true,
+    controlAfterGenerate: 'increment',
+    comfyUrl: 'http://localhost:8188'
+  },
+  results: [
+    {
+      message: 'Queued workflow...',
+      isError: false,
+      timestamp: '10:30:45 AM'
+    }
+  ]
+}
+```
+
+### Destinations Store Structure
+```javascript
+{
+  destinations: ['http://localhost:8188'],
+  selectedDestination: 'http://localhost:8188',
+  showMoreOptions: false
+}
+```
+
+## Styling System
+
+### CSS Custom Properties
+The module uses CSS custom properties for consistent theming:
+
+```css
+:root {
+  --comfy-primary: #007bff;
+  --comfy-success: #28a745;
+  --comfy-error: #dc3545;
+  --comfy-bg-primary: #ffffff;
+  --comfy-text-primary: #333333;
+  /* ... more variables */
+}
+```
+
+### Component Classes
+- `comfy-btn` - Standard button styling
+- `comfy-input` - Input field styling
+- `comfy-toggle` - Toggle switch styling
+- `comfy-setting-container` - Setting row container
+
+## Future Extensions
+
+### Text Field Editing
+The workflow analyzer provides foundation for text field detection:
+
+```javascript
+// Analyze workflow for text fields
+const analysis = window.comfyUIServices.workflowAnalyzer.analyzeWorkflow(workflow);
+console.log(analysis.textFields); // Array of editable text fields
+```
+
+### Node Ordering
+Implement topological sorting for logical node order:
+
+```javascript
+// Order nodes for editing interface
+const orderedNodes = window.comfyUIServices.workflowAnalyzer.orderNodesForEditing(
+  analysis.nodes,
+  analysis.connections
+);
+```
+
+### Adding New Components
+1. Create component function in `components/workflow-modal.js`
+2. Register with Alpine: `Alpine.data('componentName', componentFunction)`
+3. Use in HTML: `<div x-data="componentName()">`
+
+### Adding New Services
+1. Create service file in `services/`
+2. Add to `window.comfyUIServices` namespace
+3. Import in `index.html` before `index.js`
+
+## Integration Points
+
+### With Main App
+- `window.comfyUIModule.openWorkflowModal(file)` - Open modal
+- `window.comfyUIModule.isModalOpen` - Check modal state
+
+### With Existing Code
+- Old ComfyUI functions are stubbed for compatibility
+- App controller methods are kept but do nothing
+- New Alpine.js modal replaces old vanilla JS modal
+
+## Best Practices
+
+### File Size Guidelines
+- Keep components under 150 lines
+- Split complex logic into separate utilities
+- Use small, focused service files
+
+### State Management
+- Use Alpine stores for cross-component state
+- Keep component-specific state in component data
+- Validate all user inputs before updating state
+
+### Error Handling
+- Always validate parameters before API calls
+- Display user-friendly error messages
+- Log detailed errors to console for debugging
+
+### Styling
+- Use CSS custom properties for theming
+- Create reusable component classes
+- Follow existing naming conventions (`comfy-*`)
+
+## Migration Notes
+
+### What Changed
+- Modal HTML completely rewritten for Alpine.js
+- State management moved to Alpine stores
+- API calls moved to dedicated service
+- Old vanilla JS files backed up with `.backup` extension
+
+### Compatibility
+- Old API methods are stubbed to prevent errors
+- App controller maintains same public interface
+- All functionality equivalent to previous implementation
+
+### Performance
+- Alpine.js adds ~15KB gzipped
+- No build step required
+- Reactive updates more efficient than manual DOM manipulation
+
+## Troubleshooting
+
+### Common Issues
+1. **Modal not opening**: Check that Alpine.js is loaded and `window.comfyUIModule` exists
+2. **Store not updating**: Ensure Alpine.js is fully initialized before accessing stores
+3. **Styles not applying**: Verify CSS files are loaded after main styles
+
+### Debug Commands
+```javascript
+// Check module status
+console.log(window.comfyUIModule.isInitialized);
+
+// Check store state
+console.log(Alpine.store('comfyWorkflow'));
+
+// Test API client
+window.comfyUIServices.apiClient.getDefaultComfyUIUrl();
+```
+
+This modular architecture provides a solid foundation for extending ComfyUI functionality while maintaining clean separation of concerns and excellent developer experience.
