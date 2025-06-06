@@ -127,7 +127,66 @@ window.comfyUIServices.workflowAnalyzer = {
       return false;
     }
 
+    // Skip obvious configuration fields
+    if (this.isConfigurationField(inputName, inputValue)) {
+      return false;
+    }
+
     return true;
+  },
+
+  /**
+   * Check if a field is a configuration field (paths, model names, etc.)
+   * @param {string} inputName - Input field name
+   * @param {string} inputValue - Input field value
+   * @returns {boolean} True if this is likely a configuration field
+   */
+  isConfigurationField(inputName, inputValue) {
+    const lowerName = inputName.toLowerCase();
+    const lowerValue = inputValue.toLowerCase();
+
+    // Skip file paths
+    if (inputValue.includes('/') || inputValue.includes('\\') || inputValue.includes('.')) {
+      // But allow certain extensions that might be in prompts
+      const promptAllowedExtensions = ['.jpg', '.png', '.jpeg'];
+      if (!promptAllowedExtensions.some(ext => lowerValue.includes(ext))) {
+        return true;
+      }
+    }
+
+    // Skip model files
+    if (lowerValue.endsWith('.safetensors') || lowerValue.endsWith('.ckpt') || 
+        lowerValue.endsWith('.pt') || lowerValue.endsWith('.bin')) {
+      return true;
+    }
+
+    // Skip technical field names
+    const configFieldNames = [
+      'model', 'checkpoint', 'lora', 'sampler', 'scheduler', 'cfg', 'steps', 
+      'width', 'height', 'batch', 'seed', 'denoise', 'control_after_generate',
+      'filename', 'path', 'url', 'method', 'mode', 'format', 'quality'
+    ];
+    
+    if (configFieldNames.some(name => lowerName.includes(name))) {
+      return true;
+    }
+
+    // Skip boolean-like values
+    if (['true', 'false', 'yes', 'no', 'enable', 'disable'].includes(lowerValue)) {
+      return true;
+    }
+
+    // Skip numeric strings
+    if (/^\d+(\.\d+)?$/.test(inputValue.trim())) {
+      return true;
+    }
+
+    // Skip short technical identifiers
+    if (inputValue.length <= 10 && /^[a-z_]+$/.test(lowerValue)) {
+      return true;
+    }
+
+    return false;
   },
 
   /**

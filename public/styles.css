@@ -159,11 +159,11 @@ h1 {
 /* Directory row styling */
 .options-dropdown .directory-row {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
+  flex-direction: column;
   padding: 8px 15px;
   background-color: #f9f9f9;
   cursor: default;
+  margin-bottom: 4px;
 }
 
 .options-dropdown .directory-row:hover {
@@ -171,31 +171,34 @@ h1 {
 }
 
 .dir-info {
-  flex: 1;
   display: flex;
-  align-items: center;
-  gap: 8px;
+  flex-direction: column;
+  gap: 4px;
+  width: 100%;
 }
 
 .dir-label {
   font-weight: 600;
   color: #555;
-  min-width: 35px;
+  font-size: 0.8rem;
+  margin-bottom: 2px;
 }
 
 .dir-path-clickable {
-  flex: 1;
+  width: 100%;
   color: #333;
   background-color: white;
-  padding: 4px 8px;
+  padding: 6px 8px;
   border-radius: 3px;
   border: 1px solid #ddd;
   cursor: pointer;
-  font-size: 0.85rem;
+  font-size: 0.75rem;
   font-family: monospace;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  min-height: 24px;
+  display: block;
   transition: border-color 0.2s;
 }
 
@@ -602,7 +605,7 @@ video.media-content[data-hide-controls]::-webkit-media-controls-volume-slider {
   cursor: pointer;
   user-select: none;
   position: relative;
-  padding: 8px 16px;
+  padding: 4px 8px;
   background-color: white;
   border: 2px solid #dcdcdc;
   border-radius: 4px;
@@ -748,6 +751,7 @@ video.media-content[data-hide-controls]::-webkit-media-controls-volume-slider {
 .btn-undo {
   background-color: #dc3545;
   color: white;
+  padding: 8px 8px !important;
 }
 
 .btn:hover {
@@ -844,7 +848,6 @@ video.media-content[data-hide-controls]::-webkit-media-controls-volume-slider {
 .modal-content input {
   width: 100%;
   padding: 10px;
-  margin-bottom: 15px;
   border: 1px solid #ddd;
   border-radius: 4px;
 }

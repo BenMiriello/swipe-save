@@ -60,61 +60,146 @@
       </template>
     </div>
 
-    <!-- Settings Section -->
-    <div class="comfyui-settings-section" x-data="settingsPanel()">
-      <!-- Quantity -->
-      <div class="comfy-setting-row">
-        <div class="comfy-setting-container">
-          <span class="comfy-setting-label">Quantity</span>
-          <div class="comfy-number-picker">
-            <button class="comfy-number-btn" @click="decrementQuantity()">‹</button>
-            <input type="number" 
-                   class="comfy-number-input"
-                   x-model.number="$store.comfyWorkflow.settings.quantity"
-                   @blur="validateQuantity()"
-                   min="1" max="99">
-            <button class="comfy-number-btn" @click="incrementQuantity()">›</button>
+    <!-- Global Settings Section -->
+    <div class="comfyui-section" x-data="settingsPanel()">
+      <div class="comfyui-section-header" @click="toggleSection('global')">
+        <span class="comfyui-section-caret" :class="{ 'expanded': !isCollapsed('global') }">▶</span>
+        <h3 class="comfyui-section-title">Global Settings</h3>
+      </div>
+      
+      <div x-show="!isCollapsed('global')" x-transition class="comfyui-section-content">
+        <!-- Quantity -->
+        <div class="comfy-setting-row">
+          <div class="comfy-setting-container">
+            <span class="comfy-setting-label">Quantity</span>
+            <div class="comfy-number-picker">
+              <button class="comfy-number-btn" @click="decrementQuantity()">‹</button>
+              <input type="number" 
+                     class="comfy-number-input"
+                     x-model.number="$store.comfyWorkflow.settings.quantity"
+                     @blur="validateQuantity()"
+                     min="1" max="99">
+              <button class="comfy-number-btn" @click="incrementQuantity()">›</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- New Seed -->
+        <div class="comfy-setting-row">
+          <div class="comfy-setting-container">
+            <span class="comfy-setting-label">New Seed</span>
+            <label class="comfy-toggle">
+              <input type="checkbox" 
+                     x-model="$store.comfyWorkflow.settings.modifySeeds"
+                     @change="toggleNewSeed()">
+              <span class="comfy-toggle-slider"></span>
+            </label>
+          </div>
+        </div>
+
+        <!-- Control After Generate -->
+        <div class="comfy-setting-row">
+          <div class="comfy-setting-container">
+            <span class="comfy-setting-label">Control After Generate</span>
+            <select class="comfy-select" 
+                    x-model="$store.comfyWorkflow.settings.controlAfterGenerate"
+                    @change="updateControlAfterGenerate($event.target.value)">
+              <option value="increment">Increment</option>
+              <option value="randomize">Randomize</option>
+              <option value="decrement">Decrement</option>
+              <option value="fixed">Fixed</option>
+            </select>
           </div>
         </div>
       </div>
+    </div>
 
-      <!-- New Seed -->
-      <div class="comfy-setting-row">
-        <div class="comfy-setting-container">
-          <span class="comfy-setting-label">New Seed</span>
-          <label class="comfy-toggle">
-            <input type="checkbox" 
-                   x-model="$store.comfyWorkflow.settings.modifySeeds"
-                   @change="toggleNewSeed()">
-            <span class="comfy-toggle-slider"></span>
+    <!-- Node Definitions Section -->
+    <div class="comfyui-section" x-data="workflowEditor()">
+      <div class="comfyui-section-header" @click="toggleSection('nodes')">
+        <span class="comfyui-section-caret" :class="{ 'expanded': !isCollapsed('nodes') }">▶</span>
+        <h3 class="comfyui-section-title">Node Definitions</h3>
+        <template x-if="hasEdits()">
+          <span class="comfyui-edited-indicator">edited</span>
+        </template>
+      </div>
+      
+      <div x-show="!isCollapsed('nodes')" x-transition class="comfyui-section-content">
+        <!-- Filters and Controls -->
+        <div class="comfyui-node-controls">
+          <label class="comfy-checkbox-label">
+            <input type="checkbox" x-model="showPromptsOnly" @change="filterNodes()">
+            <span class="comfy-checkbox-text">Show prompt nodes only</span>
           </label>
+          <button class="comfy-btn comfy-btn-secondary comfy-btn-small" @click="collapseAllNodes()">
+            Collapse All
+          </button>
+        </div>
+
+        <!-- Node List -->
+        <div class="comfyui-node-list">
+          <template x-for="node in filteredNodes" :key="node.id">
+            <div class="comfyui-node-item">
+              <!-- Node Header -->
+              <div class="comfyui-node-header" @click="toggleNode(node.id)">
+                <span class="comfyui-node-caret" :class="{ 'expanded': !isNodeCollapsed(node.id) }">▶</span>
+                <span class="comfyui-node-title" x-text="node.type"></span>
+                <span class="comfyui-node-id" x-text="'#' + node.id"></span>
+                <template x-if="hasNodeEdits(node.id)">
+                  <span class="comfyui-edited-indicator">edited</span>
+                </template>
+              </div>
+
+              <!-- Node Fields -->
+              <div x-show="!isNodeCollapsed(node.id)" x-transition class="comfyui-node-content">
+                <template x-for="field in node.fields" :key="field.fieldName">
+                  <div class="comfyui-field-item">
+                    <!-- Field Header -->
+                    <div class="comfyui-field-header" @click="toggleField(node.id, field.fieldName)">
+                      <span class="comfyui-field-caret" :class="{ 'expanded': !isFieldCollapsed(node.id, field.fieldName) }">▶</span>
+                      <span class="comfyui-field-name" x-text="field.fieldName"></span>
+                      <template x-if="hasFieldEdit(node.id, field.fieldName)">
+                        <span class="comfyui-edited-indicator">edited</span>
+                      </template>
+                    </div>
+
+                    <!-- Field Content -->
+                    <div x-show="!isFieldCollapsed(node.id, field.fieldName)" x-transition class="comfyui-field-content">
+                      <template x-if="field.isPromptLike">
+                        <!-- Editable text field -->
+                        <div class="comfyui-field-editor">
+                          <label class="comfyui-field-label" x-text="'Current: \"' + truncateText(field.currentValue, 50) + '\"'"></label>
+                          <textarea class="comfy-textarea" 
+                                    :x-model="getFieldEdit(node.id, field.fieldName)"
+                                    @input="updateFieldEdit(node.id, field.fieldName, $event.target.value)"
+                                    :placeholder="field.currentValue"
+                                    rows="3"></textarea>
+                        </div>
+                      </template>
+                      <template x-if="!field.isPromptLike">
+                        <!-- Read-only field -->
+                        <div class="comfyui-field-readonly">
+                          <span class="comfyui-field-value" x-text="field.currentValue"></span>
+                        </div>
+                      </template>
+                    </div>
+                  </div>
+                </template>
+              </div>
+            </div>
+          </template>
         </div>
       </div>
+    </div>
 
-      <!-- Control After Generate -->
-      <div class="comfy-setting-row">
-        <div class="comfy-setting-container">
-          <span class="comfy-setting-label">Control After Generate</span>
-          <select class="comfy-select" 
-                  x-model="$store.comfyWorkflow.settings.controlAfterGenerate"
-                  @change="updateControlAfterGenerate($event.target.value)">
-            <option value="increment">Increment</option>
-            <option value="randomize">Randomize</option>
-            <option value="decrement">Decrement</option>
-            <option value="fixed">Fixed</option>
-          </select>
-        </div>
-      </div>
-
-      <!-- Action Buttons -->
-      <div class="comfy-actions-section">
-        <button class="comfy-btn comfy-btn-primary"
-                :class="getButtonClasses('queue')"
-                @click="handleQueue()"
-                :disabled="isProcessing"
-                x-text="getButtonText('queue')">
-        </button>
-      </div>
+    <!-- Action Buttons -->
+    <div class="comfy-actions-section" x-data="settingsPanel()">
+      <button class="comfy-btn comfy-btn-primary"
+              :class="getButtonClasses('queue')"
+              @click="handleQueue()"
+              :disabled="isProcessing"
+              x-text="getButtonText('queue')">
+      </button>
     </div>
 
     <!-- Error Display -->

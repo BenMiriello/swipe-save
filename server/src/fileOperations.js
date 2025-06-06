@@ -156,15 +156,27 @@ function logSimpleAction(actionType, data) {
  */
 function createRequiredDirectories() {
   const directories = [
-    config.DELETED_DIR,
-    config.LOCAL_COPY_DIR,
-    config.LOG_DIR
+    config.LOG_DIR,
+    config.LOCAL_COPY_DIR
   ];
 
+  // Only create DELETED_DIR if OUTPUT_DIR exists
+  if (fs.existsSync(config.OUTPUT_DIR)) {
+    directories.push(config.DELETED_DIR);
+  } else {
+    console.warn(`OUTPUT_DIR does not exist: ${config.OUTPUT_DIR}`);
+    console.warn('DELETED_DIR will not be created until OUTPUT_DIR exists');
+  }
+
   directories.forEach(dir => {
-    if (!fs.existsSync(dir)) {
-      fs.mkdirSync(dir, { recursive: true });
-      console.log(`Created directory: ${dir}`);
+    try {
+      if (!fs.existsSync(dir)) {
+        fs.mkdirSync(dir, { recursive: true });
+        console.log(`Created directory: ${dir}`);
+      }
+    } catch (error) {
+      console.error(`Failed to create directory ${dir}:`, error.message);
+      console.warn('This directory will be created when needed');
     }
   });
 

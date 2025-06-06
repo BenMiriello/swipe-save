@@ -114,9 +114,14 @@ You can change source and destination directories using the Options menu (top le
 - [ ] Allow modifying more fields in the workflow when queueing, such as prompts, steps
 - [ ] Allow loading a workflow in comfyui (not just queueing and linking)
 - [ ] Allow viewing current queue
+- [ ] Show details for different queue items
 - [ ] Allow removing items from current queue
 - [ ] Allow loading workflows from current queue
 - [ ] Allow adding simple nodes and connections such as importing an image (such as the current image) and using that as the source and setting the denoising level
+- [ ] Copy text to app clipboard
+- [ ] Save and queue saved workflows
+- [ ] Edit and queue workflows without losing node formatting
+- [ ] Add model (checkpoint, lora) fields as options to modify - need to access file list for this
 - [ ] Allow inpainting
 - [ ] Develop more advanced workflow editing and simplified view of workflows
 - [ ] Show syntax highlighting for prompt editing

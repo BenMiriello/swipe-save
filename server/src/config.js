@@ -5,10 +5,31 @@ const fs = require('fs-extra');
 // Config file path
 const CONFIG_FILE = path.resolve(process.env.HOME, 'Documents/swipe-save/app-config.json');
 
-// Default configuration
+// Smart directory fallback logic
+function findValidDirectory(preferredPaths, fallback = process.env.HOME || '/') {
+  for (const dirPath of preferredPaths) {
+    if (fs.existsSync(dirPath)) {
+      return dirPath;
+    }
+  }
+  return fallback;
+}
+
+// Default configuration with smart fallbacks
 const defaultConfig = {
-  sourceDir: path.resolve(process.env.HOME, 'Documents/ComfyUI/output'),
-  destinationDir: path.resolve(process.env.HOME, 'Documents/ComfyUI/output/swipe-save')
+  sourceDir: findValidDirectory([
+    path.resolve(process.env.HOME, 'Documents/ComfyUI/output'),
+    path.resolve(process.env.HOME, 'Documents'),
+    path.resolve(process.env.HOME, 'Desktop'),
+    process.env.HOME
+  ], process.env.HOME || '/'),
+  
+  destinationDir: findValidDirectory([
+    path.resolve(process.env.HOME, 'Documents/ComfyUI/output/swipe-save'),
+    path.resolve(process.env.HOME, 'Documents/swipe-save'),
+    path.resolve(process.env.HOME, 'Desktop/swipe-save'),
+    path.resolve(process.env.HOME, 'swipe-save')
+  ], process.env.HOME || '/')
 };
 
 // Load saved config or use defaults
