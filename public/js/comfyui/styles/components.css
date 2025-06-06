@@ -324,16 +324,58 @@
 .comfy-actions-section {
   display: flex;
   justify-content: flex-end;
+  align-items: center;
   gap: var(--comfy-spacing-md);
   margin-top: var(--comfy-spacing-lg);
   padding-top: var(--comfy-spacing-lg);
   border-top: 1px solid var(--comfy-border-light);
 }
 
+/* Status summary styling */
+.comfyui-status-summary {
+  font-weight: normal;
+  color: var(--comfy-text-secondary);
+  font-style: italic;
+  font-size: 0.8rem;
+  margin-left: 0.5em;
+}
+
+/* Header queue indicators */
+.comfyui-queue-indicators {
+  display: inline-flex;
+  gap: 4px;
+  margin-left: 0.5em;
+  align-items: center;
+}
+
+.comfyui-header-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background-color: var(--comfy-border-medium);
+  display: inline-block;
+}
+
+.comfyui-header-dot.active {
+  background-color: var(--comfy-success);
+  animation: comfy-queue-pulse 1.5s infinite ease-in-out;
+}
+
 /* Button State Animations */
 @keyframes comfy-pulse {
   0%, 100% { opacity: 1; }
   50% { opacity: 0.6; }
+}
+
+@keyframes comfy-queue-pulse {
+  0%, 100% { 
+    background-color: #248a2e; /* 10% darker green */
+    transform: scale(1);
+  }
+  50% { 
+    background-color: #2eb740; /* 10% lighter green */
+    transform: scale(1.1);
+  }
 }
 
 .comfy-btn-processing {
@@ -364,6 +406,7 @@
 .comfyui-section-header {
   display: flex;
   align-items: center;
+  justify-content: space-between;
   padding: var(--comfy-spacing-sm) var(--comfy-spacing-md);
   cursor: pointer;
   user-select: none;
@@ -371,6 +414,11 @@
   background-color: var(--comfy-bg-tertiary);
   border-radius: var(--comfy-radius-md) var(--comfy-radius-md) 0 0;
   transition: background-color 0.2s ease;
+  min-height: 44px;
+}
+
+.comfyui-section-header .comfy-btn {
+  margin-left: auto;
 }
 
 .comfyui-section-header:hover {
@@ -661,7 +709,7 @@
 
 .comfyui-queue-item.active .comfyui-queue-item-indicator {
   background-color: var(--comfy-success);
-  animation: comfy-pulse 1.5s infinite;
+  animation: comfy-queue-pulse 1.5s infinite ease-in-out;
 }
 
 .comfyui-queue-item-indicator {
@@ -707,6 +755,16 @@
   overflow-y: auto;
   padding: var(--comfy-spacing-md);
   border-bottom: 1px solid var(--comfy-border-light);
+}
+
+.comfyui-queue-limitation-note {
+  margin-top: var(--comfy-spacing-md);
+  padding: var(--comfy-spacing-sm);
+  background-color: var(--comfy-bg-tertiary);
+  border: 1px solid var(--comfy-border-light);
+  border-radius: var(--comfy-radius-sm);
+  font-size: 0.85rem;
+  color: var(--comfy-text-secondary);
 }
 
 .comfyui-json-display {
@@ -763,10 +821,10 @@
 
 /* Warning button variant */
 .comfy-btn-warning {
-  background-color: var(--comfy-warning);
+  background-color: var(--comfy-error);
   color: white;
 }
 
 .comfy-btn-warning:hover:not(:disabled) {
-  background-color: var(--comfy-warning-hover);
+  background-color: var(--comfy-error-hover);
 }

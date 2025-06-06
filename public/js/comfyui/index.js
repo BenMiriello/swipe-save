@@ -119,6 +119,204 @@ document.addEventListener('alpine:init', () => {
     }
   });
 
+  // Queue viewer store for global state sharing
+  Alpine.store('queueViewer', {
+    queueItems: [],
+    isLoading: false,
+    selectedItem: null,
+    selectedItemJson: '',
+    showItemDetails: false,
+    showCancelAllModal: false,
+    showCancelItemModal: false,
+    autoRefreshInterval: null,
+
+    init() {
+      console.log('Queue viewer store initialized');
+    },
+
+    startAutoRefresh() {
+      if (this.autoRefreshInterval) return;
+      this.autoRefreshInterval = setInterval(() => {
+        this.refreshQueue();
+      }, 5000); // Refresh every 5 seconds
+      console.log('Queue auto-refresh started (5s interval)');
+    },
+
+    stopAutoRefresh() {
+      if (this.autoRefreshInterval) {
+        clearInterval(this.autoRefreshInterval);
+        this.autoRefreshInterval = null;
+        console.log('Queue auto-refresh stopped');
+      }
+    },
+
+    // Refresh queue data from ComfyUI
+    async refreshQueue() {
+      if (this.isLoading) return;
+      
+      this.isLoading = true;
+      try {
+        const comfyUrl = Alpine.store('comfyDestinations').selectedDestination;
+        const response = await fetch(`/api/comfyui-queue?comfyUrl=${encodeURIComponent(comfyUrl)}`);
+        
+        if (!response.ok) {
+          throw new Error(`Failed to fetch queue: ${response.status}`);
+        }
+        
+        const queueData = await response.json();
+        
+        // Combine running and pending queue items
+        const running = queueData.queue_running || [];
+        const pending = queueData.queue_pending || [];
+        
+        // Queue format: [id, prompt_data] for each item
+        this.queueItems = [...running, ...pending];
+        
+        console.log('Queue refreshed:', this.queueItems.length, 'items');
+        
+        // Log detailed queue item information
+        if (this.queueItems.length > 0) {
+          console.log('Queue items details:');
+          this.queueItems.forEach((item, index) => {
+            const [id, promptData] = item;
+            console.log(`  Item ${index + 1}:`, {
+              id: id,
+              promptKeys: Object.keys(promptData || {}),
+              promptData: promptData
+            });
+          });
+        }
+        
+      } catch (error) {
+        console.error('Error fetching queue:', error);
+        this.queueItems = [];
+      } finally {
+        this.isLoading = false;
+      }
+    },
+
+    // Open queue item details modal
+    openItemDetails(item) {
+      const [id, promptData] = item;
+      console.log('Opening queue item details for ID:', id);
+      console.log('Full queue item data:', item);
+      console.log('Prompt data keys:', Object.keys(promptData || {}));
+      console.log('Prompt data content:', promptData);
+      
+      this.selectedItem = item;
+      this.selectedItemJson = JSON.stringify(item, null, 2);
+      this.showItemDetails = true;
+      
+      console.log('Modal should now be visible, showItemDetails =', this.showItemDetails);
+    },
+
+    // Cancel all queue items
+    async cancelAllItems() {
+      try {
+        const comfyUrl = Alpine.store('comfyDestinations').selectedDestination;
+        
+        // Get all item IDs
+        const itemIds = this.queueItems.map(item => item[0]);
+        console.log('Cancelling all queue items:', itemIds);
+        
+        const response = await fetch('/api/comfyui-queue/cancel', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            comfyUrl,
+            cancel: itemIds
+          })
+        });
+        
+        if (!response.ok) {
+          throw new Error(`Failed to cancel queue: ${response.status}`);
+        }
+        
+        const result = await response.json();
+        console.log('Cancel all response result:', result);
+        
+        // Close modal first
+        this.showCancelAllModal = false;
+        
+        // Wait a moment for ComfyUI to process the cancellation
+        console.log('Waiting for ComfyUI to process cancellation...');
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        
+        // Force refresh queue after cancellation
+        await this.refreshQueue();
+        
+        console.log('All queue items cancelled successfully');
+        
+      } catch (error) {
+        console.error('Error cancelling all queue items:', error);
+      }
+    },
+
+    // Cancel selected queue item
+    async cancelSelectedItem() {
+      console.log('cancelSelectedItem() called');
+      console.log('selectedItem:', this.selectedItem);
+      
+      if (!this.selectedItem) {
+        console.error('No selected item to cancel');
+        return;
+      }
+      
+      try {
+        const comfyUrl = Alpine.store('comfyDestinations').selectedDestination;
+        const itemId = this.selectedItem[0];
+        
+        console.log('Cancelling queue item:', itemId);
+        console.log('ComfyUI URL:', comfyUrl);
+        
+        const requestBody = {
+          comfyUrl,
+          cancel: [itemId]
+        };
+        
+        console.log('Cancel request body:', requestBody);
+        
+        const response = await fetch('/api/comfyui-queue/cancel', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(requestBody)
+        });
+        
+        console.log('Cancel response status:', response.status);
+        
+        if (!response.ok) {
+          const errorText = await response.text();
+          console.error('Cancel response error:', errorText);
+          throw new Error(`Failed to cancel item: ${response.status} - ${errorText}`);
+        }
+        
+        const result = await response.json();
+        console.log('Cancel response result:', result);
+        
+        // Close modals first
+        this.showCancelItemModal = false;
+        this.showItemDetails = false;
+        
+        // Wait a moment for ComfyUI to process the cancellation
+        console.log('Waiting for ComfyUI to process cancellation...');
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        
+        // Force refresh queue to see changes
+        await this.refreshQueue();
+        
+        console.log('Queue item cancelled successfully:', itemId);
+        
+      } catch (error) {
+        console.error('Error cancelling queue item:', error);
+        console.error('Error details:', error.message);
+      }
+    }
+  });
+
 // Initialize Alpine stores and components
 function initializeComfyUI() {
   // Ensure Alpine is available before registering
@@ -256,137 +454,63 @@ function initializeComfyUI() {
     }
   }));
 
-  // Register queue viewer component
-  Alpine.data('queueViewer', () => ({
-    // State
-    queueItems: [],
-    isLoading: false,
-    selectedItem: null,
-    selectedItemJson: '',
-    showItemDetails: false,
-    showCancelAllModal: false,
-    showCancelItemModal: false,
+  // Register destination section component
+  Alpine.data('destinationSection', () => ({
+    isExpanded: JSON.parse(localStorage.getItem('destinationExpanded') || 'true'),
+    
+    init() {
+      this.$watch('isExpanded', (value) => {
+        localStorage.setItem('destinationExpanded', JSON.stringify(value));
+      });
+    }
+  }));
 
+  // Register queue viewer component (lightweight, delegates to store)
+  Alpine.data('queueViewer', () => ({
+    // Queue section collapse state (closed by default if no items)
+    isQueueExpanded: JSON.parse(localStorage.getItem('queueExpanded') || 'false'),
+    
     // Initialize component
     init() {
+      this.$watch('isQueueExpanded', (value) => {
+        localStorage.setItem('queueExpanded', JSON.stringify(value));
+      });
+      
       this.$watch('$store.comfyWorkflow.isModalOpen', (isOpen) => {
         if (isOpen) {
-          this.refreshQueue();
+          this.$store.queueViewer.refreshQueue();
+          this.$store.queueViewer.startAutoRefresh();
+        } else {
+          this.$store.queueViewer.stopAutoRefresh();
         }
       });
     },
 
-    // Refresh queue data from ComfyUI
-    async refreshQueue() {
-      if (this.isLoading) return;
-      
-      this.isLoading = true;
-      try {
-        const comfyUrl = Alpine.store('comfyDestinations').selectedDestination;
-        const response = await fetch(`/api/comfyui-queue?comfyUrl=${encodeURIComponent(comfyUrl)}`);
-        
-        if (!response.ok) {
-          throw new Error(`Failed to fetch queue: ${response.status}`);
-        }
-        
-        const queueData = await response.json();
-        
-        // Combine running and pending queue items
-        const running = queueData.queue_running || [];
-        const pending = queueData.queue_pending || [];
-        
-        // Queue format: [id, prompt_data] for each item
-        this.queueItems = [...running, ...pending];
-        
-        console.log('Queue refreshed:', this.queueItems.length, 'items');
-        
-      } catch (error) {
-        console.error('Error fetching queue:', error);
-        this.queueItems = [];
-      } finally {
-        this.isLoading = false;
-      }
-    },
-
-    // Open queue item details modal
-    openItemDetails(item) {
-      this.selectedItem = item;
-      this.selectedItemJson = JSON.stringify(item, null, 2);
-      this.showItemDetails = true;
-    },
-
-    // Cancel all queue items
-    async cancelAllItems() {
-      try {
-        const comfyUrl = Alpine.store('comfyDestinations').selectedDestination;
-        
-        // Get all item IDs
-        const itemIds = this.queueItems.map(item => item[0]);
-        
-        const response = await fetch('/api/comfyui-queue/cancel', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            comfyUrl,
-            cancel: itemIds
-          })
-        });
-        
-        if (!response.ok) {
-          throw new Error(`Failed to cancel queue: ${response.status}`);
-        }
-        
-        // Refresh queue after cancellation
-        await this.refreshQueue();
-        this.showCancelAllModal = false;
-        
-        console.log('All queue items cancelled');
-        
-      } catch (error) {
-        console.error('Error cancelling all queue items:', error);
-      }
-    },
-
-    // Cancel selected queue item
-    async cancelSelectedItem() {
-      if (!this.selectedItem) return;
-      
-      try {
-        const comfyUrl = Alpine.store('comfyDestinations').selectedDestination;
-        const itemId = this.selectedItem[0];
-        
-        const response = await fetch('/api/comfyui-queue/cancel', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            comfyUrl,
-            cancel: [itemId]
-          })
-        });
-        
-        if (!response.ok) {
-          throw new Error(`Failed to cancel item: ${response.status}`);
-        }
-        
-        // Refresh queue and close modals
-        await this.refreshQueue();
-        this.showCancelItemModal = false;
-        this.showItemDetails = false;
-        
-        console.log('Queue item cancelled:', itemId);
-        
-      } catch (error) {
-        console.error('Error cancelling queue item:', error);
-      }
+    // Delegate methods to store
+    get queueItems() { return this.$store.queueViewer.queueItems; },
+    get isLoading() { return this.$store.queueViewer.isLoading; },
+    get showCancelAllModal() { return this.$store.queueViewer.showCancelAllModal; },
+    set showCancelAllModal(value) { this.$store.queueViewer.showCancelAllModal = value; },
+    
+    refreshQueue() { return this.$store.queueViewer.refreshQueue(); },
+    openItemDetails(item) { return this.$store.queueViewer.openItemDetails(item); },
+    
+    toggleQueueSection() {
+      this.isQueueExpanded = !this.isQueueExpanded;
     }
   }));
 
   // Register settings panel component
   Alpine.data('settingsPanel', () => ({
+    // Global settings section collapse state (open by default)
+    isSettingsExpanded: JSON.parse(localStorage.getItem('settingsExpanded') || 'true'),
+    
+    init() {
+      this.$watch('isSettingsExpanded', (value) => {
+        localStorage.setItem('settingsExpanded', JSON.stringify(value));
+      });
+    },
+    
     incrementQuantity() {
       const current = Alpine.store('comfyWorkflow').settings.quantity;
       if (current < 99) {
@@ -415,6 +539,18 @@ function initializeComfyUI() {
     
     updateControlAfterGenerate(value) {
       Alpine.store('comfyWorkflow').updateSettings({ controlAfterGenerate: value });
+    },
+    
+    toggleSettingsSection() {
+      this.isSettingsExpanded = !this.isSettingsExpanded;
+    },
+    
+    getSettingsSummary() {
+      const settings = Alpine.store('comfyWorkflow').settings;
+      const quantity = settings.quantity;
+      const seedText = settings.modifySeeds ? 'new seed' : 'same seed';
+      const control = settings.controlAfterGenerate;
+      return `${quantity}, ${seedText}, ${control}`;
     }
   }));
 

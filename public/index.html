@@ -71,7 +71,7 @@
        x-transition.opacity
        style="display: none;">
     
-    <div class="comfyui-modal-content" @click.away="closeModal()">
+    <div class="comfyui-modal-content" @click.away="!$store.queueViewer?.showItemDetails && closeModal()">
       <!-- Modal Header -->
       <div class="comfyui-modal-header">
         <h2 class="comfyui-modal-title">Run Workflow</h2>
@@ -79,13 +79,16 @@
       </div>
 
       <!-- Destination Section -->
-      <div class="comfyui-destination-section">
-        <div class="comfyui-destination-header">
-          <h3 class="comfyui-destination-title">Forward to:</h3>
-          <button class="comfy-btn comfy-btn-primary comfy-btn-small" @click="openComfyUI()">
+      <div class="comfyui-section" x-data="destinationSection()">
+        <div class="comfyui-section-header" @click="isExpanded = !isExpanded">
+          <span class="comfyui-section-caret" :class="{ 'expanded': isExpanded }">▶</span>
+          <h3 class="comfyui-section-title">Forward to <span x-show="!isExpanded" class="comfyui-status-summary" x-text="$store.comfyDestinations.selectedDestination"></span></h3>
+          <button class="comfy-btn comfy-btn-primary comfy-btn-small" @click.stop="openComfyUI()">
             Open >
           </button>
         </div>
+        
+        <div class="comfyui-section-content" x-show="isExpanded" x-transition>
 
         <div class="comfy-destination-input-group">
           <input type="text" 
@@ -124,20 +127,32 @@
             </div>
           </div>
         </template>
+        
+        </div>
       </div>
 
       <!-- Active Queue Section -->
       <div class="comfyui-section" x-data="queueViewer()">
-        <div class="comfyui-queue-header">
-          <h3 class="comfyui-section-title">Active Queue</h3>
+        <div class="comfyui-section-header" @click="toggleQueueSection()">
+          <span class="comfyui-section-caret" :class="{ 'expanded': isQueueExpanded }">▶</span>
+          <h3 class="comfyui-section-title">
+            Active Queue
+            <span x-show="!isQueueExpanded && queueItems.length === 0" class="comfyui-status-summary">empty</span>
+            <span x-show="!isQueueExpanded && queueItems.length > 0" class="comfyui-queue-indicators">
+              <span class="comfyui-header-dot active"></span>
+              <template x-for="(item, index) in queueItems.slice(1)" :key="item[0]">
+                <span class="comfyui-header-dot"></span>
+              </template>
+            </span>
+          </h3>
           <button class="comfy-btn comfy-btn-warning comfy-btn-small" 
-                  @click="showCancelAllModal = true"
-                  x-show="queueItems.length > 0">
-            Cancel All
+                  @click.stop="showCancelAllModal = true"
+                  x-show="queueItems.length > 0 && isQueueExpanded">
+            Clear Queue
           </button>
         </div>
         
-        <div class="comfyui-queue-content">
+        <div class="comfyui-section-content" x-show="isQueueExpanded" x-transition>
           <template x-if="queueItems.length === 0">
             <div class="comfyui-queue-empty">No items in queue</div>
           </template>
@@ -155,152 +170,75 @@
             </div>
           </template>
         </div>
+      </div>
+
+      <!-- Global Settings Section -->
+      <div class="comfyui-section" x-data="settingsPanel()">
+        <div class="comfyui-section-header" @click="toggleSettingsSection()">
+          <span class="comfyui-section-caret" :class="{ 'expanded': isSettingsExpanded }">▶</span>
+          <h3 class="comfyui-section-title">
+            Global Settings
+            <span x-show="!isSettingsExpanded" class="comfyui-status-summary" x-text="getSettingsSummary()"></span>
+          </h3>
+        </div>
         
-        <!-- Refresh button -->
-        <div class="comfyui-queue-controls">
-          <button class="comfy-btn comfy-btn-secondary comfy-btn-small" 
-                  @click="refreshQueue()"
-                  :disabled="isLoading">
-            <span x-show="!isLoading">Refresh</span>
-            <span x-show="isLoading">Loading...</span>
-          </button>
-        </div>
-      </div>
+        <div class="comfyui-section-content" x-show="isSettingsExpanded" x-transition>
+          <!-- Quantity -->
+          <div class="comfy-setting-row">
+            <div class="comfy-setting-container">
+              <span class="comfy-setting-label">Quantity</span>
+              <div class="comfy-number-picker">
+                <button class="comfy-number-btn" @click="decrementQuantity()">‹</button>
+                <input type="number" 
+                       class="comfy-number-input"
+                       x-model.number="$store.comfyWorkflow.settings.quantity"
+                       @blur="validateQuantity()"
+                       min="1" max="99">
+                <button class="comfy-number-btn" @click="incrementQuantity()">›</button>
+              </div>
+            </div>
+          </div>
 
-      <!-- Queue Item Details Modal -->
-      <div x-show="showItemDetails" 
-           class="comfyui-modal comfyui-details-modal"
-           x-transition.opacity
-           @click.self="showItemDetails = false">
-        <div class="comfyui-modal-content comfyui-details-content">
-          <div class="comfyui-modal-header">
-            <h3>Queue Item Details</h3>
-            <button class="comfyui-modal-close" @click="showItemDetails = false">&times;</button>
+          <!-- New Seed -->
+          <div class="comfy-setting-row">
+            <div class="comfy-setting-container">
+              <span class="comfy-setting-label">New Seed</span>
+              <label class="comfy-toggle">
+                <input type="checkbox" 
+                       x-model="$store.comfyWorkflow.settings.modifySeeds">
+                <span class="comfy-toggle-slider"></span>
+              </label>
+            </div>
           </div>
-          
-          <div class="comfyui-details-body">
-            <pre class="comfyui-json-display" x-text="selectedItemJson"></pre>
-          </div>
-          
-          <div class="comfyui-details-actions">
-            <button class="comfy-btn comfy-btn-warning" 
-                    @click="showCancelItemModal = true">
-              Cancel Item
-            </button>
-            <button class="comfy-btn comfy-btn-secondary" 
-                    @click="showItemDetails = false">
-              Close
-            </button>
-          </div>
-        </div>
-      </div>
 
-      <!-- Cancel All Confirmation Modal -->
-      <div x-show="showCancelAllModal" 
-           class="comfyui-modal comfyui-confirm-modal"
-           x-transition.opacity
-           @click.self="showCancelAllModal = false">
-        <div class="comfyui-modal-content comfyui-confirm-content">
-          <div class="comfyui-modal-header">
-            <h3>Cancel All Queue Items?</h3>
-          </div>
-          <div class="comfyui-confirm-body">
-            <p>This will cancel all pending queue items. This action cannot be undone.</p>
-          </div>
-          <div class="comfyui-confirm-actions">
-            <button class="comfy-btn comfy-btn-warning" 
-                    @click="cancelAllItems()">
-              Cancel All
-            </button>
-            <button class="comfy-btn comfy-btn-secondary" 
-                    @click="showCancelAllModal = false">
-              Keep Queue
-            </button>
-          </div>
-        </div>
-      </div>
-
-      <!-- Cancel Item Confirmation Modal -->
-      <div x-show="showCancelItemModal" 
-           class="comfyui-modal comfyui-confirm-modal"
-           x-transition.opacity
-           @click.self="showCancelItemModal = false">
-        <div class="comfyui-modal-content comfyui-confirm-content">
-          <div class="comfyui-modal-header">
-            <h3>Cancel Queue Item?</h3>
-          </div>
-          <div class="comfyui-confirm-body">
-            <p>This will cancel the selected queue item. This action cannot be undone.</p>
-          </div>
-          <div class="comfyui-confirm-actions">
-            <button class="comfy-btn comfy-btn-warning" 
-                    @click="cancelSelectedItem()">
-              Cancel Item
-            </button>
-            <button class="comfy-btn comfy-btn-secondary" 
-                    @click="showCancelItemModal = false">
-              Keep Item
-            </button>
-          </div>
-        </div>
-      </div>
-
-      <!-- Settings Section -->
-      <div class="comfyui-settings-section" x-data="settingsPanel()">
-        <!-- Quantity -->
-        <div class="comfy-setting-row">
-          <div class="comfy-setting-container">
-            <span class="comfy-setting-label">Quantity</span>
-            <div class="comfy-number-picker">
-              <button class="comfy-number-btn" @click="decrementQuantity()">‹</button>
-              <input type="number" 
-                     class="comfy-number-input"
-                     x-model.number="$store.comfyWorkflow.settings.quantity"
-                     @blur="validateQuantity()"
-                     min="1" max="99">
-              <button class="comfy-number-btn" @click="incrementQuantity()">›</button>
+          <!-- Control After Generate -->
+          <div class="comfy-setting-row">
+            <div class="comfy-setting-container">
+              <span class="comfy-setting-label">Control After Generate</span>
+              <select class="comfy-select" 
+                      x-model="$store.comfyWorkflow.settings.controlAfterGenerate"
+                      @change="updateControlAfterGenerate($event.target.value)">
+                <option value="increment">Increment</option>
+                <option value="randomize">Randomize</option>
+                <option value="decrement">Decrement</option>
+                <option value="fixed">Fixed</option>
+              </select>
             </div>
           </div>
         </div>
-
-        <!-- New Seed -->
-        <div class="comfy-setting-row">
-          <div class="comfy-setting-container">
-            <span class="comfy-setting-label">New Seed</span>
-            <label class="comfy-toggle">
-              <input type="checkbox" 
-                     x-model="$store.comfyWorkflow.settings.modifySeeds"
-                     @change="toggleNewSeed()">
-              <span class="comfy-toggle-slider"></span>
-            </label>
-          </div>
-        </div>
-
-        <!-- Control After Generate -->
-        <div class="comfy-setting-row">
-          <div class="comfy-setting-container">
-            <span class="comfy-setting-label">Control After Generate</span>
-            <select class="comfy-select" 
-                    x-model="$store.comfyWorkflow.settings.controlAfterGenerate"
-                    @change="updateControlAfterGenerate($event.target.value)">
-              <option value="increment">Increment</option>
-              <option value="randomize">Randomize</option>
-              <option value="decrement">Decrement</option>
-              <option value="fixed">Fixed</option>
-            </select>
-          </div>
-        </div>
-
-        <!-- Action Buttons -->
-        <div class="comfy-actions-section">
-          <button class="comfy-btn comfy-btn-primary"
-                  :class="getButtonClasses('queue')"
-                  @click="handleQueue()"
-                  :disabled="isProcessing"
-                  x-text="getButtonText('queue')">
-          </button>
-        </div>
       </div>
+
+      <!-- Action Buttons Section -->
+      <div class="comfy-actions-section">
+        <div></div>
+        <button class="comfy-btn comfy-btn-primary"
+                :class="getButtonClasses('queue')"
+                @click="handleQueue()"
+                :disabled="isProcessing"
+                x-text="getButtonText('queue')">
+        </button>
+      </div>
+
 
       <!-- Error Display -->
       <div x-show="error" class="comfyui-error" x-text="error"></div>
@@ -313,6 +251,102 @@
             <span class="comfyui-result-timestamp" x-text="result.timestamp"></span>
           </div>
         </template>
+      </div>
+    </div>
+  </div>
+
+  <!-- Queue Detail Modals (using global store) -->
+  <!-- Queue Item Details Modal -->
+  <div x-show="$store.queueViewer?.showItemDetails" 
+       class="comfyui-modal comfyui-details-modal"
+       x-transition.opacity
+       @click.self="$store.queueViewer.showItemDetails = false"
+       x-init="console.log('Details modal initialized')"
+       x-effect="console.log('Details modal visibility changed:', $store.queueViewer?.showItemDetails)"
+       style="display: none;">
+    <div class="comfyui-modal-content comfyui-details-content" @click.stop>
+      <div class="comfyui-modal-header">
+        <h3>Queue Item Details</h3>
+        <!-- <button class="comfyui-modal-close" @click="$store.queueViewer.showItemDetails = false">&times;</button> -->
+      </div>
+      
+      <div class="comfyui-details-body">
+        <pre class="comfyui-json-display" x-text="$store.queueViewer?.selectedItemJson"></pre>
+        <div class="comfyui-queue-limitation-note">
+          <p><em>Note: Individual item cancellation is not yet supported by ComfyUI.</em></p>
+        </div>
+      </div>
+      
+      <div class="comfyui-details-actions">
+        <!-- Waiting on https://github.com/comfyanonymous/ComfyUI/issues/7513 or similar feature to be implemented in ComfyUI API before we can cancel individual items in the queue -->
+        <!--
+        <button class="comfy-btn comfy-btn-warning" 
+                @click.stop="console.log('Cancel Item clicked'); $store.queueViewer.showCancelItemModal = true">
+          Cancel Item
+        </button>
+        -->
+        <button class="comfy-btn comfy-btn-secondary" 
+                @click.stop="$store.queueViewer.showItemDetails = false">
+          Close
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Cancel All Confirmation Modal -->
+  <div x-show="$store.queueViewer?.showCancelAllModal" 
+       class="comfyui-modal comfyui-confirm-modal"
+       x-transition.opacity
+       @click.self="$store.queueViewer.showCancelAllModal = false"
+       style="display: none;">
+    <div class="comfyui-modal-content comfyui-confirm-content">
+      <div class="comfyui-modal-header">
+        <h3>Clear Queue?</h3>
+      </div>
+      <div class="comfyui-confirm-body">
+        <p>This will clear all items in the queue. The item currently running will not be affected.</p>
+      </div>
+      <div class="comfyui-confirm-actions">
+        <button class="comfy-btn comfy-btn-warning" 
+                @click="$store.queueViewer.cancelAllItems()">
+          Clear Queue
+        </button>
+        <button class="comfy-btn comfy-btn-secondary" 
+                @click="$store.queueViewer.showCancelAllModal = false">
+          Keep Queue
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Cancel Item Confirmation Modal -->
+  <div x-show="$store.queueViewer?.showCancelItemModal" 
+       class="comfyui-modal comfyui-confirm-modal"
+       x-transition.opacity
+       @click.self="$store.queueViewer.showCancelItemModal = false"
+       x-data="{ 
+         async cancelItem() { 
+           console.log('cancelItem() wrapper called'); 
+           await $store.queueViewer.cancelSelectedItem(); 
+         } 
+       }"
+       style="display: none;">
+    <div class="comfyui-modal-content comfyui-confirm-content">
+      <div class="comfyui-modal-header">
+        <h3>Cancel Queue Item?</h3>
+      </div>
+      <div class="comfyui-confirm-body">
+        <p><strong>Note:</strong> ComfyUI doesn't support cancelling individual items. This will clear <strong>ALL pending queue items</strong>. The currently running item will continue. This action cannot be undone.</p>
+      </div>
+      <div class="comfyui-confirm-actions">
+        <button class="comfy-btn comfy-btn-warning" 
+                @click.stop="console.log('Confirming cancel item'); cancelItem()">
+          Clear All Pending
+        </button>
+        <button class="comfy-btn comfy-btn-secondary" 
+                @click.stop="console.log('Keeping item'); $store.queueViewer.showCancelItemModal = false">
+          Keep Item
+        </button>
       </div>
     </div>
   </div>

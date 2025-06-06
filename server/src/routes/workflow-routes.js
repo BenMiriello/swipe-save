@@ -217,21 +217,53 @@ router.post('/api/comfyui-queue/cancel', async (req, res) => {
     const targetUrl = comfyUrl || getDefaultComfyUIUrl(req);
     
     console.log('Cancelling ComfyUI queue items:', cancel);
+    console.log('Target URL for cancel:', `${targetUrl}/prompt`);
     
     const fetch = require('node-fetch');
-    const response = await fetch(`${targetUrl}/queue`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ cancel })
-    });
+    
+    // ComfyUI currently doesn't support individual item deletion by ID
+    // The 'clear' parameter clears ALL pending items regardless of the ID provided
+    console.log('Note: ComfyUI will clear ALL pending items, not just the specified ID');
+    
+    const requestBody = { clear: cancel };
+    console.log('Using clear method (clears all pending items):', JSON.stringify(requestBody));
+    
+    try {
+      response = await fetch(`${targetUrl}/queue`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(requestBody)
+      });
+      
+      console.log('Clear response status:', response.status);
+    } catch (error) {
+      console.error('Error clearing queue:', error);
+      throw error;
+    }
     
     if (!response.ok) {
       const errorText = await response.text();
       throw new Error(`ComfyUI API error: ${response.status} - ${errorText}`);
     }
     
-    const result = await response.json();
-    console.log('Queue items cancelled successfully');
+    // ComfyUI cancel endpoint may return empty response or non-JSON
+    let result;
+    const responseText = await response.text();
+    
+    if (responseText.trim() === '') {
+      // Empty response is considered success for ComfyUI cancel
+      result = { success: true, message: 'Queue items cancelled' };
+      console.log('Queue items cancelled successfully (empty response)');
+    } else {
+      try {
+        result = JSON.parse(responseText);
+        console.log('Queue items cancelled successfully:', result);
+      } catch (parseError) {
+        // Non-JSON response, but HTTP status was OK
+        result = { success: true, message: 'Queue items cancelled', raw: responseText };
+        console.log('Queue items cancelled successfully (non-JSON response):', responseText);
+      }
+    }
     
     res.json(result);
     
