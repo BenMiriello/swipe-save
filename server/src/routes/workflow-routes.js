@@ -90,7 +90,88 @@ function modifyControlAfterGenerate(workflow, controlMode = 'increment') {
   return workflow;
 }
 
-// Queue workflow in ComfyUI
+// Queue workflow with pre-edited workflow data (preserves formatting)
+router.post('/api/queue-workflow-with-edits', async (req, res) => {
+  try {
+    const { filename, workflow, modifySeeds, controlAfterGenerate, comfyUrl } = req.body;
+
+    console.log('Queue with edits request received:', { filename, hasWorkflow: !!workflow, modifySeeds, controlAfterGenerate, comfyUrl });
+
+    if (!filename) {
+      return res.status(400).json({ error: 'Filename is required' });
+    }
+
+    if (!workflow) {
+      return res.status(400).json({ error: 'Pre-edited workflow is required' });
+    }
+
+    // Use the provided workflow directly (preserves formatting and text edits)
+    let workflowData = workflow;
+
+    console.log('Using pre-edited workflow data');
+    console.log('Workflow type:', typeof workflowData);
+    console.log('Workflow keys:', Object.keys(workflowData).slice(0, 10));
+
+    const firstKey = Object.keys(workflowData)[0];
+    const firstValue = workflowData[firstKey];
+    console.log('First key:', firstKey, 'First value type:', typeof firstValue);
+    if (firstValue && typeof firstValue === 'object' && firstValue.class_type) {
+      console.log('Detected API format workflow');
+    } else {
+      console.log('Detected GUI format workflow - this may cause issues');
+    }
+
+    if (modifySeeds) {
+      workflowData = modifyWorkflowSeeds(workflowData);
+      console.log('Seeds modified for queuing');
+    }
+
+    if (controlAfterGenerate) {
+      workflowData = modifyControlAfterGenerate(workflowData, controlAfterGenerate);
+      console.log(`Control after generate set to: ${controlAfterGenerate}`);
+    }
+
+    const clientId = 'swipe-save-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9);
+
+    const targetUrl = comfyUrl || getDefaultComfyUIUrl(req);
+
+    console.log('Queue Debug - Using targetUrl:', targetUrl);
+
+    const fetch = require('node-fetch');
+    console.log('Queue Debug - Attempting to connect to:', `${targetUrl}/prompt`);
+    const response = await fetch(`${targetUrl}/prompt`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        prompt: workflowData,
+        client_id: clientId
+      })
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`ComfyUI API error: ${response.status} - ${errorText}`);
+    }
+
+    const result = await response.json();
+    console.log('Workflow with edits queued successfully:', result);
+
+    res.json({ 
+      success: true, 
+      result: result,
+      comfyUrl: targetUrl,
+      modifiedSeeds: modifySeeds,
+      controlAfterGenerate: controlAfterGenerate,
+      preservedFormatting: true
+    });
+
+  } catch (error) {
+    console.error('Error queueing workflow with edits:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Queue workflow in ComfyUI (legacy method)
 router.post('/api/queue-workflow', async (req, res) => {
   try {
     const { filename, modifySeeds, controlAfterGenerate, comfyUrl } = req.body;

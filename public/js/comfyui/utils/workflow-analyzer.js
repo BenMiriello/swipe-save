@@ -190,56 +190,57 @@ window.comfyUIServices.workflowAnalyzer = {
   },
 
   /**
-   * Check if a field appears to be prompt-related
+   * Check if a field appears to be prompt-related (simplified MVP version)
    * @param {Object} node - Node object
    * @param {string} inputName - Input field name
    * @param {string} inputValue - Input field value
    * @returns {boolean} True if this appears to be a prompt field
    */
   isPromptLikeField(node, inputName, inputValue) {
-    // Check field name patterns
-    const promptFieldNames = ['text', 'prompt', 'positive', 'negative', 'description'];
+    // Check field name patterns - primary detection method
+    const promptFieldNames = ['text', 'prompt', 'positive', 'negative', 'description', 'string'];
     if (promptFieldNames.some(name => inputName.toLowerCase().includes(name))) {
       return true;
     }
 
-    // Check node type patterns
-    const promptNodeTypes = ['CLIPTextEncode', 'TextInput', 'StringConstant'];
+    // Check node type patterns - secondary detection method
+    const promptNodeTypes = [
+      'CLIPTextEncode', 'TextInput', 'StringConstant', 'String', 
+      'Text', 'Prompt', 'Wildcard', 'MultilineString'
+    ];
     if (promptNodeTypes.some(type => node.class_type.includes(type))) {
       return true;
     }
 
-    // Check for natural language characteristics
-    if (this.hasNaturalLanguageCharacteristics(inputValue)) {
-      return true;
-    }
+    // Skip natural language patterns for MVP - too complex and can have false positives
+    // Future: implement this for better detection
+    // if (this.hasNaturalLanguageCharacteristics(inputValue)) {
+    //   return true;
+    // }
 
     return false;
   },
 
   /**
-   * Check if text has natural language characteristics
+   * Check if text has natural language characteristics (future feature)
+   * Currently disabled for MVP to avoid false positives
    * @param {string} text - Text to analyze
    * @returns {boolean} True if text appears to be natural language
    */
   hasNaturalLanguageCharacteristics(text) {
-    // Check for common prompt keywords
-    const promptKeywords = [
-      'masterpiece', 'high quality', 'detailed', 'realistic', 'portrait',
-      'landscape', 'beautiful', 'art', 'style', 'painting', 'photo'
-    ];
-
-    const lowerText = text.toLowerCase();
-    if (promptKeywords.some(keyword => lowerText.includes(keyword))) {
-      return true;
-    }
-
-    // Check for sentence-like structure (spaces, common words)
-    const words = text.split(/\s+/);
-    if (words.length > 3 && text.includes(' ')) {
-      return true;
-    }
-
+    // Future implementation: Check for common prompt keywords
+    // const promptKeywords = [
+    //   'masterpiece', 'high quality', 'detailed', 'realistic', 'portrait',
+    //   'landscape', 'beautiful', 'art', 'style', 'painting', 'photo'
+    // ];
+    
+    // Future implementation: Check for sentence-like structure
+    // const words = text.split(/\s+/);
+    // if (words.length > 3 && text.includes(' ')) {
+    //   return true;
+    // }
+    
+    // For MVP: Return false to rely on field names and node types only
     return false;
   },
 

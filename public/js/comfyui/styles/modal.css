@@ -21,6 +21,7 @@
   --comfy-bg-secondary: #f8f9fa;
   --comfy-bg-tertiary: #f5f5f5;
   --comfy-bg-hover: #f0f0f0;
+  --comfy-bg-highlight: #fff3cd; /* Light yellow for edited fields */
   
   /* Text Colors */
   --comfy-text-primary: #333333;

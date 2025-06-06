@@ -7,7 +7,7 @@ window.comfyUIServices = window.comfyUIServices || {};
 
 window.comfyUIServices.apiClient = {
   /**
-   * Queue workflow in ComfyUI
+   * Queue workflow in ComfyUI (legacy method - uses server-side workflow extraction)
    */
   async queueWorkflow(file, modifySeeds = false, controlAfterGenerate = 'increment', comfyUrl = null) {
     try {
@@ -35,6 +35,48 @@ window.comfyUIServices.apiClient = {
       return result;
     } catch (error) {
       console.log(`ComfyUI: Failed to queue workflow - ${error.message}`);
+      throw error;
+    }
+  },
+
+  /**
+   * Queue workflow with pre-edited workflow data (preserves formatting)
+   */
+  async queueWorkflowWithEdits(file, modifiedWorkflow, modifySeeds = false, controlAfterGenerate = 'increment', comfyUrl = null) {
+    try {
+      const response = await fetch(`${window.appConfig.getApiUrl()}/api/queue-workflow-with-edits`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          filename: file.name,
+          workflow: modifiedWorkflow, // Pre-modified workflow with text edits
+          modifySeeds: modifySeeds,
+          controlAfterGenerate: controlAfterGenerate,
+          comfyUrl: comfyUrl
+        })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to queue workflow');
+      }
+
+      const result = await response.json();
+      
+      // Success logging with edit indication
+      const hasEdits = modifiedWorkflow && Object.keys(modifiedWorkflow).length > 0;
+      console.log(`ComfyUI: Queued workflow${hasEdits ? ' with text edits' : ''} with ${modifySeeds ? 'new seed' : 'original seed'}, control: ${controlAfterGenerate}`);
+      
+      return result;
+    } catch (error) {
+      console.log(`ComfyUI: Failed to queue edited workflow - ${error.message}`);
+      
+      // Fallback to legacy method if new endpoint doesn't exist yet
+      if (error.message.includes('404') || error.message.includes('Not Found')) {
+        console.log('ComfyUI: Falling back to legacy queue method');
+        return this.queueWorkflow(file, modifySeeds, controlAfterGenerate, comfyUrl);
+      }
+      
       throw error;
     }
   },

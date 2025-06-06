@@ -247,6 +247,114 @@
         </div>
       </div>
 
+      <!-- Workflow Editor Section -->
+      <div x-data="workflowEditor" class="comfyui-section">
+        <!-- Header with toggle -->
+        <div class="comfyui-section-header" @click="toggleEditorSection()">
+          <span class="comfyui-section-caret" :class="{ 'expanded': isEditorExpanded }">▶</span>
+          <h3 class="comfyui-section-title">
+            Text Fields
+            <span x-show="hasUnsavedChanges" class="comfyui-edit-indicator">(edited)</span>
+            <span x-show="!isEditorExpanded" class="comfyui-status-summary">
+              <span x-text="filteredNodes.length"></span> 
+              <span x-text="showPromptsOnly ? 'prompt' : 'text'"></span> nodes
+              <span x-show="hasUnsavedChanges">, unsaved edits</span>
+            </span>
+          </h3>
+        </div>
+
+        <!-- Editor content -->
+        <div x-show="isEditorExpanded" class="comfyui-section-content" x-transition>
+          
+          <!-- Controls -->
+          <div class="comfyui-editor-controls">
+            <label class="comfyui-checkbox-label">
+              <input type="checkbox" 
+                     x-model="showPromptsOnly" 
+                     @change="togglePromptsOnly()">
+              Show prompt nodes only
+            </label>
+            
+            <button type="button" 
+                    class="comfy-btn comfy-btn-secondary comfy-btn-small" 
+                    @click="filteredNodes.forEach(node => toggleNode(node.id))">
+              Collapse All
+            </button>
+          </div>
+
+          <!-- No nodes message -->
+          <div x-show="filteredNodes.length === 0" class="comfyui-empty-state">
+            <p x-show="showPromptsOnly">No prompt fields found in this workflow.</p>
+            <p x-show="!showPromptsOnly">No text fields found in this workflow.</p>
+          </div>
+
+          <!-- Node list -->
+          <div x-show="filteredNodes.length > 0" class="comfyui-node-list">
+            <template x-for="node in filteredNodes" :key="node.id">
+              <div class="comfyui-node">
+                
+                <!-- Node header -->
+                <div class="comfyui-node-header" @click="toggleNode(node.id)">
+                  <span class="comfyui-node-toggle" x-text="isNodeCollapsed(node.id) ? '▶' : '▼'"></span>
+                  <span class="comfyui-node-title">
+                    <span x-text="node.type"></span>
+                    <span class="comfyui-node-id">#<span x-text="node.id"></span></span>
+                  </span>
+                  <span x-show="isNodeCollapsed(node.id)" class="comfyui-node-summary">
+                    <span x-text="node.fields.length"></span> field<span x-show="node.fields.length !== 1">s</span>
+                  </span>
+                </div>
+
+                <!-- Node fields -->
+                <div x-show="!isNodeCollapsed(node.id)" class="comfyui-node-fields">
+                  <template x-for="field in node.fields" :key="`${node.id}-${field.fieldName}`">
+                    <div class="comfyui-field">
+                      
+                      <!-- Field header -->
+                      <div class="comfyui-field-header">
+                        <label class="comfyui-field-label">
+                          <span x-text="field.fieldName"></span>
+                          <span x-show="field.isPromptLike" class="comfyui-field-badge">prompt</span>
+                          <span x-show="hasFieldEdit(node.id, field.fieldName)" class="comfyui-field-badge comfyui-field-edited">edited</span>
+                        </label>
+                      </div>
+
+                      <!-- Field content -->
+                      <div class="comfyui-field-content">
+                        
+                        <!-- Original value preview (when not edited) -->
+                        <div x-show="!hasFieldEdit(node.id, field.fieldName)" class="comfyui-field-preview">
+                          <span class="comfyui-field-original" x-text="truncateText(field.currentValue, 100)"></span>
+                        </div>
+
+                        <!-- Text area for editing -->
+                        <textarea 
+                          class="comfyui-field-textarea"
+                          :placeholder="field.currentValue"
+                          x-model="getFieldValue(node.id, field.fieldName)"
+                          @input="updateFieldEdit(node.id, field.fieldName, $event.target.value)"
+                          rows="3"
+                          :class="{ 'comfyui-field-edited': hasFieldEdit(node.id, field.fieldName) }">
+                        </textarea>
+
+                        <!-- Field actions -->
+                        <div x-show="hasFieldEdit(node.id, field.fieldName)" class="comfyui-field-actions">
+                          <button type="button" 
+                                  class="comfy-btn comfy-btn-secondary comfy-btn-small"
+                                  @click="updateFieldEdit(node.id, field.fieldName, field.currentValue)">
+                            Reset
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </template>
+                </div>
+              </div>
+            </template>
+          </div>
+        </div>
+      </div>
+
       <!-- Action Buttons Section -->
       <div class="comfy-actions-section">
         <div></div>
@@ -387,13 +495,26 @@
   <script src="js/api/config-api.js"></script>
   <script src="js/api-service.js"></script>
   
-  <!-- ComfyUI Module (Alpine.js) -->
+  <!-- ComfyUI Module (Alpine.js) - Load in dependency order -->
+  <!-- Services layer -->
   <script src="js/comfyui/services/api-client.js"></script>
   <script src="js/comfyui/services/storage-service.js"></script>
+  
+  <!-- Utils layer -->
   <script src="js/comfyui/utils/workflow-analyzer.js"></script>
   <script src="js/comfyui/utils/validation.js"></script>
-  <script src="js/comfyui/components/workflow-modal.js"></script>
-  <!-- Load ComfyUI scripts first, then Alpine.js -->
+  
+  <!-- State stores -->
+  <script src="js/comfyui/stores/workflow-store.js"></script>
+  <script src="js/comfyui/stores/destination-store.js"></script>
+  <script src="js/comfyui/stores/queue-store.js"></script>
+  <script src="js/comfyui/stores/editor-store.js"></script>
+  
+  <!-- UI components -->
+  <script src="js/comfyui/components/modal-components.js"></script>
+  <script src="js/comfyui/components/panel-components.js"></script>
+  
+  <!-- Main initialization (load last before Alpine.js) -->
   <script src="js/comfyui/index.js"></script>
   <script src="js/comfyui/test.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.1/dist/cdn.min.js" defer></script>

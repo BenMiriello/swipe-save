@@ -48,6 +48,191 @@
   cursor: not-allowed;
 }
 
+/* Workflow Editor Styles */
+.comfyui-editor-controls {
+  display: flex;
+  align-items: center;
+  gap: var(--comfy-spacing-md);
+  margin-bottom: var(--comfy-spacing-md);
+  padding: var(--comfy-spacing-sm);
+  background-color: var(--comfy-bg-secondary);
+  border-radius: var(--comfy-radius-sm);
+  border: 1px solid var(--comfy-border-light);
+}
+
+.comfyui-checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: var(--comfy-spacing-xs);
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+
+.comfyui-empty-state {
+  text-align: center;
+  padding: var(--comfy-spacing-xl);
+  color: var(--comfy-text-secondary);
+  font-style: italic;
+}
+
+.comfyui-node-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--comfy-spacing-sm);
+}
+
+.comfyui-node {
+  border: 1px solid var(--comfy-border-light);
+  border-radius: var(--comfy-radius-sm);
+  overflow: hidden;
+}
+
+.comfyui-node-header {
+  display: flex;
+  align-items: center;
+  gap: var(--comfy-spacing-sm);
+  padding: var(--comfy-spacing-sm) var(--comfy-spacing-md);
+  background-color: var(--comfy-bg-secondary);
+  cursor: pointer;
+  border-bottom: 1px solid var(--comfy-border-light);
+  transition: background-color 0.2s ease;
+}
+
+.comfyui-node-header:hover {
+  background-color: var(--comfy-bg-hover);
+}
+
+.comfyui-node-toggle {
+  font-family: monospace;
+  font-size: 0.8rem;
+  color: var(--comfy-text-secondary);
+  width: 12px;
+  text-align: center;
+}
+
+.comfyui-node-title {
+  flex: 1;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: var(--comfy-spacing-xs);
+}
+
+.comfyui-node-id {
+  color: var(--comfy-text-secondary);
+  font-size: 0.8rem;
+  font-weight: normal;
+}
+
+.comfyui-node-summary {
+  font-size: 0.8rem;
+  color: var(--comfy-text-secondary);
+  font-style: italic;
+}
+
+.comfyui-node-fields {
+  padding: var(--comfy-spacing-md);
+  display: flex;
+  flex-direction: column;
+  gap: var(--comfy-spacing-md);
+}
+
+.comfyui-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--comfy-spacing-xs);
+}
+
+.comfyui-field-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.comfyui-field-label {
+  display: flex;
+  align-items: center;
+  gap: var(--comfy-spacing-xs);
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: var(--comfy-text-primary);
+}
+
+.comfyui-field-badge {
+  display: inline-block;
+  padding: 2px 6px;
+  font-size: 0.7rem;
+  font-weight: 500;
+  border-radius: var(--comfy-radius-xs);
+  background-color: var(--comfy-bg-secondary);
+  color: var(--comfy-text-secondary);
+  border: 1px solid var(--comfy-border-light);
+}
+
+.comfyui-field-badge.comfyui-field-edited {
+  background-color: var(--comfy-primary);
+  color: white;
+  border-color: var(--comfy-primary);
+}
+
+.comfyui-field-content {
+  display: flex;
+  flex-direction: column;
+  gap: var(--comfy-spacing-xs);
+}
+
+.comfyui-field-preview {
+  padding: var(--comfy-spacing-sm);
+  background-color: var(--comfy-bg-secondary);
+  border: 1px solid var(--comfy-border-light);
+  border-radius: var(--comfy-radius-sm);
+  font-size: 0.85rem;
+  color: var(--comfy-text-secondary);
+  font-style: italic;
+}
+
+.comfyui-field-original {
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.comfyui-field-textarea {
+  width: 100%;
+  min-height: 60px;
+  padding: var(--comfy-spacing-sm);
+  border: 1px solid var(--comfy-border-light);
+  border-radius: var(--comfy-radius-sm);
+  font-size: 0.9rem;
+  font-family: inherit;
+  background-color: var(--comfy-bg-primary);
+  color: var(--comfy-text-primary);
+  resize: vertical;
+  transition: border-color 0.2s ease, background-color 0.2s ease;
+}
+
+.comfyui-field-textarea:focus {
+  outline: none;
+  border-color: var(--comfy-primary);
+  box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.1);
+}
+
+.comfyui-field-textarea.comfyui-field-edited {
+  background-color: var(--comfy-bg-highlight);
+  border-color: var(--comfy-primary);
+}
+
+.comfyui-field-actions {
+  display: flex;
+  gap: var(--comfy-spacing-xs);
+  justify-content: flex-end;
+}
+
+.comfyui-edit-indicator {
+  color: var(--comfy-primary);
+  font-size: 0.8rem;
+  font-style: italic;
+}
+
 .comfy-btn-primary {
   background-color: var(--comfy-primary);
   color: white;
