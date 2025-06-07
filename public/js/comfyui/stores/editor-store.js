@@ -238,7 +238,10 @@ window.comfyUIStores.editorStore = {
       return this.currentWorkflow;
     }
     
-    // Create a deep copy to preserve original formatting metadata (pos, size, etc.)
+    // Create a deep copy to preserve original formatting metadata
+    // NOTE: Visual node layout preservation (pos, size) is not implemented because
+    // ComfyUI's API does not accept position data during workflow execution.
+    // This will require a ComfyUI extension for proper implementation.
     const modifiedWorkflow = JSON.parse(JSON.stringify(this.currentWorkflow));
     
     // Detect workflow format
@@ -254,6 +257,7 @@ window.comfyUIStores.editorStore = {
     
     return modifiedWorkflow;
   },
+  
 
   // Apply edits to GUI format workflow
   applyEditsToGUIWorkflow(workflow) {

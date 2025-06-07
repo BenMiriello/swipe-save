@@ -67,6 +67,9 @@ function convertGUIToAPI(guiWorkflow) {
       class_type: node.type,
       inputs: {}
     };
+    
+    // NOTE: Layout data (pos, size) is not preserved as ComfyUI API
+    // does not accept position data during workflow execution
 
     // Add widget values as inputs using widget-specific mappings
     if (node.widgets_values && Array.isArray(node.widgets_values)) {
