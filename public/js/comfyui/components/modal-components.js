@@ -14,6 +14,9 @@ window.comfyUIComponents.modalComponents = {
       buttonStates: { queue: 'idle' },
       allowClickAway: false,
       
+      // Workflow editor state (integrated directly)
+      filteredNodes: [],
+      
       init() {
         if (window.location.hostname === 'localhost') {
           console.log('Workflow modal component initialized');
@@ -28,7 +31,14 @@ window.comfyUIComponents.modalComponents = {
             }, 3000); // Wait 3 seconds before allowing click-away
             
             // Load workflow into editor when modal opens
-            this.$store.workflowEditor.loadWorkflow(this.$store.comfyWorkflow.currentFile);
+            // Add delay to ensure nested components are initialized
+            setTimeout(() => {
+              console.log('Loading workflow after modal is fully open...');
+              this.$store.workflowEditor.loadWorkflow(this.$store.comfyWorkflow.currentFile);
+              
+              // Watch for workflow editor updates and sync to modal
+              this.updateWorkflowEditorState();
+            }, 100);
           }
         });
       },
@@ -147,7 +157,43 @@ window.comfyUIComponents.modalComponents = {
           case 'error': return `${baseClasses} comfy-btn-error`;
           default: return baseClasses;
         }
-      }
+      },
+      
+      // Workflow editor methods (integrated directly)
+      updateWorkflowEditorState() {
+        console.log('Updating workflow editor state in modal...');
+        
+        // Watch for store changes
+        this.$watch('$store.workflowEditor.updateCounter', () => {
+          console.log('Store update counter changed, syncing to modal...');
+          this.syncWorkflowEditorState();
+        });
+        
+        // Initial sync
+        this.syncWorkflowEditorState();
+      },
+      
+      syncWorkflowEditorState() {
+        const store = Alpine.store('workflowEditor');
+        if (store && typeof store.getFilteredNodes === 'function') {
+          this.filteredNodes = store.getFilteredNodes();
+          console.log('Synced filteredNodes to modal:', this.filteredNodes);
+        }
+      },
+      
+      // Workflow editor UI methods (proxied to store)
+      get hasUnsavedChanges() { return Alpine.store('workflowEditor').hasUnsavedChanges; },
+      get isEditorExpanded() { return Alpine.store('workflowEditor').isEditorExpanded; },
+      get showPromptsOnly() { return Alpine.store('workflowEditor').showPromptsOnly; },
+      
+      toggleEditorSection() { Alpine.store('workflowEditor').toggleEditorSection(); },
+      togglePromptsOnly() { Alpine.store('workflowEditor').togglePromptsOnly(); },
+      toggleNode(nodeId) { Alpine.store('workflowEditor').toggleNode(nodeId); },
+      isNodeCollapsed(nodeId) { return Alpine.store('workflowEditor').isNodeCollapsed(nodeId); },
+      hasFieldEdit(nodeId, fieldName) { return Alpine.store('workflowEditor').hasFieldEdit(nodeId, fieldName); },
+      getFieldValue(nodeId, fieldName) { return Alpine.store('workflowEditor').getFieldValue(nodeId, fieldName); },
+      updateFieldEdit(nodeId, fieldName, value) { Alpine.store('workflowEditor').updateFieldEdit(nodeId, fieldName, value); },
+      truncateText(text, maxLength) { return Alpine.store('workflowEditor').truncateText(text, maxLength); }
     };
   },
 

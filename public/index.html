@@ -248,7 +248,7 @@
       </div>
 
       <!-- Workflow Editor Section -->
-      <div x-data="workflowEditor" class="comfyui-section">
+      <div class="comfyui-section">
         <!-- Header with toggle -->
         <div class="comfyui-section-header" @click="toggleEditorSection()">
           <span class="comfyui-section-caret" :class="{ 'expanded': isEditorExpanded }">▶</span>
@@ -256,7 +256,7 @@
             Text Fields
             <span x-show="hasUnsavedChanges" class="comfyui-edit-indicator">(edited)</span>
             <span x-show="!isEditorExpanded" class="comfyui-status-summary">
-              <span x-text="filteredNodes.length"></span> 
+              <span x-text="(filteredNodes || []).length"></span> 
               <span x-text="showPromptsOnly ? 'prompt' : 'text'"></span> nodes
               <span x-show="hasUnsavedChanges">, unsaved edits</span>
             </span>
@@ -277,19 +277,19 @@
             
             <button type="button" 
                     class="comfy-btn comfy-btn-secondary comfy-btn-small" 
-                    @click="filteredNodes.forEach(node => toggleNode(node.id))">
+                    @click="(filteredNodes || []).forEach(node => toggleNode(node.id))">
               Collapse All
             </button>
           </div>
 
           <!-- No nodes message -->
-          <div x-show="filteredNodes.length === 0" class="comfyui-empty-state">
+          <div x-show="(filteredNodes || []).length === 0" class="comfyui-empty-state">
             <p x-show="showPromptsOnly">No prompt fields found in this workflow.</p>
             <p x-show="!showPromptsOnly">No text fields found in this workflow.</p>
           </div>
 
           <!-- Node list -->
-          <div x-show="filteredNodes.length > 0" class="comfyui-node-list">
+          <div x-show="(filteredNodes || []).length > 0" class="comfyui-node-list">
             <template x-for="node in filteredNodes" :key="node.id">
               <div class="comfyui-node">
                 

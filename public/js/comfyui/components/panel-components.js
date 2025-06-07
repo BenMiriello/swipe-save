@@ -6,6 +6,69 @@
 window.comfyUIComponents = window.comfyUIComponents || {};
 
 window.comfyUIComponents.panelComponents = {
+  // Register workflow editor component  
+  workflowEditor() {
+    console.log('Creating workflowEditor component instance...');
+    return {
+      // Initialize computed values
+      init() {
+        console.log('=== WORKFLOW EDITOR COMPONENT INIT ===');
+        console.log('Store available:', !!Alpine.store('workflowEditor'));
+        
+        this.$watch('$store.workflowEditor.updateCounter', (newVal, oldVal) => {
+          console.log('Update counter changed:', oldVal, '->', newVal);
+          this.updateFilteredNodes();
+        });
+        this.$watch('$store.workflowEditor.showPromptsOnly', (newVal, oldVal) => {
+          console.log('Show prompts only changed:', oldVal, '->', newVal);
+          this.updateFilteredNodes();
+        });
+        this.updateFilteredNodes();
+        
+        console.log('Initial filteredNodes:', this.filteredNodes);
+      },
+      
+      // Reactive data
+      filteredNodes: [],
+      
+      // Update filtered nodes
+      updateFilteredNodes() {
+        console.log('=== UPDATE FILTERED NODES ===');
+        const store = Alpine.store('workflowEditor');
+        console.log('Store:', store);
+        console.log('getFilteredNodes method:', typeof store.getFilteredNodes);
+        
+        if (store && typeof store.getFilteredNodes === 'function') {
+          this.filteredNodes = store.getFilteredNodes();
+          console.log('Updated filteredNodes:', this.filteredNodes);
+        } else {
+          console.error('Store or getFilteredNodes method not available');
+          this.filteredNodes = [];
+        }
+      },
+      
+      // Proxy properties to store
+      get currentWorkflow() { return Alpine.store('workflowEditor').currentWorkflow; },
+      get analysisResult() { return Alpine.store('workflowEditor').analysisResult; },
+      get nodeEdits() { return Alpine.store('workflowEditor').nodeEdits; },
+      get hasUnsavedChanges() { return Alpine.store('workflowEditor').hasUnsavedChanges; },
+      get showPromptsOnly() { return Alpine.store('workflowEditor').showPromptsOnly; },
+      get isEditorExpanded() { return Alpine.store('workflowEditor').isEditorExpanded; },
+      
+      // UI methods
+      toggleEditorSection() { Alpine.store('workflowEditor').toggleEditorSection(); },
+      togglePromptsOnly() { 
+        Alpine.store('workflowEditor').togglePromptsOnly(); 
+      },
+      toggleNode(nodeId) { Alpine.store('workflowEditor').toggleNode(nodeId); },
+      isNodeCollapsed(nodeId) { return Alpine.store('workflowEditor').isNodeCollapsed(nodeId); },
+      hasFieldEdit(nodeId, fieldName) { return Alpine.store('workflowEditor').hasFieldEdit(nodeId, fieldName); },
+      getFieldValue(nodeId, fieldName) { return Alpine.store('workflowEditor').getFieldValue(nodeId, fieldName); },
+      updateFieldEdit(nodeId, fieldName, value) { Alpine.store('workflowEditor').updateFieldEdit(nodeId, fieldName, value); },
+      truncateText(text, maxLength) { return Alpine.store('workflowEditor').truncateText(text, maxLength); }
+    };
+  },
+
   // Register destination section component
   destinationSection() {
     return {

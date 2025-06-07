@@ -20,15 +20,26 @@ window.comfyUIStores.editorStore = {
   collapsedNodes: new Set(),
   collapsedFields: new Set(),
   isEditorExpanded: JSON.parse(localStorage.getItem('workflowEditorExpanded') || 'false'),
+  updateCounter: 0, // Used to trigger component reactivity
   
   // Initialization
   init() {
     console.log('Workflow editor store initialized');
+    console.log('Initial state:', {
+      currentWorkflow: this.currentWorkflow,
+      analysisResult: this.analysisResult,
+      showPromptsOnly: this.showPromptsOnly,
+      isEditorExpanded: this.isEditorExpanded
+    });
   },
   
   // Load workflow for editing
   async loadWorkflow(file) {
+    console.log('=== WORKFLOW EDITOR: loadWorkflow called ===');
+    console.log('File:', file);
+    
     if (!file) {
+      console.log('No file provided, resetting');
       this.reset();
       return;
     }
@@ -49,7 +60,12 @@ window.comfyUIStores.editorStore = {
       this.currentWorkflow = workflowData;
       
       // Analyze workflow for text fields
+      console.log('About to analyze workflow...');
+      console.log('workflowAnalyzer available:', !!window.comfyUIServices?.workflowAnalyzer);
+      console.log('Workflow data keys:', Object.keys(workflowData).slice(0, 5));
+      
       this.analysisResult = window.comfyUIServices.workflowAnalyzer.analyzeWorkflow(workflowData);
+      console.log('Analysis result:', this.analysisResult);
       
       // Load saved edits for this file
       this.loadSavedEdits(file.name);
@@ -59,6 +75,10 @@ window.comfyUIStores.editorStore = {
         textFields: this.analysisResult.textFields.length,
         promptFields: this.analysisResult.textFields.filter(f => f.isPromptLike).length
       });
+      
+      // Manually trigger component update
+      console.log('Triggering component update...');
+      this.triggerComponentUpdate();
       
     } catch (error) {
       console.error('Error loading workflow for editing:', error);
@@ -78,20 +98,32 @@ window.comfyUIStores.editorStore = {
   },
   
   // Get filtered nodes based on show prompts only setting
-  get filteredNodes() {
-    if (!this.analysisResult || !this.analysisResult.nodes) return [];
+  getFilteredNodes() {
+    console.log('=== getFilteredNodes called ===');
+    console.log('analysisResult:', this.analysisResult);
+    console.log('showPromptsOnly:', this.showPromptsOnly);
+    
+    if (!this.analysisResult || !this.analysisResult.nodes) {
+      console.log('No analysis result or nodes, returning empty array');
+      return [];
+    }
     
     const nodesWithFields = this.analysisResult.nodes.map(node => {
       const fields = this.analysisResult.textFields.filter(field => field.nodeId === node.id);
       return { ...node, fields };
     }).filter(node => node.fields.length > 0);
     
+    console.log('Nodes with fields:', nodesWithFields);
+    
     if (this.showPromptsOnly) {
-      return nodesWithFields.filter(node => 
+      const promptNodes = nodesWithFields.filter(node => 
         node.fields.some(field => field.isPromptLike)
       );
+      console.log('Filtered to prompt nodes only:', promptNodes);
+      return promptNodes;
     }
     
+    console.log('Returning all nodes with text fields:', nodesWithFields);
     return nodesWithFields;
   },
   
@@ -142,6 +174,7 @@ window.comfyUIStores.editorStore = {
   togglePromptsOnly() {
     this.showPromptsOnly = !this.showPromptsOnly;
     localStorage.setItem('workflowEditorShowPromptsOnly', JSON.stringify(this.showPromptsOnly));
+    this.triggerComponentUpdate();
   },
   
   toggleEditorSection() {
@@ -211,5 +244,11 @@ window.comfyUIStores.editorStore = {
     }
     
     return modifiedWorkflow;
+  },
+  
+  // Trigger component update by incrementing counter
+  triggerComponentUpdate() {
+    this.updateCounter++;
+    console.log('Update counter incremented to:', this.updateCounter);
   }
 };

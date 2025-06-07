@@ -41,18 +41,56 @@ window.comfyUIServices.workflowAnalyzer = {
   extractNodes(workflow) {
     const nodes = [];
 
-    for (const [nodeId, node] of Object.entries(workflow)) {
-      if (node && typeof node === 'object' && node.class_type) {
-        nodes.push({
-          id: nodeId,
-          type: node.class_type,
-          inputs: node.inputs || {},
-          meta: node._meta || {}
-        });
+    // Check if this is GUI format (has nodes array) or API format (direct node mapping)
+    if (workflow.nodes && Array.isArray(workflow.nodes)) {
+      // GUI format - nodes are in an array
+      console.log('Processing GUI format workflow');
+      for (const node of workflow.nodes) {
+        if (node && node.type) {
+          nodes.push({
+            id: String(node.id),
+            type: node.type,
+            inputs: this.extractGUINodeInputs(node),
+            meta: node.meta || {},
+            widgets: node.widgets_values || []
+          });
+        }
+      }
+    } else {
+      // API format - each key is a node ID
+      console.log('Processing API format workflow');
+      for (const [nodeId, node] of Object.entries(workflow)) {
+        if (node && typeof node === 'object' && node.class_type) {
+          nodes.push({
+            id: nodeId,
+            type: node.class_type,
+            inputs: node.inputs || {},
+            meta: node._meta || {}
+          });
+        }
       }
     }
 
     return nodes;
+  },
+
+  /**
+   * Extract inputs from GUI format node
+   * @param {Object} node - GUI format node
+   * @returns {Object} Inputs object
+   */
+  extractGUINodeInputs(node) {
+    const inputs = {};
+    
+    // Extract widget values as inputs
+    if (node.widgets_values && Array.isArray(node.widgets_values)) {
+      // This is a simplified mapping - would need more sophisticated logic for complex nodes
+      node.widgets_values.forEach((value, index) => {
+        inputs[`widget_${index}`] = value;
+      });
+    }
+    
+    return inputs;
   },
 
   /**
@@ -89,23 +127,51 @@ window.comfyUIServices.workflowAnalyzer = {
    */
   identifyTextFields(workflow) {
     const textFields = [];
+    const nodes = this.extractNodes(workflow);
 
-    for (const [nodeId, node] of Object.entries(workflow)) {
-      if (!node || !node.inputs) continue;
+    console.log('Identifying text fields in', nodes.length, 'nodes');
 
-      for (const [inputName, inputValue] of Object.entries(node.inputs)) {
-        if (this.isTextFieldCandidate(node, inputName, inputValue)) {
-          textFields.push({
-            nodeId,
-            nodeType: node.class_type,
-            fieldName: inputName,
-            currentValue: inputValue,
-            isPromptLike: this.isPromptLikeField(node, inputName, inputValue)
-          });
+    for (const node of nodes) {
+      console.log(`Checking node ${node.id} (${node.type})`);
+      
+      // Check widget values for GUI format
+      if (node.widgets && Array.isArray(node.widgets)) {
+        node.widgets.forEach((value, index) => {
+          // For CLIPTextEncode nodes, the first widget is almost always the text prompt
+          const isKnownTextWidget = (node.type === 'CLIPTextEncode' && index === 0);
+          
+          if (isKnownTextWidget || this.isTextFieldCandidate(node, `widget_${index}`, value)) {
+            // Use a more descriptive field name for known text widgets
+            const fieldName = isKnownTextWidget ? 'text' : `widget_${index}`;
+            
+            textFields.push({
+              nodeId: node.id,
+              nodeType: node.type,
+              fieldName: fieldName,
+              currentValue: value,
+              isPromptLike: isKnownTextWidget || this.isPromptLikeField(node, fieldName, value)
+            });
+          }
+        });
+      }
+      
+      // Check inputs for both formats
+      if (node.inputs && typeof node.inputs === 'object') {
+        for (const [inputName, inputValue] of Object.entries(node.inputs)) {
+          if (this.isTextFieldCandidate(node, inputName, inputValue)) {
+            textFields.push({
+              nodeId: node.id,
+              nodeType: node.type,
+              fieldName: inputName,
+              currentValue: inputValue,
+              isPromptLike: this.isPromptLikeField(node, inputName, inputValue)
+            });
+          }
         }
       }
     }
 
+    console.log('Found', textFields.length, 'text fields');
     return textFields;
   },
 
@@ -122,13 +188,17 @@ window.comfyUIServices.workflowAnalyzer = {
       return false;
     }
 
-    // Skip very short values that are likely technical parameters
-    if (inputValue.length < 3) {
+    // Allow empty strings for known prompt fields
+    const isKnownPromptNode = node.type === 'CLIPTextEncode' || 
+                             (node.class_type && node.class_type === 'CLIPTextEncode');
+    
+    // Skip very short values that are likely technical parameters (but allow empty strings for prompts)
+    if (inputValue.length < 3 && !(isKnownPromptNode && inputValue.length === 0)) {
       return false;
     }
 
-    // Skip obvious configuration fields
-    if (this.isConfigurationField(inputName, inputValue)) {
+    // Skip obvious configuration fields (but not if it's a known prompt node)
+    if (!isKnownPromptNode && this.isConfigurationField(inputName, inputValue)) {
       return false;
     }
 
@@ -208,7 +278,8 @@ window.comfyUIServices.workflowAnalyzer = {
       'CLIPTextEncode', 'TextInput', 'StringConstant', 'String', 
       'Text', 'Prompt', 'Wildcard', 'MultilineString'
     ];
-    if (promptNodeTypes.some(type => node.class_type.includes(type))) {
+    const nodeType = node.class_type || node.type;
+    if (nodeType && promptNodeTypes.some(type => nodeType.includes(type))) {
       return true;
     }
 
