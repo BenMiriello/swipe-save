@@ -82,6 +82,10 @@ window.comfyUIComponents.panelComponents = {
         });
       },
       
+      toggleSettingsSection() {
+        this.isSettingsExpanded = !this.isSettingsExpanded;
+      },
+      
       incrementQuantity() {
         const current = Alpine.store('comfyWorkflow').settings.quantity;
         if (current < 99) {
