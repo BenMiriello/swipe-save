@@ -107,7 +107,7 @@ text parameters before queueing. Note: Visual node layout preservation requires 
 - [x] At-a-glance view of queue
 - [x] Allow clearing ComfyUI queue (clearing individual items is not possible yet due to comfyui api limitations)
 - [x] Edit workflow text fields with auto-save persistence  
-- [ ] Edit and queue workflows without losing node formatting
+- [x] Edit and queue workflows without losing node formatting
 - [ ] ComfyUI extension for layout preservation and workflow injection (see Extension Development roadmap)
 - [ ] Allow modifying more fields in the workflow when queueing, such as prompts, steps
 - [ ] Allow loading a workflow in comfyui (not just queueing and linking)
