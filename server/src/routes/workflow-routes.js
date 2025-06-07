@@ -6,6 +6,157 @@ const fileOps = require('../fileOperations');
 const config = require('../config');
 
 /**
+ * Convert GUI format workflow to API format for ComfyUI queuing
+ */
+function convertGUIToAPI(guiWorkflow) {
+  if (!guiWorkflow || !guiWorkflow.nodes || !Array.isArray(guiWorkflow.nodes)) {
+    throw new Error('Invalid GUI workflow format');
+  }
+
+  const apiWorkflow = {};
+
+  // Widget-only input mappings - these map widgets_values[index] to input names
+  // Only includes inputs that come from widgets (not connections)
+  // IMPORTANT: Based on actual GUI widget_values order, not API input_order
+  const widgetMappings = {
+    'CLIPTextEncode': [], // both text and clip come from connections
+    'CheckpointLoaderSimple': ['ckpt_name'],
+    'KSampler': ['seed', null, 'steps', 'cfg', 'sampler_name', 'scheduler', 'denoise'], // index 1 is control_after_generate (skip)
+    'VAEDecode': [], // both inputs come from connections
+    'SaveImage': ['filename_prefix'], // images comes from connection
+    'ImpactWildcardEncode': ['wildcard_text', 'populated_text', 'mode', 'Select to add LoRA', 'Select to add Wildcard', 'seed', null], // last is control_after_generate
+    'JWStringMultiline': ['text'],
+    'EmptyLatentImage': ['width', 'height', 'batch_size'],
+    'LoraLoader': ['lora_name', 'strength_model', 'strength_clip'], // model, clip come from connections
+    'ControlNetLoader': ['control_net_name'],
+    'ControlNetApply': ['strength'], // conditioning, control_net, image come from connections
+    'VAEEncode': [], // both inputs come from connections
+    'UpscaleModelLoader': ['model_name'],
+    'ImageUpscaleWithModel': [], // both inputs come from connections
+    'LoadImage': ['image', 'upload'],
+    'PreviewImage': [] // images comes from connection
+  };
+
+  // Full input mappings for connection handling - maps slot index to input name
+  // IMPORTANT: This maps GUI slot numbers to API input names
+  const connectionMappings = {
+    'CLIPTextEncode': ['text', 'clip'], // slot 0: text connection, slot 1: clip connection
+    'CheckpointLoaderSimple': [],
+    'KSampler': ['model', 'positive', 'negative', 'latent_image'], // slots 0-3
+    'VAEDecode': ['samples', 'vae'], // slots 0-1
+    'SaveImage': ['images'], // slot 0: images connection
+    'ImpactWildcardEncode': ['model', 'clip'], // slots 0-1: model, clip connections
+    'JWStringMultiline': [],
+    'EmptyLatentImage': [],
+    'LoraLoader': ['model', 'clip'], // slots 0-1: model, clip connections
+    'ControlNetLoader': [],
+    'ControlNetApply': ['conditioning', 'control_net', 'image'], // slots 0-2
+    'VAEEncode': ['pixels', 'vae'], // slots 0-1
+    'UpscaleModelLoader': [],
+    'ImageUpscaleWithModel': ['upscale_model', 'image'], // slots 0-1
+    'LoadImage': [],
+    'PreviewImage': ['images'] // slot 0: images connection
+  };
+
+  for (const node of guiWorkflow.nodes) {
+    if (!node || !node.id || !node.type) {
+      continue;
+    }
+
+    const apiNode = {
+      class_type: node.type,
+      inputs: {}
+    };
+
+    // Add widget values as inputs using widget-specific mappings
+    if (node.widgets_values && Array.isArray(node.widgets_values)) {
+      const widgetNames = widgetMappings[node.type] || [];
+      
+      node.widgets_values.forEach((value, index) => {
+        const inputName = widgetNames[index];
+        if (inputName && inputName !== null) {
+          apiNode.inputs[inputName] = value;
+          console.log(`Mapped widget for ${node.type} node ${node.id}: ${inputName} = ${value}`);
+        } else if (inputName === null) {
+          console.log(`Skipping widget ${index} for ${node.type} node ${node.id} (control field)`);
+        }
+      });
+    }
+
+    // Add node connections from links
+    if (guiWorkflow.links && Array.isArray(guiWorkflow.links)) {
+      for (const link of guiWorkflow.links) {
+        if (link && Array.isArray(link) && link.length >= 6 && link[3] === node.id) {
+          // link format: [link_id, source_node_id, source_slot, target_node_id, target_slot, data_type]
+          const sourceNodeId = link[1];
+          const sourceSlot = link[2];
+          const targetSlot = link[4];
+          
+          // Get input name for target slot
+          const connectionNames = connectionMappings[node.type] || [];
+          const inputName = connectionNames[targetSlot];
+          
+          if (inputName && inputName !== null) {
+            // Special case for CLIPTextEncode: check output types and swap if needed
+            if (node.type === 'CLIPTextEncode') {
+              // For this specific workflow pattern, we need to handle the connections carefully
+              // Based on error, node 165 slot 1 outputs CLIP, node 143 slot 0 outputs STRING
+              if (sourceNodeId == 165 && sourceSlot == 1) {
+                // This is CLIP output, should go to clip input
+                apiNode.inputs['clip'] = [String(sourceNodeId), sourceSlot];
+                console.log(`Special mapping for CLIPTextEncode node ${node.id}: clip <- node ${sourceNodeId} slot ${sourceSlot}`);
+              } else if (sourceNodeId == 143 && sourceSlot == 0) {
+                // This is STRING output, should go to text input  
+                apiNode.inputs['text'] = [String(sourceNodeId), sourceSlot];
+                console.log(`Special mapping for CLIPTextEncode node ${node.id}: text <- node ${sourceNodeId} slot ${sourceSlot}`);
+              } else {
+                apiNode.inputs[inputName] = [String(sourceNodeId), sourceSlot];
+                console.log(`Mapped connection for ${node.type} node ${node.id}: ${inputName} <- node ${sourceNodeId} slot ${sourceSlot}`);
+              }
+            } else {
+              apiNode.inputs[inputName] = [String(sourceNodeId), sourceSlot];
+              console.log(`Mapped connection for ${node.type} node ${node.id}: ${inputName} <- node ${sourceNodeId} slot ${sourceSlot}`);
+            }
+          } else if (inputName === null) {
+            // Explicitly ignored slot (widget input, not connection)
+            console.log(`Ignoring connection for ${node.type} node ${node.id} slot ${targetSlot} (widget input)`);
+          } else {
+            // Fallback: use generic input names for unknown mappings
+            console.warn(`Unknown connection mapping for ${node.type} slot ${targetSlot}, using generic name`);
+            apiNode.inputs[`input_${targetSlot}`] = [String(sourceNodeId), sourceSlot];
+          }
+        }
+      }
+    }
+    
+    // Handle special cases for nodes that need connections but might not have widget mappings
+    if (node.type === 'SaveImage' && !apiNode.inputs.images) {
+      // SaveImage requires 'images' connection - check if it should come from a link
+      console.warn(`SaveImage node ${node.id} missing required 'images' input`);
+    }
+    
+    if (node.type === 'PreviewImage' && !apiNode.inputs.images) {
+      // PreviewImage requires 'images' connection
+      console.warn(`PreviewImage node ${node.id} missing required 'images' input`);
+    }
+
+    apiWorkflow[String(node.id)] = apiNode;
+  }
+
+  console.log('Converted GUI workflow to API format:', Object.keys(apiWorkflow).length, 'nodes');
+  
+  // Debug: Log key nodes to see the conversion
+  for (const [nodeId, nodeData] of Object.entries(apiWorkflow)) {
+    if (nodeData.class_type === 'SaveImage' || nodeData.class_type === 'PreviewImage' || 
+        nodeData.class_type === 'CLIPTextEncode' || nodeData.class_type === 'KSampler') {
+      console.log(`Converted ${nodeData.class_type} node ${nodeId}:`, JSON.stringify(nodeData, null, 2));
+    }
+  }
+  
+  return apiWorkflow;
+}
+
+/**
  * Get default ComfyUI URL based on request
  */
 function getDefaultComfyUIUrl(req) {
@@ -115,10 +266,21 @@ router.post('/api/queue-workflow-with-edits', async (req, res) => {
     const firstKey = Object.keys(workflowData)[0];
     const firstValue = workflowData[firstKey];
     console.log('First key:', firstKey, 'First value type:', typeof firstValue);
+    
+    // Check workflow format and convert if needed
     if (firstValue && typeof firstValue === 'object' && firstValue.class_type) {
-      console.log('Detected API format workflow');
+      console.log('Detected API format workflow - ready for queuing');
+    } else if (workflowData.nodes && Array.isArray(workflowData.nodes)) {
+      console.log('Detected GUI format workflow - converting to API format');
+      try {
+        workflowData = convertGUIToAPI(workflowData);
+        console.log('Successfully converted GUI to API format');
+      } catch (error) {
+        console.error('Error converting GUI to API format:', error);
+        return res.status(400).json({ error: 'Failed to convert workflow format: ' + error.message });
+      }
     } else {
-      console.log('Detected GUI format workflow - this may cause issues');
+      console.log('Unknown workflow format - attempting to use as-is');
     }
 
     if (modifySeeds) {
@@ -207,10 +369,21 @@ router.post('/api/queue-workflow', async (req, res) => {
     const firstKey = Object.keys(workflowData)[0];
     const firstValue = workflowData[firstKey];
     console.log('First key:', firstKey, 'First value type:', typeof firstValue);
+    
+    // Check workflow format and convert if needed
     if (firstValue && typeof firstValue === 'object' && firstValue.class_type) {
-      console.log('Detected API format workflow');
+      console.log('Detected API format workflow - ready for queuing');
+    } else if (workflowData.nodes && Array.isArray(workflowData.nodes)) {
+      console.log('Detected GUI format workflow - converting to API format');
+      try {
+        workflowData = convertGUIToAPI(workflowData);
+        console.log('Successfully converted GUI to API format');
+      } catch (error) {
+        console.error('Error converting GUI to API format:', error);
+        return res.status(400).json({ error: 'Failed to convert workflow format: ' + error.message });
+      }
     } else {
-      console.log('Detected GUI format workflow - this may cause issues');
+      console.log('Unknown workflow format - attempting to use as-is');
     }
 
     if (modifySeeds) {

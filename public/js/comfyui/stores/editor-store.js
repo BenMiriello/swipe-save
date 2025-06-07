@@ -80,6 +80,7 @@ window.comfyUIStores.editorStore = {
   
   // Reset editor state
   reset() {
+    console.log('Resetting workflow editor state');
     this.currentWorkflow = null;
     this.originalWorkflow = null;
     this.analysisResult = null;
@@ -87,6 +88,8 @@ window.comfyUIStores.editorStore = {
     this.hasUnsavedChanges = false;
     this.collapsedNodes.clear();
     this.collapsedFields.clear();
+    // Trigger component update to refresh UI
+    this.triggerComponentUpdate();
   },
   
   // Get filtered nodes based on show prompts only setting

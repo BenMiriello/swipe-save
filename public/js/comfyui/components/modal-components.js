@@ -39,6 +39,11 @@ window.comfyUIComponents.modalComponents = {
               // Watch for workflow editor updates and sync to modal
               this.updateWorkflowEditorState();
             }, 100);
+          } else {
+            // Reset workflow editor when modal closes
+            console.log('Modal closing - resetting workflow editor state');
+            this.$store.workflowEditor.reset();
+            this.filteredNodes = [];
           }
         });
       },
