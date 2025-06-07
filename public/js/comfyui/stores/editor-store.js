@@ -94,12 +94,7 @@ window.comfyUIStores.editorStore = {
   
   // Get filtered nodes based on show prompts only setting
   getFilteredNodes() {
-    console.log('=== getFilteredNodes called ===');
-    console.log('analysisResult:', this.analysisResult);
-    console.log('showPromptsOnly:', this.showPromptsOnly);
-    
     if (!this.analysisResult || !this.analysisResult.nodes) {
-      console.log('No analysis result or nodes, returning empty array');
       return [];
     }
     
@@ -108,25 +103,17 @@ window.comfyUIStores.editorStore = {
       return { ...node, fields };
     }).filter(node => node.fields.length > 0);
     
-    console.log('Nodes with fields:', nodesWithFields);
-    
     if (this.showPromptsOnly) {
-      const promptNodes = nodesWithFields.filter(node => 
+      return nodesWithFields.filter(node => 
         node.fields.some(field => field.isPromptLike)
       );
-      console.log('Filtered to prompt nodes only:', promptNodes);
-      return promptNodes;
     }
     
-    console.log('Returning all nodes with text fields:', nodesWithFields);
     return nodesWithFields;
   },
   
   // Update field edit
   updateFieldEdit(nodeId, fieldName, value) {
-    console.log('=== updateFieldEdit called ===');
-    console.log('nodeId:', nodeId, 'fieldName:', fieldName, 'value:', value);
-    
     if (!this.nodeEdits[nodeId]) {
       this.nodeEdits[nodeId] = {};
     }
@@ -136,21 +123,16 @@ window.comfyUIStores.editorStore = {
       f => f.nodeId === nodeId && f.fieldName === fieldName
     );
     
-    console.log('originalField:', originalField);
-    
     if (originalField && value === originalField.currentValue) {
       delete this.nodeEdits[nodeId][fieldName];
       if (Object.keys(this.nodeEdits[nodeId]).length === 0) {
         delete this.nodeEdits[nodeId];
       }
-      console.log('Edit removed (matches original)');
     } else {
       this.nodeEdits[nodeId][fieldName] = value;
-      console.log('Edit stored:', this.nodeEdits);
     }
     
     this.hasUnsavedChanges = Object.keys(this.nodeEdits).length > 0;
-    console.log('hasUnsavedChanges:', this.hasUnsavedChanges);
     this.saveEditsToStorage();
   },
   
@@ -252,13 +234,7 @@ window.comfyUIStores.editorStore = {
   
   // Apply edits to workflow (for queueing) - preserves original structure
   getModifiedWorkflow() {
-    console.log('=== getModifiedWorkflow called ===');
-    console.log('currentWorkflow exists:', !!this.currentWorkflow);
-    console.log('nodeEdits:', this.nodeEdits);
-    console.log('nodeEdits count:', Object.keys(this.nodeEdits).length);
-    
     if (!this.currentWorkflow || Object.keys(this.nodeEdits).length === 0) {
-      console.log('Returning original workflow (no edits or no workflow)');
       return this.currentWorkflow;
     }
     
@@ -267,48 +243,32 @@ window.comfyUIStores.editorStore = {
     
     // Detect workflow format
     const isGUIFormat = modifiedWorkflow.nodes && Array.isArray(modifiedWorkflow.nodes);
-    console.log('Workflow format detected:', isGUIFormat ? 'GUI' : 'API');
     
     if (isGUIFormat) {
       // Handle GUI format workflows - apply edits to widgets_values arrays
-      console.log('Applying edits to GUI workflow...');
       this.applyEditsToGUIWorkflow(modifiedWorkflow);
     } else {
       // Handle API format workflows - apply edits to inputs objects
-      console.log('Applying edits to API workflow...');
       this.applyEditsToAPIWorkflow(modifiedWorkflow);
     }
     
-    console.log('Modified workflow created');
     return modifiedWorkflow;
   },
 
   // Apply edits to GUI format workflow
   applyEditsToGUIWorkflow(workflow) {
-    console.log('=== applyEditsToGUIWorkflow ===');
     for (const [nodeId, edits] of Object.entries(this.nodeEdits)) {
-      console.log(`Processing node ${nodeId} with edits:`, edits);
       const node = workflow.nodes.find(n => String(n.id) === String(nodeId));
       if (!node || !node.widgets_values || !Array.isArray(node.widgets_values)) {
-        console.log(`Node ${nodeId} not found or has no widgets_values`);
         continue;
       }
       
-      console.log(`Node ${nodeId} (${node.type}) current widgets_values:`, node.widgets_values);
-      
       for (const [fieldName, newValue] of Object.entries(edits)) {
         const widgetIndex = this.getWidgetIndexForField(node.type, fieldName);
-        console.log(`Field ${fieldName} maps to widget index ${widgetIndex}`);
-        
         if (widgetIndex !== -1 && widgetIndex < node.widgets_values.length) {
-          console.log(`Updating widget ${widgetIndex}: "${node.widgets_values[widgetIndex]}" -> "${newValue}"`);
           node.widgets_values[widgetIndex] = newValue;
-        } else {
-          console.log(`Cannot update widget: index ${widgetIndex} invalid for array length ${node.widgets_values.length}`);
         }
       }
-      
-      console.log(`Node ${nodeId} updated widgets_values:`, node.widgets_values);
     }
   },
 
@@ -325,14 +285,10 @@ window.comfyUIStores.editorStore = {
 
   // Get widget index for a field name based on node type
   getWidgetIndexForField(nodeType, fieldName) {
-    console.log(`getWidgetIndexForField: nodeType=${nodeType}, fieldName=${fieldName}`);
-    
     // Handle generic widget_N field names first
     const widgetMatch = fieldName.match(/^widget_(\d+)$/);
     if (widgetMatch) {
-      const index = parseInt(widgetMatch[1]);
-      console.log(`Generic widget name detected: ${fieldName} -> index ${index}`);
-      return index;
+      return parseInt(widgetMatch[1]);
     }
     
     // Widget mappings for different node types
@@ -368,23 +324,14 @@ window.comfyUIStores.editorStore = {
     const nodeMapping = widgetMappings[nodeType];
     if (!nodeMapping) {
       // For unknown node types, try to match by widget name directly
-      // This handles cases where the widget name matches the field name
       if (fieldName === 'text' || fieldName === 'prompt') {
-        console.log(`Fallback mapping for ${fieldName} -> index 0`);
         return 0; // Most text nodes have text as the first widget
       }
-      console.log(`No mapping found for ${nodeType}.${fieldName}`);
       return -1;
     }
     
     const index = nodeMapping[fieldName];
-    if (index !== undefined) {
-      console.log(`Mapped ${nodeType}.${fieldName} -> index ${index}`);
-      return index;
-    } else {
-      console.log(`Field ${fieldName} not found in ${nodeType} mapping`);
-      return -1;
-    }
+    return index !== undefined ? index : -1;
   },
   
   // Trigger component update by incrementing counter

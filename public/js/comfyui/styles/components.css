@@ -181,20 +181,6 @@
   gap: var(--comfy-spacing-xs);
 }
 
-.comfyui-field-preview {
-  padding: var(--comfy-spacing-sm);
-  background-color: var(--comfy-bg-secondary);
-  border: 1px solid var(--comfy-border-light);
-  border-radius: var(--comfy-radius-sm);
-  font-size: 0.85rem;
-  color: var(--comfy-text-secondary);
-  font-style: italic;
-}
-
-.comfyui-field-original {
-  white-space: pre-wrap;
-  word-break: break-word;
-}
 
 .comfyui-field-textarea {
   width: 100%;

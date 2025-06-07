@@ -7,14 +7,14 @@
     <span class="comfyui-section-title">
       <span x-text="isEditorExpanded ? '▼' : '▶'"></span>
       Text Fields
-      <span x-show="hasUnsavedChanges" class="comfyui-edit-indicator">(edited)</span>
+      <span x-show="hasUnsavedChanges" class="comfyui-edit-indicator">(auto-saved)</span>
     </span>
     
     <!-- Summary when collapsed -->
     <span x-show="!isEditorExpanded" class="comfyui-section-summary">
       <span x-text="filteredNodes.length"></span> 
       <span x-text="showPromptsOnly ? 'prompt' : 'text'"></span> nodes
-      <span x-show="hasUnsavedChanges">, unsaved edits</span>
+      <span x-show="hasUnsavedChanges">, auto-saved edits</span>
     </span>
   </div>
 
@@ -77,16 +77,11 @@
                 <!-- Field content -->
                 <div class="comfyui-field-content">
                   
-                  <!-- Original value preview (when collapsed) -->
-                  <div x-show="!hasFieldEdit(node.id, field.fieldName)" class="comfyui-field-preview">
-                    <span class="comfyui-field-original" x-text="truncateText(field.currentValue, 100)"></span>
-                  </div>
-
                   <!-- Text area for editing -->
                   <textarea 
                     class="comfyui-field-textarea"
-                    :placeholder="field.currentValue"
-                    x-model="getFieldValue(node.id, field.fieldName)"
+                    :placeholder="hasFieldEdit(node.id, field.fieldName) ? 'Enter text...' : (field.currentValue || 'Enter text...')"
+                    :value="getFieldValue(node.id, field.fieldName)"
                     @input="updateFieldEdit(node.id, field.fieldName, $event.target.value)"
                     rows="3"
                     :class="{ 'comfyui-field-edited': hasFieldEdit(node.id, field.fieldName) }">
@@ -96,7 +91,8 @@
                   <div x-show="hasFieldEdit(node.id, field.fieldName)" class="comfyui-field-actions">
                     <button type="button" 
                             class="comfy-btn comfy-btn-small comfy-btn-secondary"
-                            @click="updateFieldEdit(node.id, field.fieldName, field.currentValue)">
+                            @click="updateFieldEdit(node.id, field.fieldName, field.currentValue)"
+                            title="Reset to original value">
                       Reset
                     </button>
                   </div>
