@@ -124,6 +124,9 @@ window.comfyUIStores.editorStore = {
   
   // Update field edit
   updateFieldEdit(nodeId, fieldName, value) {
+    console.log('=== updateFieldEdit called ===');
+    console.log('nodeId:', nodeId, 'fieldName:', fieldName, 'value:', value);
+    
     if (!this.nodeEdits[nodeId]) {
       this.nodeEdits[nodeId] = {};
     }
@@ -133,16 +136,21 @@ window.comfyUIStores.editorStore = {
       f => f.nodeId === nodeId && f.fieldName === fieldName
     );
     
+    console.log('originalField:', originalField);
+    
     if (originalField && value === originalField.currentValue) {
       delete this.nodeEdits[nodeId][fieldName];
       if (Object.keys(this.nodeEdits[nodeId]).length === 0) {
         delete this.nodeEdits[nodeId];
       }
+      console.log('Edit removed (matches original)');
     } else {
       this.nodeEdits[nodeId][fieldName] = value;
+      console.log('Edit stored:', this.nodeEdits);
     }
     
     this.hasUnsavedChanges = Object.keys(this.nodeEdits).length > 0;
+    console.log('hasUnsavedChanges:', this.hasUnsavedChanges);
     this.saveEditsToStorage();
   },
   
@@ -244,23 +252,139 @@ window.comfyUIStores.editorStore = {
   
   // Apply edits to workflow (for queueing) - preserves original structure
   getModifiedWorkflow() {
+    console.log('=== getModifiedWorkflow called ===');
+    console.log('currentWorkflow exists:', !!this.currentWorkflow);
+    console.log('nodeEdits:', this.nodeEdits);
+    console.log('nodeEdits count:', Object.keys(this.nodeEdits).length);
+    
     if (!this.currentWorkflow || Object.keys(this.nodeEdits).length === 0) {
+      console.log('Returning original workflow (no edits or no workflow)');
       return this.currentWorkflow;
     }
     
     // Create a deep copy to preserve original formatting metadata (pos, size, etc.)
     const modifiedWorkflow = JSON.parse(JSON.stringify(this.currentWorkflow));
     
-    // Apply text field edits while preserving all other node metadata
+    // Detect workflow format
+    const isGUIFormat = modifiedWorkflow.nodes && Array.isArray(modifiedWorkflow.nodes);
+    console.log('Workflow format detected:', isGUIFormat ? 'GUI' : 'API');
+    
+    if (isGUIFormat) {
+      // Handle GUI format workflows - apply edits to widgets_values arrays
+      console.log('Applying edits to GUI workflow...');
+      this.applyEditsToGUIWorkflow(modifiedWorkflow);
+    } else {
+      // Handle API format workflows - apply edits to inputs objects
+      console.log('Applying edits to API workflow...');
+      this.applyEditsToAPIWorkflow(modifiedWorkflow);
+    }
+    
+    console.log('Modified workflow created');
+    return modifiedWorkflow;
+  },
+
+  // Apply edits to GUI format workflow
+  applyEditsToGUIWorkflow(workflow) {
+    console.log('=== applyEditsToGUIWorkflow ===');
     for (const [nodeId, edits] of Object.entries(this.nodeEdits)) {
-      if (modifiedWorkflow[nodeId] && modifiedWorkflow[nodeId].inputs) {
+      console.log(`Processing node ${nodeId} with edits:`, edits);
+      const node = workflow.nodes.find(n => String(n.id) === String(nodeId));
+      if (!node || !node.widgets_values || !Array.isArray(node.widgets_values)) {
+        console.log(`Node ${nodeId} not found or has no widgets_values`);
+        continue;
+      }
+      
+      console.log(`Node ${nodeId} (${node.type}) current widgets_values:`, node.widgets_values);
+      
+      for (const [fieldName, newValue] of Object.entries(edits)) {
+        const widgetIndex = this.getWidgetIndexForField(node.type, fieldName);
+        console.log(`Field ${fieldName} maps to widget index ${widgetIndex}`);
+        
+        if (widgetIndex !== -1 && widgetIndex < node.widgets_values.length) {
+          console.log(`Updating widget ${widgetIndex}: "${node.widgets_values[widgetIndex]}" -> "${newValue}"`);
+          node.widgets_values[widgetIndex] = newValue;
+        } else {
+          console.log(`Cannot update widget: index ${widgetIndex} invalid for array length ${node.widgets_values.length}`);
+        }
+      }
+      
+      console.log(`Node ${nodeId} updated widgets_values:`, node.widgets_values);
+    }
+  },
+
+  // Apply edits to API format workflow
+  applyEditsToAPIWorkflow(workflow) {
+    for (const [nodeId, edits] of Object.entries(this.nodeEdits)) {
+      if (workflow[nodeId] && workflow[nodeId].inputs) {
         for (const [fieldName, newValue] of Object.entries(edits)) {
-          modifiedWorkflow[nodeId].inputs[fieldName] = newValue;
+          workflow[nodeId].inputs[fieldName] = newValue;
         }
       }
     }
+  },
+
+  // Get widget index for a field name based on node type
+  getWidgetIndexForField(nodeType, fieldName) {
+    console.log(`getWidgetIndexForField: nodeType=${nodeType}, fieldName=${fieldName}`);
     
-    return modifiedWorkflow;
+    // Handle generic widget_N field names first
+    const widgetMatch = fieldName.match(/^widget_(\d+)$/);
+    if (widgetMatch) {
+      const index = parseInt(widgetMatch[1]);
+      console.log(`Generic widget name detected: ${fieldName} -> index ${index}`);
+      return index;
+    }
+    
+    // Widget mappings for different node types
+    // These are the reverse of the mappings used in server conversion
+    const widgetMappings = {
+      'KSampler': {
+        'seed': 0,
+        'steps': 2,
+        'cfg': 3,
+        'sampler_name': 4,
+        'scheduler': 5,
+        'denoise': 6
+      },
+      'CLIPTextEncode': {
+        'text': 0
+      },
+      'SaveImage': {
+        'filename_prefix': 0
+      },
+      'ImpactWildcardEncode': {
+        'wildcard_text': 0,
+        'populated_text': 1,
+        'mode': 2,
+        'Select to add LoRA': 3,
+        'Select to add Wildcard': 4,
+        'seed': 5
+      },
+      'JWStringMultiline': {
+        'text': 0
+      }
+    };
+    
+    const nodeMapping = widgetMappings[nodeType];
+    if (!nodeMapping) {
+      // For unknown node types, try to match by widget name directly
+      // This handles cases where the widget name matches the field name
+      if (fieldName === 'text' || fieldName === 'prompt') {
+        console.log(`Fallback mapping for ${fieldName} -> index 0`);
+        return 0; // Most text nodes have text as the first widget
+      }
+      console.log(`No mapping found for ${nodeType}.${fieldName}`);
+      return -1;
+    }
+    
+    const index = nodeMapping[fieldName];
+    if (index !== undefined) {
+      console.log(`Mapped ${nodeType}.${fieldName} -> index ${index}`);
+      return index;
+    } else {
+      console.log(`Field ${fieldName} not found in ${nodeType} mapping`);
+      return -1;
+    }
   },
   
   // Trigger component update by incrementing counter
