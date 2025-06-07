@@ -6,12 +6,59 @@ const fileOps = require('../fileOperations');
 const config = require('../config');
 
 /**
+ * Get fallback input name based on node type and data type
+ */
+function getFallbackInputName(nodeType, slotIndex, dataType) {
+  // Common input patterns based on data types
+  const dataTypeMapping = {
+    'MODEL': 'model',
+    'CLIP': 'clip', 
+    'VAE': 'vae',
+    'CONDITIONING': slotIndex === 0 ? 'positive' : 'negative',
+    'LATENT': 'latent_image',
+    'IMAGE': 'image',
+    'MASK': 'mask',
+    'STRING': 'text',
+    'CONTROL_NET': 'control_net'
+  };
+
+  if (dataType && dataTypeMapping[dataType]) {
+    return dataTypeMapping[dataType];
+  }
+
+  // Node-specific fallbacks
+  const nodeTypePatterns = {
+    'KSampler': ['model', 'positive', 'negative', 'latent_image'],
+    'VAEDecode': ['samples', 'vae'],
+    'VAEEncode': ['pixels', 'vae'],
+    'SaveImage': ['images'],
+    'PreviewImage': ['images'],
+    'LoadImage': ['image', 'upload'],
+    'CLIPTextEncode': ['text', 'clip'],
+    'ControlNetApply': ['conditioning', 'control_net', 'image'],
+    'LoraLoader': ['model', 'clip'],
+    'PerturbedAttention': ['model'],
+    'ImageScaleBy': ['image']
+  };
+
+  const pattern = nodeTypePatterns[nodeType];
+  if (pattern && pattern[slotIndex] !== undefined) {
+    return pattern[slotIndex];
+  }
+
+  return null;
+}
+
+/**
  * Convert GUI format workflow to API format for ComfyUI queuing
  */
 function convertGUIToAPI(guiWorkflow) {
   if (!guiWorkflow || !guiWorkflow.nodes || !Array.isArray(guiWorkflow.nodes)) {
     throw new Error('Invalid GUI workflow format');
   }
+
+  console.log('=== GUI TO API CONVERSION DEBUG ===');
+  console.log(`Converting workflow with ${guiWorkflow.nodes.length} nodes and ${guiWorkflow.links ? guiWorkflow.links.length : 0} links`);
 
   const apiWorkflow = {};
 
@@ -34,28 +81,47 @@ function convertGUIToAPI(guiWorkflow) {
     'UpscaleModelLoader': ['model_name'],
     'ImageUpscaleWithModel': [], // both inputs come from connections
     'LoadImage': ['image', 'upload'],
-    'PreviewImage': [] // images comes from connection
+    'PreviewImage': [], // images comes from connection
+    'PerturbedAttention': ['scale', 'adaptive_scale', 'unet_block', 'unet_block_id', 'sigma_start', 'sigma_end', 'rescale', 'rescale_mode'],
+    'ImageScaleBy': ['upscale_method', 'scale_by']
   };
 
   // Full input mappings for connection handling - maps slot index to input name
   // IMPORTANT: This maps GUI slot numbers to API input names
   const connectionMappings = {
-    'CLIPTextEncode': ['text', 'clip'], // slot 0: text connection, slot 1: clip connection
+    'CLIPTextEncode': ['text', 'clip'],
     'CheckpointLoaderSimple': [],
-    'KSampler': ['model', 'positive', 'negative', 'latent_image'], // slots 0-3
-    'VAEDecode': ['samples', 'vae'], // slots 0-1
-    'SaveImage': ['images'], // slot 0: images connection
-    'ImpactWildcardEncode': ['model', 'clip'], // slots 0-1: model, clip connections
+    'KSampler': ['model', 'positive', 'negative', 'latent_image'],
+    'VAEDecode': ['samples', 'vae'],
+    'VAEEncode': ['pixels', 'vae'],
+    'SaveImage': ['images'],
+    'PreviewImage': ['images'],
+    'LoadImage': [],
+    'ImpactWildcardEncode': ['model', 'clip'],
     'JWStringMultiline': [],
     'EmptyLatentImage': [],
-    'LoraLoader': ['model', 'clip'], // slots 0-1: model, clip connections
+    'LoraLoader': ['model', 'clip'],
     'ControlNetLoader': [],
-    'ControlNetApply': ['conditioning', 'control_net', 'image'], // slots 0-2
-    'VAEEncode': ['pixels', 'vae'], // slots 0-1
+    'ControlNetApply': ['conditioning', 'control_net', 'image'],
     'UpscaleModelLoader': [],
-    'ImageUpscaleWithModel': ['upscale_model', 'image'], // slots 0-1
-    'LoadImage': [],
-    'PreviewImage': ['images'] // slot 0: images connection
+    'ImageUpscaleWithModel': ['upscale_model', 'image'],
+    'LatentUpscale': ['samples'],
+    'LatentUpscaleBy': ['samples'],
+    'ImageScale': ['image'],
+    'ImageScaleBy': ['image'],
+    'CLIPSetLastLayer': ['clip'],
+    'ConditioningCombine': ['conditioning_1', 'conditioning_2'],
+    'ConditioningConcat': ['conditioning_1', 'conditioning_2'],
+    'ConditioningSetArea': ['conditioning'],
+    'ConditioningSetAreaPercentage': ['conditioning'],
+    'ConditioningSetMask': ['conditioning', 'mask'],
+    'ControlNetApplyAdvanced': ['positive', 'negative', 'control_net', 'image'],
+    'FreeU': ['model'],
+    'FreeU_V2': ['model'],
+    'ModelMergeSimple': ['model1', 'model2'],
+    'CLIPMergeSimple': ['clip1', 'clip2'],
+    'PerturbedAttention': ['model'], // model comes from connection, rest are widgets
+    'ImageScaleBy': ['image'] // image comes from connection, rest are widgets
   };
 
   for (const node of guiWorkflow.nodes) {
@@ -67,77 +133,89 @@ function convertGUIToAPI(guiWorkflow) {
       class_type: node.type,
       inputs: {}
     };
-    
+
     // NOTE: Layout data (pos, size) is not preserved as ComfyUI API
     // does not accept position data during workflow execution
 
     // Add widget values as inputs using widget-specific mappings
     if (node.widgets_values && Array.isArray(node.widgets_values)) {
       const widgetNames = widgetMappings[node.type] || [];
-      
+
       node.widgets_values.forEach((value, index) => {
         const inputName = widgetNames[index];
         if (inputName && inputName !== null) {
           apiNode.inputs[inputName] = value;
-          console.log(`Mapped widget for ${node.type} node ${node.id}: ${inputName} = ${value}`);
+          console.log(`  Widget: ${inputName} = ${value}`);
         } else if (inputName === null) {
-          console.log(`Skipping widget ${index} for ${node.type} node ${node.id} (control field)`);
+          console.log(`  Skipping widget ${index} (control field)`);
+        } else {
+          console.warn(`  Missing widget mapping for ${node.type} widget ${index} (value: ${value})`);
         }
       });
     }
 
     // Add node connections from links
     if (guiWorkflow.links && Array.isArray(guiWorkflow.links)) {
+      console.log(`Processing connections for ${node.type} node ${node.id}`);
       for (const link of guiWorkflow.links) {
         if (link && Array.isArray(link) && link.length >= 6 && link[3] === node.id) {
           // link format: [link_id, source_node_id, source_slot, target_node_id, target_slot, data_type]
           const sourceNodeId = link[1];
           const sourceSlot = link[2];
           const targetSlot = link[4];
-          
+
+          console.log(`  Link found: node ${sourceNodeId} slot ${sourceSlot} -> node ${node.id} slot ${targetSlot} (${link[5] || 'unknown type'})`);
+
           // Get input name for target slot
           const connectionNames = connectionMappings[node.type] || [];
           const inputName = connectionNames[targetSlot];
-          
+
           if (inputName && inputName !== null) {
-            // Special case for CLIPTextEncode: check output types and swap if needed
+            // Special handling for CLIPTextEncode to fix connection type mismatches
             if (node.type === 'CLIPTextEncode') {
-              // For this specific workflow pattern, we need to handle the connections carefully
-              // Based on error, node 165 slot 1 outputs CLIP, node 143 slot 0 outputs STRING
-              if (sourceNodeId == 165 && sourceSlot == 1) {
-                // This is CLIP output, should go to clip input
+              // Detect the actual data type and route accordingly
+              if (link[5] === 'CLIP') {
                 apiNode.inputs['clip'] = [String(sourceNodeId), sourceSlot];
-                console.log(`Special mapping for CLIPTextEncode node ${node.id}: clip <- node ${sourceNodeId} slot ${sourceSlot}`);
-              } else if (sourceNodeId == 143 && sourceSlot == 0) {
-                // This is STRING output, should go to text input  
+                console.log(`  CLIPTextEncode: routed CLIP type to clip input from node ${sourceNodeId} slot ${sourceSlot}`);
+              } else if (link[5] === 'STRING') {
                 apiNode.inputs['text'] = [String(sourceNodeId), sourceSlot];
-                console.log(`Special mapping for CLIPTextEncode node ${node.id}: text <- node ${sourceNodeId} slot ${sourceSlot}`);
+                console.log(`  CLIPTextEncode: routed STRING type to text input from node ${sourceNodeId} slot ${sourceSlot}`);
               } else {
+                // Fallback to slot-based mapping
                 apiNode.inputs[inputName] = [String(sourceNodeId), sourceSlot];
-                console.log(`Mapped connection for ${node.type} node ${node.id}: ${inputName} <- node ${sourceNodeId} slot ${sourceSlot}`);
+                console.log(`  CLIPTextEncode: fallback mapping ${inputName} <- node ${sourceNodeId} slot ${sourceSlot}`);
               }
             } else {
               apiNode.inputs[inputName] = [String(sourceNodeId), sourceSlot];
-              console.log(`Mapped connection for ${node.type} node ${node.id}: ${inputName} <- node ${sourceNodeId} slot ${sourceSlot}`);
+              console.log(`  Mapped connection: ${inputName} <- node ${sourceNodeId} slot ${sourceSlot}`);
             }
           } else if (inputName === null) {
             // Explicitly ignored slot (widget input, not connection)
             console.log(`Ignoring connection for ${node.type} node ${node.id} slot ${targetSlot} (widget input)`);
           } else {
-            // Fallback: use generic input names for unknown mappings
-            console.warn(`Unknown connection mapping for ${node.type} slot ${targetSlot}, using generic name`);
-            apiNode.inputs[`input_${targetSlot}`] = [String(sourceNodeId), sourceSlot];
+            // Fallback: try to determine input name from ComfyUI convention or use generic name
+            console.warn(`Unknown connection mapping for ${node.type} slot ${targetSlot}, attempting fallback`);
+
+            // Try to get input name from the original workflow analysis
+            const fallbackInputName = getFallbackInputName(node.type, targetSlot, link[5]);
+            if (fallbackInputName) {
+              apiNode.inputs[fallbackInputName] = [String(sourceNodeId), sourceSlot];
+              console.log(`  Fallback mapping: ${fallbackInputName} <- node ${sourceNodeId} slot ${sourceSlot}`);
+            } else {
+              apiNode.inputs[`input_${targetSlot}`] = [String(sourceNodeId), sourceSlot];
+              console.log(`  Generic mapping: input_${targetSlot} <- node ${sourceNodeId} slot ${sourceSlot}`);
+            }
           }
         }
       }
     }
-    
+
     // Handle special cases for nodes that need connections but might not have widget mappings
     if (node.type === 'SaveImage' && !apiNode.inputs.images) {
       // SaveImage requires 'images' connection - check if it should come from a link
       console.warn(`SaveImage node ${node.id} missing required 'images' input`);
     }
-    
+
     if (node.type === 'PreviewImage' && !apiNode.inputs.images) {
       // PreviewImage requires 'images' connection
       console.warn(`PreviewImage node ${node.id} missing required 'images' input`);
@@ -146,16 +224,18 @@ function convertGUIToAPI(guiWorkflow) {
     apiWorkflow[String(node.id)] = apiNode;
   }
 
-  console.log('Converted GUI workflow to API format:', Object.keys(apiWorkflow).length, 'nodes');
-  
-  // Debug: Log key nodes to see the conversion
+  console.log(`Converted GUI workflow to API format: ${Object.keys(apiWorkflow).length} nodes`);
+
+  // Summary of conversion results
+  const nodeTypes = {};
+  const totalConnections = {};
   for (const [nodeId, nodeData] of Object.entries(apiWorkflow)) {
-    if (nodeData.class_type === 'SaveImage' || nodeData.class_type === 'PreviewImage' || 
-        nodeData.class_type === 'CLIPTextEncode' || nodeData.class_type === 'KSampler') {
-      console.log(`Converted ${nodeData.class_type} node ${nodeId}:`, JSON.stringify(nodeData, null, 2));
-    }
+    nodeTypes[nodeData.class_type] = (nodeTypes[nodeData.class_type] || 0) + 1;
+    totalConnections[nodeId] = Object.keys(nodeData.inputs).length;
   }
-  
+  console.log('Node types converted:', nodeTypes);
+  console.log('Connections per node:', totalConnections);
+
   return apiWorkflow;
 }
 
@@ -220,7 +300,7 @@ function modifyControlAfterGenerate(workflow, controlMode = 'increment') {
 
     for (const key in obj) {
       const currentPath = path ? `${path}.${key}` : key;
-      
+
       if (key === 'control_after_generate') {
         const oldControl = obj[key];
         obj[key] = controlMode;
@@ -236,7 +316,7 @@ function modifyControlAfterGenerate(workflow, controlMode = 'increment') {
 
   modifyControls(workflow);
   console.log(`Total control_after_generate values modified: ${controlCount}`);
-  
+
   if (controlCount === 0) {
     console.warn('No control_after_generate fields found in workflow');
   }
@@ -269,7 +349,7 @@ router.post('/api/queue-workflow-with-edits', async (req, res) => {
     const firstKey = Object.keys(workflowData)[0];
     const firstValue = workflowData[firstKey];
     console.log('First key:', firstKey, 'First value type:', typeof firstValue);
-    
+
     // Check workflow format and convert if needed
     if (firstValue && typeof firstValue === 'object' && firstValue.class_type) {
       console.log('Detected API format workflow - ready for queuing');
@@ -372,7 +452,7 @@ router.post('/api/queue-workflow', async (req, res) => {
     const firstKey = Object.keys(workflowData)[0];
     const firstValue = workflowData[firstKey];
     console.log('First key:', firstKey, 'First value type:', typeof firstValue);
-    
+
     // Check workflow format and convert if needed
     if (firstValue && typeof firstValue === 'object' && firstValue.class_type) {
       console.log('Detected API format workflow - ready for queuing');
@@ -445,22 +525,22 @@ router.get('/api/comfyui-queue', async (req, res) => {
   try {
     const { comfyUrl } = req.query;
     const targetUrl = comfyUrl || getDefaultComfyUIUrl(req);
-    
+
     console.log('Fetching ComfyUI queue from:', `${targetUrl}/queue`);
-    
+
     const fetch = require('node-fetch');
     const response = await fetch(`${targetUrl}/queue`);
-    
+
     if (!response.ok) {
       const errorText = await response.text();
       throw new Error(`ComfyUI API error: ${response.status} - ${errorText}`);
     }
-    
+
     const queueData = await response.json();
     console.log('Queue data fetched successfully');
-    
+
     res.json(queueData);
-    
+
   } catch (error) {
     console.error('Error fetching ComfyUI queue:', error);
     res.status(500).json({ error: error.message });
@@ -472,41 +552,41 @@ router.post('/api/comfyui-queue/cancel', async (req, res) => {
   try {
     const { comfyUrl, cancel } = req.body;
     const targetUrl = comfyUrl || getDefaultComfyUIUrl(req);
-    
+
     console.log('Cancelling ComfyUI queue items:', cancel);
     console.log('Target URL for cancel:', `${targetUrl}/prompt`);
-    
+
     const fetch = require('node-fetch');
-    
+
     // ComfyUI currently doesn't support individual item deletion by ID
     // The 'clear' parameter clears ALL pending items regardless of the ID provided
     console.log('Note: ComfyUI will clear ALL pending items, not just the specified ID');
-    
+
     const requestBody = { clear: cancel };
     console.log('Using clear method (clears all pending items):', JSON.stringify(requestBody));
-    
+
     try {
       response = await fetch(`${targetUrl}/queue`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(requestBody)
       });
-      
+
       console.log('Clear response status:', response.status);
     } catch (error) {
       console.error('Error clearing queue:', error);
       throw error;
     }
-    
+
     if (!response.ok) {
       const errorText = await response.text();
       throw new Error(`ComfyUI API error: ${response.status} - ${errorText}`);
     }
-    
+
     // ComfyUI cancel endpoint may return empty response or non-JSON
     let result;
     const responseText = await response.text();
-    
+
     if (responseText.trim() === '') {
       // Empty response is considered success for ComfyUI cancel
       result = { success: true, message: 'Queue items cancelled' };
@@ -521,9 +601,9 @@ router.post('/api/comfyui-queue/cancel', async (req, res) => {
         console.log('Queue items cancelled successfully (non-JSON response):', responseText);
       }
     }
-    
+
     res.json(result);
-    
+
   } catch (error) {
     console.error('Error cancelling queue items:', error);
     res.status(500).json({ error: error.message });
