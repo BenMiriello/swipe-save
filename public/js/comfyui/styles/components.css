@@ -203,7 +203,6 @@
 }
 
 .comfyui-field-textarea.comfyui-field-edited {
-  background-color: var(--comfy-bg-highlight);
   border-color: var(--comfy-primary);
 }
 
