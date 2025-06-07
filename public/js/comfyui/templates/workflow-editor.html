@@ -32,8 +32,8 @@
       
       <button type="button" 
               class="comfy-btn comfy-btn-small" 
-              @click="filteredNodes.forEach(node => toggleNode(node.id))">
-        Collapse All
+              @click="toggleAllNodes()"
+              x-text="getCollapseButtonText()">
       </button>
     </div>
 

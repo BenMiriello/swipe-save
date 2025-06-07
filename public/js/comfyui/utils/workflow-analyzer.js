@@ -82,13 +82,8 @@ window.comfyUIServices.workflowAnalyzer = {
   extractGUINodeInputs(node) {
     const inputs = {};
     
-    // Extract widget values as inputs
-    if (node.widgets_values && Array.isArray(node.widgets_values)) {
-      // This is a simplified mapping - would need more sophisticated logic for complex nodes
-      node.widgets_values.forEach((value, index) => {
-        inputs[`widget_${index}`] = value;
-      });
-    }
+    // Extract widget values as inputs - but we'll handle this in the text field identification
+    // Don't create generic widget mappings here as they lose context
     
     return inputs;
   },
@@ -129,30 +124,42 @@ window.comfyUIServices.workflowAnalyzer = {
     const textFields = [];
     const nodes = this.extractNodes(workflow);
 
-    console.log('Identifying text fields in', nodes.length, 'nodes');
+    console.log(`Analyzing workflow: ${nodes.length} nodes found`);
 
     for (const node of nodes) {
-      console.log(`Checking node ${node.id} (${node.type})`);
       
-      // Check widget values for GUI format
-      if (node.widgets && Array.isArray(node.widgets)) {
-        node.widgets.forEach((value, index) => {
-          // For CLIPTextEncode nodes, the first widget is almost always the text prompt
-          const isKnownTextWidget = (node.type === 'CLIPTextEncode' && index === 0);
+      // Check widget values for GUI format (from original workflow nodes)
+      if (workflow.nodes && Array.isArray(workflow.nodes)) {
+        const originalNode = workflow.nodes.find(n => String(n.id) === String(node.id));
+        if (originalNode && originalNode.widgets_values && Array.isArray(originalNode.widgets_values)) {
           
-          if (isKnownTextWidget || this.isTextFieldCandidate(node, `widget_${index}`, value)) {
-            // Use a more descriptive field name for known text widgets
-            const fieldName = isKnownTextWidget ? 'text' : `widget_${index}`;
+          // Get widget names from the node's widgets array if available
+          const widgetNames = originalNode.widgets ? originalNode.widgets.map(w => w.name) : [];
+          
+          // Remove debug logging since we found the issue
+          
+          originalNode.widgets_values.forEach((value, index) => {
+            // Get the actual widget name if available, otherwise use generic name
+            const widgetName = widgetNames[index] || `widget_${index}`;
             
-            textFields.push({
-              nodeId: node.id,
-              nodeType: node.type,
-              fieldName: fieldName,
-              currentValue: value,
-              isPromptLike: isKnownTextWidget || this.isPromptLikeField(node, fieldName, value)
-            });
-          }
-        });
+            // Identify known text widgets by node type and widget name
+            const isKnownTextWidget = this.isKnownTextWidget(node.type, widgetName, index);
+            
+            // Always include known text widgets, even if empty
+            if (isKnownTextWidget || this.isTextFieldCandidate(node, widgetName, value)) {
+              
+              textFields.push({
+                nodeId: node.id,
+                nodeType: node.type,
+                fieldName: widgetName,
+                currentValue: value || '', // Ensure we have a string value
+                isPromptLike: isKnownTextWidget || this.isPromptLikeField(node, widgetName, value)
+              });
+              
+              // Text field detected and added
+            }
+          });
+        }
       }
       
       // Check inputs for both formats
@@ -171,7 +178,7 @@ window.comfyUIServices.workflowAnalyzer = {
       }
     }
 
-    console.log('Found', textFields.length, 'text fields');
+    console.log(`Workflow analysis complete: ${textFields.length} text fields detected`);
     return textFields;
   },
 
@@ -183,8 +190,16 @@ window.comfyUIServices.workflowAnalyzer = {
    * @returns {boolean} True if this could be a text field
    */
   isTextFieldCandidate(node, inputName, inputValue) {
-    // Skip non-string values and connections
-    if (typeof inputValue !== 'string' || Array.isArray(inputValue)) {
+    // Handle null/undefined values
+    if (inputValue === null || inputValue === undefined) {
+      return false;
+    }
+
+    // Convert to string if needed
+    const stringValue = String(inputValue);
+    
+    // Skip arrays (connections)
+    if (Array.isArray(inputValue)) {
       return false;
     }
 
@@ -192,13 +207,18 @@ window.comfyUIServices.workflowAnalyzer = {
     const isKnownPromptNode = node.type === 'CLIPTextEncode' || 
                              (node.class_type && node.class_type === 'CLIPTextEncode');
     
-    // Skip very short values that are likely technical parameters (but allow empty strings for prompts)
-    if (inputValue.length < 3 && !(isKnownPromptNode && inputValue.length === 0)) {
+    // For prompt nodes, always accept string values (including empty)
+    if (isKnownPromptNode && typeof inputValue === 'string') {
+      return true;
+    }
+    
+    // For other nodes, skip very short values that are likely technical parameters
+    if (stringValue.length < 3) {
       return false;
     }
 
-    // Skip obvious configuration fields (but not if it's a known prompt node)
-    if (!isKnownPromptNode && this.isConfigurationField(inputName, inputValue)) {
+    // Skip obvious configuration fields
+    if (this.isConfigurationField(inputName, stringValue)) {
       return false;
     }
 
@@ -257,6 +277,38 @@ window.comfyUIServices.workflowAnalyzer = {
     }
 
     return false;
+  },
+
+  /**
+   * Check if a widget is a known text widget based on node type and widget name
+   * @param {string} nodeType - Node type
+   * @param {string} widgetName - Widget name
+   * @param {number} index - Widget index
+   * @returns {boolean} True if this is a known text widget
+   */
+  isKnownTextWidget(nodeType, widgetName, index) {
+    // CLIPTextEncode: first widget is text
+    if (nodeType === 'CLIPTextEncode' && index === 0) {
+      return true;
+    }
+    
+    // String (Multiline) nodes: text widget
+    if (nodeType === 'String (Multiline)' || nodeType === 'JWStringMultiline') {
+      return true;
+    }
+    
+    // ImpactWildcardEncode: first two widgets (0=wildcard_text, 1=populated_text)
+    if (nodeType === 'ImpactWildcardEncode') {
+      return index === 0 || index === 1;
+    }
+    
+    // Generic text field names
+    const textWidgetNames = [
+      'text', 'prompt', 'positive', 'negative', 'description', 'string',
+      'wildcard_text', 'populated_text', 'input_text', 'content'
+    ];
+    
+    return textWidgetNames.includes(widgetName.toLowerCase());
   },
 
   /**

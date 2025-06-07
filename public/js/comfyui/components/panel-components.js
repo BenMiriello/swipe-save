@@ -8,24 +8,16 @@ window.comfyUIComponents = window.comfyUIComponents || {};
 window.comfyUIComponents.panelComponents = {
   // Register workflow editor component  
   workflowEditor() {
-    console.log('Creating workflowEditor component instance...');
     return {
       // Initialize computed values
       init() {
-        console.log('=== WORKFLOW EDITOR COMPONENT INIT ===');
-        console.log('Store available:', !!Alpine.store('workflowEditor'));
-        
-        this.$watch('$store.workflowEditor.updateCounter', (newVal, oldVal) => {
-          console.log('Update counter changed:', oldVal, '->', newVal);
+        this.$watch('$store.workflowEditor.updateCounter', () => {
           this.updateFilteredNodes();
         });
-        this.$watch('$store.workflowEditor.showPromptsOnly', (newVal, oldVal) => {
-          console.log('Show prompts only changed:', oldVal, '->', newVal);
+        this.$watch('$store.workflowEditor.showPromptsOnly', () => {
           this.updateFilteredNodes();
         });
         this.updateFilteredNodes();
-        
-        console.log('Initial filteredNodes:', this.filteredNodes);
       },
       
       // Reactive data
@@ -33,16 +25,10 @@ window.comfyUIComponents.panelComponents = {
       
       // Update filtered nodes
       updateFilteredNodes() {
-        console.log('=== UPDATE FILTERED NODES ===');
         const store = Alpine.store('workflowEditor');
-        console.log('Store:', store);
-        console.log('getFilteredNodes method:', typeof store.getFilteredNodes);
-        
         if (store && typeof store.getFilteredNodes === 'function') {
           this.filteredNodes = store.getFilteredNodes();
-          console.log('Updated filteredNodes:', this.filteredNodes);
         } else {
-          console.error('Store or getFilteredNodes method not available');
           this.filteredNodes = [];
         }
       },
@@ -62,6 +48,8 @@ window.comfyUIComponents.panelComponents = {
       },
       toggleNode(nodeId) { Alpine.store('workflowEditor').toggleNode(nodeId); },
       isNodeCollapsed(nodeId) { return Alpine.store('workflowEditor').isNodeCollapsed(nodeId); },
+      toggleAllNodes() { Alpine.store('workflowEditor').toggleAllNodes(); },
+      getCollapseButtonText() { return Alpine.store('workflowEditor').getCollapseButtonText(); },
       hasFieldEdit(nodeId, fieldName) { return Alpine.store('workflowEditor').hasFieldEdit(nodeId, fieldName); },
       getFieldValue(nodeId, fieldName) { return Alpine.store('workflowEditor').getFieldValue(nodeId, fieldName); },
       updateFieldEdit(nodeId, fieldName, value) { Alpine.store('workflowEditor').updateFieldEdit(nodeId, fieldName, value); },
@@ -115,63 +103,27 @@ window.comfyUIComponents.panelComponents = {
         Alpine.store('comfyWorkflow').updateSettings({ quantity: value });
       },
       
-      toggleNewSeed() {
-        const current = Alpine.store('comfyWorkflow').settings.modifySeeds;
-        Alpine.store('comfyWorkflow').updateSettings({ modifySeeds: !current });
-      },
-      
       updateControlAfterGenerate(value) {
         Alpine.store('comfyWorkflow').updateSettings({ controlAfterGenerate: value });
       },
       
-      toggleSettingsSection() {
-        this.isSettingsExpanded = !this.isSettingsExpanded;
-      },
-      
       getSettingsSummary() {
         const settings = Alpine.store('comfyWorkflow').settings;
-        const quantity = settings.quantity;
-        const seedText = settings.modifySeeds ? 'new seed' : 'same seed';
-        const control = settings.controlAfterGenerate;
-        return `${quantity}, ${seedText}, ${control}`;
-      }
-    };
-  },
-
-  // Register workflow editor component  
-  workflowEditor() {
-    return {
-      init() {
-        // Watch for modal open/close to load workflow
-        this.$watch('$store.comfyWorkflow.isModalOpen', (isOpen) => {
-          if (isOpen) {
-            const file = this.$store.comfyWorkflow.currentFile;
-            if (file) {
-              this.$store.workflowEditor.loadWorkflow(file);
-            }
-          }
-        });
-      },
-
-      // Delegate properties to store
-      get showPromptsOnly() { return this.$store.workflowEditor.showPromptsOnly; },
-      get isEditorExpanded() { return this.$store.workflowEditor.isEditorExpanded; },
-      get filteredNodes() { return this.$store.workflowEditor.filteredNodes; },
-      get hasUnsavedChanges() { return this.$store.workflowEditor.hasUnsavedChanges; },
-
-      // Delegate methods to store
-      togglePromptsOnly() { this.$store.workflowEditor.togglePromptsOnly(); },
-      toggleEditorSection() { this.$store.workflowEditor.toggleEditorSection(); },
-      toggleNode(nodeId) { this.$store.workflowEditor.toggleNode(nodeId); },
-      isNodeCollapsed(nodeId) { return this.$store.workflowEditor.isNodeCollapsed(nodeId); },
-      updateFieldEdit(nodeId, fieldName, value) { this.$store.workflowEditor.updateFieldEdit(nodeId, fieldName, value); },
-      getFieldValue(nodeId, fieldName) { return this.$store.workflowEditor.getFieldValue(nodeId, fieldName); },
-      hasFieldEdit(nodeId, fieldName) { return this.$store.workflowEditor.hasFieldEdit(nodeId, fieldName); },
-
-      // Utility methods
-      truncateText(text, maxLength = 50) {
-        if (!text || text.length <= maxLength) return text;
-        return text.substring(0, maxLength) + '...';
+        const parts = [];
+        
+        if (settings.quantity > 1) {
+          parts.push(`${settings.quantity}x`);
+        }
+        
+        if (settings.modifySeeds) {
+          parts.push('new seed');
+        }
+        
+        if (settings.controlAfterGenerate !== 'increment') {
+          parts.push(settings.controlAfterGenerate);
+        }
+        
+        return parts.length > 0 ? parts.join(', ') : 'Default settings';
       }
     };
   }

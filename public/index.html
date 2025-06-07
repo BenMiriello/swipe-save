@@ -307,13 +307,13 @@
 
                 <!-- Node fields -->
                 <div x-show="!isNodeCollapsed(node.id)" class="comfyui-node-fields">
-                  <template x-for="field in node.fields" :key="`${node.id}-${field.fieldName}`">
-                    <div class="comfyui-field">
+                  <template x-for="(field, index) in (node.fields || [])" :key="`${node.id}-${field.fieldName || index}`">
+                    <div class="comfyui-field" x-show="field && field.fieldName">
                       
                       <!-- Field header -->
                       <div class="comfyui-field-header">
                         <label class="comfyui-field-label">
-                          <span x-text="field.fieldName"></span>
+                          <span x-text="field.fieldName || 'Unknown Field'"></span>
                           <span x-show="field.isPromptLike" class="comfyui-field-badge">prompt</span>
                           <span x-show="hasFieldEdit(node.id, field.fieldName)" class="comfyui-field-badge comfyui-field-edited">edited</span>
                         </label>
@@ -324,13 +324,13 @@
                         
                         <!-- Original value preview (when not edited) -->
                         <div x-show="!hasFieldEdit(node.id, field.fieldName)" class="comfyui-field-preview">
-                          <span class="comfyui-field-original" x-text="truncateText(field.currentValue, 100)"></span>
+                          <span class="comfyui-field-original" x-text="truncateText(field.currentValue || '', 100)"></span>
                         </div>
 
                         <!-- Text area for editing -->
                         <textarea 
                           class="comfyui-field-textarea"
-                          :placeholder="field.currentValue"
+                          :placeholder="field.currentValue || 'Enter text...'"
                           x-model="getFieldValue(node.id, field.fieldName)"
                           @input="updateFieldEdit(node.id, field.fieldName, $event.target.value)"
                           rows="3"
@@ -341,7 +341,7 @@
                         <div x-show="hasFieldEdit(node.id, field.fieldName)" class="comfyui-field-actions">
                           <button type="button" 
                                   class="comfy-btn comfy-btn-secondary comfy-btn-small"
-                                  @click="updateFieldEdit(node.id, field.fieldName, field.currentValue)">
+                                  @click="updateFieldEdit(node.id, field.fieldName, field.currentValue || '')">
                             Reset
                           </button>
                         </div>

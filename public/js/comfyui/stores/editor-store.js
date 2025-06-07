@@ -17,7 +17,7 @@ window.comfyUIStores.editorStore = {
   
   // UI state
   showPromptsOnly: JSON.parse(localStorage.getItem('workflowEditorShowPromptsOnly') || 'true'),
-  collapsedNodes: new Set(),
+  collapsedNodes: new Map(), // Changed from Set to Map to store explicit states
   collapsedFields: new Set(),
   isEditorExpanded: JSON.parse(localStorage.getItem('workflowEditorExpanded') || 'false'),
   updateCounter: 0, // Used to trigger component reactivity
@@ -60,24 +60,16 @@ window.comfyUIStores.editorStore = {
       this.currentWorkflow = workflowData;
       
       // Analyze workflow for text fields
-      console.log('About to analyze workflow...');
-      console.log('workflowAnalyzer available:', !!window.comfyUIServices?.workflowAnalyzer);
-      console.log('Workflow data keys:', Object.keys(workflowData).slice(0, 5));
+      console.log('Starting workflow analysis...');
       
       this.analysisResult = window.comfyUIServices.workflowAnalyzer.analyzeWorkflow(workflowData);
-      console.log('Analysis result:', this.analysisResult);
       
       // Load saved edits for this file
       this.loadSavedEdits(file.name);
       
-      console.log('Workflow loaded:', {
-        nodes: this.analysisResult.nodes.length,
-        textFields: this.analysisResult.textFields.length,
-        promptFields: this.analysisResult.textFields.filter(f => f.isPromptLike).length
-      });
+      console.log(`Workflow loaded: ${this.analysisResult.nodes.length} nodes, ${this.analysisResult.textFields.length} text fields, ${this.analysisResult.textFields.filter(f => f.isPromptLike).length} prompt fields`);
       
-      // Manually trigger component update
-      console.log('Triggering component update...');
+      // Trigger component update
       this.triggerComponentUpdate();
       
     } catch (error) {
@@ -183,15 +175,37 @@ window.comfyUIStores.editorStore = {
   },
   
   toggleNode(nodeId) {
-    if (this.collapsedNodes.has(nodeId)) {
-      this.collapsedNodes.delete(nodeId);
-    } else {
-      this.collapsedNodes.add(nodeId);
+    const currentState = this.isNodeCollapsed(nodeId);
+    this.collapsedNodes.set(nodeId, !currentState);
+  },
+  
+  // Toggle all nodes to expanded or collapsed
+  toggleAllNodes() {
+    const filteredNodes = this.getFilteredNodes();
+    if (filteredNodes.length === 0) return;
+    
+    // Check if all nodes are currently collapsed
+    const allCollapsed = filteredNodes.every(node => this.isNodeCollapsed(node.id));
+    
+    // If all are collapsed, expand all; otherwise collapse all
+    const newState = !allCollapsed;
+    for (const node of filteredNodes) {
+      this.collapsedNodes.set(node.id, newState);
     }
   },
   
+  // Get button text based on current state
+  getCollapseButtonText() {
+    const filteredNodes = this.getFilteredNodes();
+    if (filteredNodes.length === 0) return 'Collapse All';
+    
+    const allCollapsed = filteredNodes.every(node => this.isNodeCollapsed(node.id));
+    return allCollapsed ? 'Expand All' : 'Collapse All';
+  },
+  
   isNodeCollapsed(nodeId) {
-    return this.collapsedNodes.has(nodeId);
+    // Default to collapsed (true) for new nodes
+    return this.collapsedNodes.has(nodeId) ? this.collapsedNodes.get(nodeId) : true;
   },
   
   // Persistence
@@ -249,6 +263,16 @@ window.comfyUIStores.editorStore = {
   // Trigger component update by incrementing counter
   triggerComponentUpdate() {
     this.updateCounter++;
-    console.log('Update counter incremented to:', this.updateCounter);
+  },
+  
+  // Helper method to truncate text for display
+  truncateText(text, maxLength) {
+    if (!text || typeof text !== 'string') {
+      return '';
+    }
+    if (text.length <= maxLength) {
+      return text;
+    }
+    return text.substring(0, maxLength) + '...';
   }
 };

@@ -678,8 +678,7 @@
 
 /* Node List */
 .comfyui-node-list {
-  max-height: 400px;
-  overflow-y: auto;
+  /* Remove height constraints to allow full expansion */
 }
 
 .comfyui-node-item {
