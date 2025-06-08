@@ -57,8 +57,7 @@ function convertGUIToAPI(guiWorkflow) {
     throw new Error('Invalid GUI workflow format');
   }
 
-  console.log('=== GUI TO API CONVERSION DEBUG ===');
-  console.log(`Converting workflow with ${guiWorkflow.nodes.length} nodes and ${guiWorkflow.links ? guiWorkflow.links.length : 0} links`);
+  console.log(`Converting GUI workflow: ${guiWorkflow.nodes.length} nodes, ${guiWorkflow.links ? guiWorkflow.links.length : 0} links`);
 
   const apiWorkflow = {};
 
@@ -145,18 +144,14 @@ function convertGUIToAPI(guiWorkflow) {
         const inputName = widgetNames[index];
         if (inputName && inputName !== null) {
           apiNode.inputs[inputName] = value;
-          console.log(`  Widget: ${inputName} = ${value}`);
-        } else if (inputName === null) {
-          console.log(`  Skipping widget ${index} (control field)`);
-        } else {
-          console.warn(`  Missing widget mapping for ${node.type} widget ${index} (value: ${value})`);
+        } else if (inputName !== null) {
+          console.warn(`Missing widget mapping for ${node.type} widget ${index} (value: ${value})`);
         }
       });
     }
 
     // Add node connections from links
     if (guiWorkflow.links && Array.isArray(guiWorkflow.links)) {
-      console.log(`Processing connections for ${node.type} node ${node.id}`);
       for (const link of guiWorkflow.links) {
         if (link && Array.isArray(link) && link.length >= 6 && link[3] === node.id) {
           // link format: [link_id, source_node_id, source_slot, target_node_id, target_slot, data_type]
@@ -164,7 +159,6 @@ function convertGUIToAPI(guiWorkflow) {
           const sourceSlot = link[2];
           const targetSlot = link[4];
 
-          console.log(`  Link found: node ${sourceNodeId} slot ${sourceSlot} -> node ${node.id} slot ${targetSlot} (${link[5] || 'unknown type'})`);
 
           // Get input name for target slot
           const connectionNames = connectionMappings[node.type] || [];
@@ -176,22 +170,17 @@ function convertGUIToAPI(guiWorkflow) {
               // Detect the actual data type and route accordingly
               if (link[5] === 'CLIP') {
                 apiNode.inputs['clip'] = [String(sourceNodeId), sourceSlot];
-                console.log(`  CLIPTextEncode: routed CLIP type to clip input from node ${sourceNodeId} slot ${sourceSlot}`);
               } else if (link[5] === 'STRING') {
                 apiNode.inputs['text'] = [String(sourceNodeId), sourceSlot];
-                console.log(`  CLIPTextEncode: routed STRING type to text input from node ${sourceNodeId} slot ${sourceSlot}`);
               } else {
                 // Fallback to slot-based mapping
                 apiNode.inputs[inputName] = [String(sourceNodeId), sourceSlot];
-                console.log(`  CLIPTextEncode: fallback mapping ${inputName} <- node ${sourceNodeId} slot ${sourceSlot}`);
               }
             } else {
               apiNode.inputs[inputName] = [String(sourceNodeId), sourceSlot];
-              console.log(`  Mapped connection: ${inputName} <- node ${sourceNodeId} slot ${sourceSlot}`);
             }
           } else if (inputName === null) {
             // Explicitly ignored slot (widget input, not connection)
-            console.log(`Ignoring connection for ${node.type} node ${node.id} slot ${targetSlot} (widget input)`);
           } else {
             // Fallback: try to determine input name from ComfyUI convention or use generic name
             console.warn(`Unknown connection mapping for ${node.type} slot ${targetSlot}, attempting fallback`);
@@ -200,10 +189,9 @@ function convertGUIToAPI(guiWorkflow) {
             const fallbackInputName = getFallbackInputName(node.type, targetSlot, link[5]);
             if (fallbackInputName) {
               apiNode.inputs[fallbackInputName] = [String(sourceNodeId), sourceSlot];
-              console.log(`  Fallback mapping: ${fallbackInputName} <- node ${sourceNodeId} slot ${sourceSlot}`);
             } else {
               apiNode.inputs[`input_${targetSlot}`] = [String(sourceNodeId), sourceSlot];
-              console.log(`  Generic mapping: input_${targetSlot} <- node ${sourceNodeId} slot ${sourceSlot}`);
+              console.warn(`Using generic mapping input_${targetSlot} for ${node.type} slot ${targetSlot}`);
             }
           }
         }
@@ -224,17 +212,8 @@ function convertGUIToAPI(guiWorkflow) {
     apiWorkflow[String(node.id)] = apiNode;
   }
 
-  console.log(`Converted GUI workflow to API format: ${Object.keys(apiWorkflow).length} nodes`);
-
-  // Summary of conversion results
-  const nodeTypes = {};
-  const totalConnections = {};
-  for (const [nodeId, nodeData] of Object.entries(apiWorkflow)) {
-    nodeTypes[nodeData.class_type] = (nodeTypes[nodeData.class_type] || 0) + 1;
-    totalConnections[nodeId] = Object.keys(nodeData.inputs).length;
-  }
-  console.log('Node types converted:', nodeTypes);
-  console.log('Connections per node:', totalConnections);
+  const connectionCount = Object.values(apiWorkflow).reduce((total, node) => total + Object.keys(node.inputs).length, 0);
+  console.log(`Converted ${Object.keys(apiWorkflow).length} nodes with ${connectionCount} total connections`);
 
   return apiWorkflow;
 }
@@ -342,28 +321,20 @@ router.post('/api/queue-workflow-with-edits', async (req, res) => {
     // Use the provided workflow directly (preserves formatting and text edits)
     let workflowData = workflow;
 
-    console.log('Using pre-edited workflow data');
-    console.log('Workflow type:', typeof workflowData);
-    console.log('Workflow keys:', Object.keys(workflowData).slice(0, 10));
-
-    const firstKey = Object.keys(workflowData)[0];
-    const firstValue = workflowData[firstKey];
-    console.log('First key:', firstKey, 'First value type:', typeof firstValue);
-
     // Check workflow format and convert if needed
+    const firstValue = workflowData[Object.keys(workflowData)[0]];
     if (firstValue && typeof firstValue === 'object' && firstValue.class_type) {
-      console.log('Detected API format workflow - ready for queuing');
+      console.log('Queuing API format workflow');
     } else if (workflowData.nodes && Array.isArray(workflowData.nodes)) {
-      console.log('Detected GUI format workflow - converting to API format');
+      console.log('Converting GUI format workflow to API format');
       try {
         workflowData = convertGUIToAPI(workflowData);
-        console.log('Successfully converted GUI to API format');
       } catch (error) {
-        console.error('Error converting GUI to API format:', error);
+        console.error('GUI to API conversion failed:', error);
         return res.status(400).json({ error: 'Failed to convert workflow format: ' + error.message });
       }
     } else {
-      console.log('Unknown workflow format - attempting to use as-is');
+      console.warn('Unknown workflow format, attempting to queue as-is');
     }
 
     if (modifySeeds) {
@@ -446,27 +417,20 @@ router.post('/api/queue-workflow', async (req, res) => {
       return res.status(404).json({ error: 'No workflow found in image metadata' });
     }
 
-    console.log('Workflow type:', typeof workflowData);
-    console.log('Workflow keys:', Object.keys(workflowData).slice(0, 10));
-
-    const firstKey = Object.keys(workflowData)[0];
-    const firstValue = workflowData[firstKey];
-    console.log('First key:', firstKey, 'First value type:', typeof firstValue);
-
     // Check workflow format and convert if needed
+    const firstValue = workflowData[Object.keys(workflowData)[0]];
     if (firstValue && typeof firstValue === 'object' && firstValue.class_type) {
-      console.log('Detected API format workflow - ready for queuing');
+      console.log('Queuing API format workflow from PNG metadata');
     } else if (workflowData.nodes && Array.isArray(workflowData.nodes)) {
-      console.log('Detected GUI format workflow - converting to API format');
+      console.log('Converting GUI format workflow from PNG metadata');
       try {
         workflowData = convertGUIToAPI(workflowData);
-        console.log('Successfully converted GUI to API format');
       } catch (error) {
-        console.error('Error converting GUI to API format:', error);
+        console.error('GUI to API conversion failed:', error);
         return res.status(400).json({ error: 'Failed to convert workflow format: ' + error.message });
       }
     } else {
-      console.log('Unknown workflow format - attempting to use as-is');
+      console.warn('Unknown workflow format in PNG metadata');
     }
 
     if (modifySeeds) {
@@ -483,12 +447,9 @@ router.post('/api/queue-workflow', async (req, res) => {
 
     const targetUrl = comfyUrl || getDefaultComfyUIUrl(req);
 
-    console.log('Queue Debug - Received comfyUrl:', comfyUrl);
-    console.log('Queue Debug - Using targetUrl:', targetUrl);
-    console.log('Queue Debug - Request hostname:', req.get('host'));
+    console.log('Queuing workflow to:', targetUrl);
 
     const fetch = require('node-fetch');
-    console.log('Queue Debug - Attempting to connect to:', `${targetUrl}/prompt`);
     const response = await fetch(`${targetUrl}/prompt`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
