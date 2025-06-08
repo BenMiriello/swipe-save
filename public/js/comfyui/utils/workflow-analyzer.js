@@ -44,7 +44,6 @@ window.comfyUIServices.workflowAnalyzer = {
     // Check if this is GUI format (has nodes array) or API format (direct node mapping)
     if (workflow.nodes && Array.isArray(workflow.nodes)) {
       // GUI format - nodes are in an array
-      console.log('Processing GUI format workflow');
       for (const node of workflow.nodes) {
         if (node && node.type) {
           nodes.push({
@@ -58,7 +57,6 @@ window.comfyUIServices.workflowAnalyzer = {
       }
     } else {
       // API format - each key is a node ID
-      console.log('Processing API format workflow');
       for (const [nodeId, node] of Object.entries(workflow)) {
         if (node && typeof node === 'object' && node.class_type) {
           nodes.push({
@@ -124,8 +122,6 @@ window.comfyUIServices.workflowAnalyzer = {
     const textFields = [];
     const nodes = this.extractNodes(workflow);
 
-    console.log(`Analyzing workflow: ${nodes.length} nodes found`);
-
     for (const node of nodes) {
       
       // Check widget values for GUI format (from original workflow nodes)
@@ -135,8 +131,6 @@ window.comfyUIServices.workflowAnalyzer = {
           
           // Get widget names from the node's widgets array if available
           const widgetNames = originalNode.widgets ? originalNode.widgets.map(w => w.name) : [];
-          
-          // Remove debug logging since we found the issue
           
           originalNode.widgets_values.forEach((value, index) => {
             // Get the actual widget name if available, otherwise use generic name
@@ -178,7 +172,6 @@ window.comfyUIServices.workflowAnalyzer = {
       }
     }
 
-    console.log(`Workflow analysis complete: ${textFields.length} text fields detected`);
     return textFields;
   },
 

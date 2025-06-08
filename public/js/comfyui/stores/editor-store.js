@@ -25,28 +25,16 @@ window.comfyUIStores.editorStore = {
   // Initialization
   init() {
     console.log('Workflow editor store initialized');
-    console.log('Initial state:', {
-      currentWorkflow: this.currentWorkflow,
-      analysisResult: this.analysisResult,
-      showPromptsOnly: this.showPromptsOnly,
-      isEditorExpanded: this.isEditorExpanded
-    });
   },
   
   // Load workflow for editing
   async loadWorkflow(file) {
-    console.log('=== WORKFLOW EDITOR: loadWorkflow called ===');
-    console.log('File:', file);
-    
     if (!file) {
-      console.log('No file provided, resetting');
       this.reset();
       return;
     }
     
     try {
-      console.log('Loading workflow for editing:', file.name);
-      
       // Fetch workflow data from server
       const response = await fetch(`/api/workflow/${encodeURIComponent(file.name)}`);
       if (!response.ok) {
@@ -60,14 +48,10 @@ window.comfyUIStores.editorStore = {
       this.currentWorkflow = workflowData;
       
       // Analyze workflow for text fields
-      console.log('Starting workflow analysis...');
-      
       this.analysisResult = window.comfyUIServices.workflowAnalyzer.analyzeWorkflow(workflowData);
       
       // Load saved edits for this file
       this.loadSavedEdits(file.name);
-      
-      console.log(`Workflow loaded: ${this.analysisResult.nodes.length} nodes, ${this.analysisResult.textFields.length} text fields, ${this.analysisResult.textFields.filter(f => f.isPromptLike).length} prompt fields`);
       
       // Trigger component update
       this.triggerComponentUpdate();
@@ -80,7 +64,6 @@ window.comfyUIStores.editorStore = {
   
   // Reset editor state
   reset() {
-    console.log('Resetting workflow editor state');
     this.currentWorkflow = null;
     this.originalWorkflow = null;
     this.analysisResult = null;

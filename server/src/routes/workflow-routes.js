@@ -57,7 +57,6 @@ function convertGUIToAPI(guiWorkflow) {
     throw new Error('Invalid GUI workflow format');
   }
 
-  console.log(`Converting GUI workflow: ${guiWorkflow.nodes.length} nodes, ${guiWorkflow.links ? guiWorkflow.links.length : 0} links`);
 
   const apiWorkflow = {};
 
@@ -158,8 +157,6 @@ function convertGUIToAPI(guiWorkflow) {
           const sourceNodeId = link[1];
           const sourceSlot = link[2];
           const targetSlot = link[4];
-
-
           // Get input name for target slot
           const connectionNames = connectionMappings[node.type] || [];
           const inputName = connectionNames[targetSlot];
@@ -183,15 +180,11 @@ function convertGUIToAPI(guiWorkflow) {
             // Explicitly ignored slot (widget input, not connection)
           } else {
             // Fallback: try to determine input name from ComfyUI convention or use generic name
-            console.warn(`Unknown connection mapping for ${node.type} slot ${targetSlot}, attempting fallback`);
-
-            // Try to get input name from the original workflow analysis
             const fallbackInputName = getFallbackInputName(node.type, targetSlot, link[5]);
             if (fallbackInputName) {
               apiNode.inputs[fallbackInputName] = [String(sourceNodeId), sourceSlot];
             } else {
               apiNode.inputs[`input_${targetSlot}`] = [String(sourceNodeId), sourceSlot];
-              console.warn(`Using generic mapping input_${targetSlot} for ${node.type} slot ${targetSlot}`);
             }
           }
         }
@@ -212,9 +205,6 @@ function convertGUIToAPI(guiWorkflow) {
     apiWorkflow[String(node.id)] = apiNode;
   }
 
-  const connectionCount = Object.values(apiWorkflow).reduce((total, node) => total + Object.keys(node.inputs).length, 0);
-  console.log(`Converted ${Object.keys(apiWorkflow).length} nodes with ${connectionCount} total connections`);
-
   return apiWorkflow;
 }
 
@@ -233,7 +223,6 @@ function getDefaultComfyUIUrl(req) {
 function modifyWorkflowSeeds(workflow) {
   if (!workflow || typeof workflow !== 'object') return workflow;
 
-  console.log('Modifying seeds in workflow...');
   let seedCount = 0;
 
   const generateRandomSeed = () => {
@@ -247,9 +236,7 @@ function modifyWorkflowSeeds(workflow) {
 
     for (const key in obj) {
       if (key === 'seed' && typeof obj[key] === 'number') {
-        const oldSeed = obj[key];
         obj[key] = generateRandomSeed();
-        console.log(`Modified seed: ${oldSeed} -> ${obj[key]}`);
         seedCount++;
       } else if (key === 'inputs' && typeof obj[key] === 'object') {
         modifySeeds(obj[key]);
@@ -260,7 +247,9 @@ function modifyWorkflowSeeds(workflow) {
   };
 
   modifySeeds(workflow);
-  console.log(`Total seeds modified: ${seedCount}`);
+  if (seedCount > 0) {
+    console.log(`Modified ${seedCount} seed values`);
+  }
 
   return workflow;
 }
@@ -271,7 +260,6 @@ function modifyWorkflowSeeds(workflow) {
 function modifyControlAfterGenerate(workflow, controlMode = 'increment') {
   if (!workflow || typeof workflow !== 'object') return workflow;
 
-  console.log(`Modifying control_after_generate values to: ${controlMode}`);
   let controlCount = 0;
 
   const modifyControls = (obj, path = '') => {
@@ -281,9 +269,7 @@ function modifyControlAfterGenerate(workflow, controlMode = 'increment') {
       const currentPath = path ? `${path}.${key}` : key;
 
       if (key === 'control_after_generate') {
-        const oldControl = obj[key];
         obj[key] = controlMode;
-        console.log(`Modified control_after_generate at ${currentPath}: ${oldControl} -> ${obj[key]}`);
         controlCount++;
       } else if (key === 'inputs' && typeof obj[key] === 'object') {
         modifyControls(obj[key], currentPath);
@@ -294,10 +280,8 @@ function modifyControlAfterGenerate(workflow, controlMode = 'increment') {
   };
 
   modifyControls(workflow);
-  console.log(`Total control_after_generate values modified: ${controlCount}`);
-
-  if (controlCount === 0) {
-    console.warn('No control_after_generate fields found in workflow');
+  if (controlCount > 0) {
+    console.log(`Modified ${controlCount} control_after_generate values to '${controlMode}'`);
   }
 
   return workflow;
@@ -308,7 +292,6 @@ router.post('/api/queue-workflow-with-edits', async (req, res) => {
   try {
     const { filename, workflow, modifySeeds, controlAfterGenerate, comfyUrl } = req.body;
 
-    console.log('Queue with edits request received:', { filename, hasWorkflow: !!workflow, modifySeeds, controlAfterGenerate, comfyUrl });
 
     if (!filename) {
       return res.status(400).json({ error: 'Filename is required' });
@@ -323,38 +306,28 @@ router.post('/api/queue-workflow-with-edits', async (req, res) => {
 
     // Check workflow format and convert if needed
     const firstValue = workflowData[Object.keys(workflowData)[0]];
-    if (firstValue && typeof firstValue === 'object' && firstValue.class_type) {
-      console.log('Queuing API format workflow');
-    } else if (workflowData.nodes && Array.isArray(workflowData.nodes)) {
-      console.log('Converting GUI format workflow to API format');
+    if (workflowData.nodes && Array.isArray(workflowData.nodes)) {
       try {
         workflowData = convertGUIToAPI(workflowData);
       } catch (error) {
         console.error('GUI to API conversion failed:', error);
         return res.status(400).json({ error: 'Failed to convert workflow format: ' + error.message });
       }
-    } else {
-      console.warn('Unknown workflow format, attempting to queue as-is');
     }
 
     if (modifySeeds) {
       workflowData = modifyWorkflowSeeds(workflowData);
-      console.log('Seeds modified for queuing');
     }
 
     if (controlAfterGenerate) {
       workflowData = modifyControlAfterGenerate(workflowData, controlAfterGenerate);
-      console.log(`Control after generate set to: ${controlAfterGenerate}`);
     }
 
     const clientId = 'swipe-save-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9);
 
     const targetUrl = comfyUrl || getDefaultComfyUIUrl(req);
 
-    console.log('Queue Debug - Using targetUrl:', targetUrl);
-
     const fetch = require('node-fetch');
-    console.log('Queue Debug - Attempting to connect to:', `${targetUrl}/prompt`);
     const response = await fetch(`${targetUrl}/prompt`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -370,7 +343,7 @@ router.post('/api/queue-workflow-with-edits', async (req, res) => {
     }
 
     const result = await response.json();
-    console.log('Workflow with edits queued successfully:', result);
+    console.log('Workflow queued successfully');
 
     res.json({ 
       success: true, 
@@ -392,7 +365,6 @@ router.post('/api/queue-workflow', async (req, res) => {
   try {
     const { filename, modifySeeds, controlAfterGenerate, comfyUrl } = req.body;
 
-    console.log('Queue request received:', { filename, modifySeeds, controlAfterGenerate, comfyUrl });
 
     if (!filename) {
       return res.status(400).json({ error: 'Filename is required' });
@@ -408,46 +380,34 @@ router.post('/api/queue-workflow', async (req, res) => {
 
     let workflowData;
     if (metadata.prompt) {
-      console.log('Using prompt (API format) for queuing');
       workflowData = metadata.prompt;
     } else if (metadata.workflow) {
-      console.log('Using workflow (GUI format) for queuing');
       workflowData = metadata.workflow;
     } else {
       return res.status(404).json({ error: 'No workflow found in image metadata' });
     }
 
     // Check workflow format and convert if needed
-    const firstValue = workflowData[Object.keys(workflowData)[0]];
-    if (firstValue && typeof firstValue === 'object' && firstValue.class_type) {
-      console.log('Queuing API format workflow from PNG metadata');
-    } else if (workflowData.nodes && Array.isArray(workflowData.nodes)) {
-      console.log('Converting GUI format workflow from PNG metadata');
+    if (workflowData.nodes && Array.isArray(workflowData.nodes)) {
       try {
         workflowData = convertGUIToAPI(workflowData);
       } catch (error) {
         console.error('GUI to API conversion failed:', error);
         return res.status(400).json({ error: 'Failed to convert workflow format: ' + error.message });
       }
-    } else {
-      console.warn('Unknown workflow format in PNG metadata');
     }
 
     if (modifySeeds) {
       workflowData = modifyWorkflowSeeds(workflowData);
-      console.log('Seeds modified for queuing');
     }
 
     if (controlAfterGenerate) {
       workflowData = modifyControlAfterGenerate(workflowData, controlAfterGenerate);
-      console.log(`Control after generate set to: ${controlAfterGenerate}`);
     }
 
     const clientId = 'swipe-save-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9);
 
     const targetUrl = comfyUrl || getDefaultComfyUIUrl(req);
-
-    console.log('Queuing workflow to:', targetUrl);
 
     const fetch = require('node-fetch');
     const response = await fetch(`${targetUrl}/prompt`, {
@@ -465,7 +425,7 @@ router.post('/api/queue-workflow', async (req, res) => {
     }
 
     const result = await response.json();
-    console.log('Workflow queued successfully:', result);
+    console.log('Workflow queued successfully');
 
     res.json({ 
       success: true, 
@@ -487,7 +447,6 @@ router.get('/api/comfyui-queue', async (req, res) => {
     const { comfyUrl } = req.query;
     const targetUrl = comfyUrl || getDefaultComfyUIUrl(req);
 
-    console.log('Fetching ComfyUI queue from:', `${targetUrl}/queue`);
 
     const fetch = require('node-fetch');
     const response = await fetch(`${targetUrl}/queue`);
@@ -498,7 +457,6 @@ router.get('/api/comfyui-queue', async (req, res) => {
     }
 
     const queueData = await response.json();
-    console.log('Queue data fetched successfully');
 
     res.json(queueData);
 
@@ -514,17 +472,11 @@ router.post('/api/comfyui-queue/cancel', async (req, res) => {
     const { comfyUrl, cancel } = req.body;
     const targetUrl = comfyUrl || getDefaultComfyUIUrl(req);
 
-    console.log('Cancelling ComfyUI queue items:', cancel);
-    console.log('Target URL for cancel:', `${targetUrl}/prompt`);
-
     const fetch = require('node-fetch');
 
     // ComfyUI currently doesn't support individual item deletion by ID
     // The 'clear' parameter clears ALL pending items regardless of the ID provided
-    console.log('Note: ComfyUI will clear ALL pending items, not just the specified ID');
-
     const requestBody = { clear: cancel };
-    console.log('Using clear method (clears all pending items):', JSON.stringify(requestBody));
 
     try {
       response = await fetch(`${targetUrl}/queue`, {
@@ -532,8 +484,6 @@ router.post('/api/comfyui-queue/cancel', async (req, res) => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(requestBody)
       });
-
-      console.log('Clear response status:', response.status);
     } catch (error) {
       console.error('Error clearing queue:', error);
       throw error;
@@ -551,15 +501,12 @@ router.post('/api/comfyui-queue/cancel', async (req, res) => {
     if (responseText.trim() === '') {
       // Empty response is considered success for ComfyUI cancel
       result = { success: true, message: 'Queue items cancelled' };
-      console.log('Queue items cancelled successfully (empty response)');
     } else {
       try {
         result = JSON.parse(responseText);
-        console.log('Queue items cancelled successfully:', result);
       } catch (parseError) {
         // Non-JSON response, but HTTP status was OK
         result = { success: true, message: 'Queue items cancelled', raw: responseText };
-        console.log('Queue items cancelled successfully (non-JSON response):', responseText);
       }
     }
 
@@ -577,7 +524,6 @@ router.get('/api/workflow/:filename', async (req, res) => {
     const filename = decodeURIComponent(req.params.filename);
     const filePath = path.join(config.OUTPUT_DIR, filename);
 
-    console.log(`Extracting workflow from: ${filePath}`);
 
     if (!fs.existsSync(filePath)) {
       return res.status(404).json({ error: 'File not found' });
@@ -588,24 +534,20 @@ router.get('/api/workflow/:filename', async (req, res) => {
     }
 
     const metadata = await fileOps.extractComfyMetadata(filePath, filename);
-    console.log(`Metadata extracted:`, Object.keys(metadata));
 
     if (metadata.workflow) {
       try {
         if (typeof metadata.workflow === 'object') {
           res.json(metadata.workflow);
         } else {
-          console.log(`Attempting to parse workflow string: ${metadata.workflow.substring(0, 100)}...`);
           const workflowData = JSON.parse(metadata.workflow);
           res.json(workflowData);
         }
       } catch (parseError) {
         console.error('Error parsing workflow JSON:', parseError.message);
-        console.error('First 200 chars of workflow data:', metadata.workflow.substring(0, 200));
         res.status(500).json({ error: 'Invalid workflow JSON in image metadata', preview: metadata.workflow.substring(0, 100) });
       }
     } else {
-      console.log(`Available metadata keys: ${Object.keys(metadata)}`);
       res.status(404).json({ error: 'No workflow found in image metadata' });
     }
   } catch (error) {
