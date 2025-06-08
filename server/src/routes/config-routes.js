@@ -10,7 +10,8 @@ router.get('/api/config', (req, res) => {
     const currentConfig = config.getCurrentConfig();
     res.json({
       sourceDir: currentConfig.sourceDir,
-      destinationDir: currentConfig.destinationDir
+      destinationDir: currentConfig.destinationDir,
+      useDatestampFolders: currentConfig.useDatestampFolders
     });
   } catch (error) {
     console.error('Error getting config:', error);
@@ -21,15 +22,16 @@ router.get('/api/config', (req, res) => {
 // Update configuration
 router.post('/api/config', (req, res) => {
   try {
-    const { sourceDir, destinationDir } = req.body;
+    const { sourceDir, destinationDir, useDatestampFolders } = req.body;
 
-    if (!sourceDir && !destinationDir) {
+    if (!sourceDir && !destinationDir && useDatestampFolders === undefined) {
       return res.status(400).json({ error: 'No configuration provided' });
     }
 
     const updateData = {};
     if (sourceDir) updateData.sourceDir = path.resolve(sourceDir);
     if (destinationDir) updateData.destinationDir = path.resolve(destinationDir);
+    if (useDatestampFolders !== undefined) updateData.useDatestampFolders = Boolean(useDatestampFolders);
 
     const success = config.updateConfig(updateData);
 

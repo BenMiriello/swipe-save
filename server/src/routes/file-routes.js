@@ -8,6 +8,23 @@ const config = require('../config');
 // Action history for undo functionality
 const actionHistory = [];
 
+// Helper functions for path generation based on datestamp folder setting
+function getTargetBasePath(fileDate, baseDir) {
+  const currentConfig = config.getCurrentConfig();
+  if (currentConfig.useDatestampFolders) {
+    return path.join(baseDir, fileDate);
+  }
+  return baseDir;
+}
+
+function getTargetSubfolderPath(fileDate, baseDir, subfolder) {
+  const basePath = getTargetBasePath(fileDate, baseDir);
+  if (subfolder) {
+    return path.join(basePath, subfolder);
+  }
+  return basePath;
+}
+
 // Get list of media files
 router.get('/api/files', (req, res) => {
   const mediaFiles = [];
@@ -153,12 +170,20 @@ router.post('/api/files/action', async (req, res) => {
   const sourcePath = path.join(config.OUTPUT_DIR, filename);
 
   try {
+    // More robust file verification
     if (!fs.existsSync(sourcePath)) {
-      throw new Error(`Source file does not exist: ${sourcePath}`);
+      return res.status(404).json({ error: `File ${filename} not found. It may have been moved or deleted.` });
     }
 
-    if (fs.statSync(sourcePath).isDirectory()) {
-      throw new Error(`Source is a directory, not a file: ${sourcePath}`);
+    let sourceStats;
+    try {
+      sourceStats = fs.statSync(sourcePath);
+    } catch (error) {
+      return res.status(404).json({ error: `Cannot access file ${filename}. It may have been moved or deleted.` });
+    }
+
+    if (sourceStats.isDirectory()) {
+      return res.status(400).json({ error: `${filename} is a directory, not a file.` });
     }
 
     const fileMetadata = await fileOps.extractComfyMetadata(sourcePath, filename);
@@ -186,19 +211,23 @@ router.post('/api/files/action', async (req, res) => {
       case 'archive':
       case 'archive_good':
       case 'archive_bad': {
-        const dateFolderPath = path.join(config.OUTPUT_DIR, fileDate);
+        const targetPath = getTargetBasePath(fileDate, config.OUTPUT_DIR);
+        const destPath = path.join(targetPath, targetFilename);
 
-        if (!fs.existsSync(dateFolderPath)) {
-          fs.mkdirSync(dateFolderPath, { recursive: true });
+        // Skip move if source and destination are the same
+        if (sourcePath === destPath) {
+          console.log(`File ${filename} already in correct location, skipping move`);
+          actionRecord.destPath = destPath;
+        } else {
+          if (!fs.existsSync(targetPath)) {
+            fs.mkdirSync(targetPath, { recursive: true });
+          }
+
+          if (!fileOps.moveFile(sourcePath, destPath)) {
+            throw new Error(`Failed to move file to ${destPath}`);
+          }
+          actionRecord.destPath = destPath;
         }
-
-        const destPath = path.join(dateFolderPath, targetFilename);
-
-        if (!fileOps.moveFile(sourcePath, destPath)) {
-          throw new Error(`Failed to move file to ${destPath}`);
-        }
-
-        actionRecord.destPath = destPath;
 
         fileOps.logSimpleAction(actionType, {
           filename,
@@ -215,26 +244,24 @@ router.post('/api/files/action', async (req, res) => {
 
       case 'saved':
       case 'saved_wip': {
-        const dateFolderPath = path.join(config.OUTPUT_DIR, fileDate);
-        if (!fs.existsSync(dateFolderPath)) {
-          fs.mkdirSync(dateFolderPath, { recursive: true });
-        }
+        const subfolder = actionType === 'saved_wip' ? 'wip' : null;
+        const destFolder = getTargetSubfolderPath(fileDate, config.OUTPUT_DIR, subfolder);
+        const destPath = path.join(destFolder, targetFilename);
 
-        let destFolder = dateFolderPath;
-        if (actionType === 'saved_wip') {
-          destFolder = path.join(dateFolderPath, 'wip');
+        // Skip move if source and destination are the same
+        if (sourcePath === destPath) {
+          console.log(`File ${filename} already in correct location, skipping move`);
+          actionRecord.destPath = destPath;
+        } else {
           if (!fs.existsSync(destFolder)) {
             fs.mkdirSync(destFolder, { recursive: true });
           }
+
+          if (!fileOps.moveFile(sourcePath, destPath)) {
+            throw new Error(`Failed to move file to ${destPath}`);
+          }
+          actionRecord.destPath = destPath;
         }
-
-        const destPath = path.join(destFolder, targetFilename);
-
-        if (!fileOps.moveFile(sourcePath, destPath)) {
-          throw new Error(`Failed to move file to ${destPath}`);
-        }
-
-        actionRecord.destPath = destPath;
 
         fileOps.logSimpleAction(actionType, {
           filename,
@@ -246,17 +273,11 @@ router.post('/api/files/action', async (req, res) => {
           action: actionType
         });
 
-        const copyDateFolder = path.join(config.LOCAL_COPY_DIR, fileDate);
-        if (!fs.existsSync(copyDateFolder)) {
-          fs.mkdirSync(copyDateFolder, { recursive: true });
-        }
-
-        let copyDestFolder = copyDateFolder;
-        if (actionType === 'saved_wip') {
-          copyDestFolder = path.join(copyDateFolder, 'wip');
-          if (!fs.existsSync(copyDestFolder)) {
-            fs.mkdirSync(copyDestFolder, { recursive: true });
-          }
+        const copySubfolder = actionType === 'saved_wip' ? 'wip' : null;
+        const copyDestFolder = getTargetSubfolderPath(fileDate, config.LOCAL_COPY_DIR, copySubfolder);
+        
+        if (!fs.existsSync(copyDestFolder)) {
+          fs.mkdirSync(copyDestFolder, { recursive: true });
         }
 
         const copyPath = path.join(copyDestFolder, targetFilename);
@@ -285,18 +306,9 @@ router.post('/api/files/action', async (req, res) => {
         try {
           console.log(`SUPER SAVE: Processing file: ${filename} as ${actionType}`);
 
-          const copyDateFolder = path.join(config.LOCAL_COPY_DIR, fileDate);
-          if (!fs.existsSync(copyDateFolder)) {
-            fs.mkdirSync(copyDateFolder, { recursive: true });
-          }
-
-          let bestFolder;
-          if (actionType === 'best_complete') {
-            bestFolder = path.join(copyDateFolder, 'best');
-          } else {
-            bestFolder = path.join(copyDateFolder, 'best', 'wip');
-          }
-
+          const bestSubfolder = actionType === 'best_complete' ? 'best' : 'best/wip';
+          const bestFolder = getTargetSubfolderPath(fileDate, config.LOCAL_COPY_DIR, bestSubfolder);
+          
           if (!fs.existsSync(bestFolder)) {
             fs.mkdirSync(bestFolder, { recursive: true });
           }
@@ -309,15 +321,20 @@ router.post('/api/files/action', async (req, res) => {
 
           console.log(`SUPER SAVE: File copied to best folder: ${bestDestPath}`);
 
-          const dateFolderPath = path.join(config.OUTPUT_DIR, fileDate);
-          if (!fs.existsSync(dateFolderPath)) {
-            fs.mkdirSync(dateFolderPath, { recursive: true });
-          }
+          const originalTargetPath = getTargetBasePath(fileDate, config.OUTPUT_DIR);
+          const movedOriginal = path.join(originalTargetPath, targetFilename);
 
-          const movedOriginal = path.join(dateFolderPath, targetFilename);
+          // Skip move if source and destination are the same
+          if (sourcePath !== movedOriginal) {
+            if (!fs.existsSync(originalTargetPath)) {
+              fs.mkdirSync(originalTargetPath, { recursive: true });
+            }
 
-          if (!fileOps.moveFile(sourcePath, movedOriginal)) {
-            throw new Error(`Failed to move original file to: ${movedOriginal}`);
+            if (!fileOps.moveFile(sourcePath, movedOriginal)) {
+              throw new Error(`Failed to move original file to: ${movedOriginal}`);
+            }
+          } else {
+            console.log(`File ${filename} already in correct location for best action`);
           }
 
           console.log(`SUPER SAVE: Original file moved to: ${movedOriginal}`);

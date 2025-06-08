@@ -30,51 +30,14 @@ const coreUIManager = {
    * Initialize options menu
    */
   initializeOptionsMenu() {
-    const headerContainer = document.querySelector('.header-container');
-    const existingOptionsContainer = document.querySelector('.options-container');
-
-    if (existingOptionsContainer) {
-      this.elements.optionsContainer = existingOptionsContainer;
-      this.elements.optionsButton = existingOptionsContainer.querySelector('.btn-options');
-      this.elements.optionsDropdown = existingOptionsContainer.querySelector('.options-dropdown');
-    } else {
-      const optionsContainer = document.createElement('div');
-      optionsContainer.className = 'options-container';
-
-      const optionsButton = document.createElement('button');
-      optionsButton.className = 'btn btn-options';
-      optionsButton.textContent = 'Options';
-
-      const optionsDropdown = document.createElement('div');
-      optionsDropdown.className = 'options-dropdown';
-      optionsDropdown.innerHTML = `
-        <ul>
-          <li class="directory-row">
-            <div class="dir-info">
-              <span class="dir-label">From:</span>
-              <span class="dir-path-clickable" id="sourcePathClickable" title="Click to browse">Loading...</span>
-            </div>
-          </li>
-          <li class="directory-row">
-            <div class="dir-info">
-              <span class="dir-label">To:</span>
-              <span class="dir-path-clickable" id="destPathClickable" title="Click to browse">Loading...</span>
-            </div>
-          </li>
-          <li class="separator"></li>
-          <li id="customName">Custom Name</li>
-          <li id="showInfo">Show Instructions</li>
-        </ul>
-      `;
-
-      optionsContainer.appendChild(optionsButton);
-      optionsContainer.appendChild(optionsDropdown);
-
-      headerContainer.insertBefore(optionsContainer, headerContainer.firstChild);
-
+    const optionsContainer = document.querySelector('.options-container');
+    
+    if (optionsContainer) {
       this.elements.optionsContainer = optionsContainer;
-      this.elements.optionsButton = optionsButton;
-      this.elements.optionsDropdown = optionsDropdown;
+      this.elements.optionsButton = optionsContainer.querySelector('.btn-options');
+      this.elements.optionsDropdown = optionsContainer.querySelector('.options-dropdown');
+    } else {
+      console.error('Options container not found in HTML');
     }
   },
 
@@ -96,6 +59,7 @@ const coreUIManager = {
   updateConfigDisplay(config) {
     const sourcePathEl = document.getElementById('sourcePathClickable');
     const destPathEl = document.getElementById('destPathClickable');
+    const useDatestampFoldersEl = document.getElementById('useDatestampFolders');
 
     if (sourcePathEl && config.sourceDir) {
       sourcePathEl.textContent = this.shortenPath(config.sourceDir);
@@ -105,6 +69,10 @@ const coreUIManager = {
     if (destPathEl && config.destinationDir) {
       destPathEl.textContent = this.shortenPath(config.destinationDir);
       destPathEl.title = `Click to browse: ${config.destinationDir}`;
+    }
+
+    if (useDatestampFoldersEl) {
+      useDatestampFoldersEl.checked = config.useDatestampFolders !== false;
     }
   },
 
@@ -164,6 +132,21 @@ const coreUIManager = {
       showInfoEl.addEventListener('click', () => {
         window.modalManager.elements.infoModal.style.display = "block";
         this.elements.optionsDropdown.classList.remove('show');
+      });
+    }
+
+    const useDatestampFoldersEl = document.getElementById('useDatestampFolders');
+    if (useDatestampFoldersEl) {
+      useDatestampFoldersEl.addEventListener('change', async (event) => {
+        try {
+          await window.configApi.updateConfig({ 
+            useDatestampFolders: event.target.checked 
+          });
+        } catch (error) {
+          console.error('Failed to update datestamp folders setting:', error);
+          // Revert the toggle on error
+          event.target.checked = !event.target.checked;
+        }
       });
     }
 

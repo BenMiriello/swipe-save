@@ -670,9 +670,6 @@
 }
 
 /* Node List */
-.comfyui-node-list {
-  /* Remove height constraints to allow full expansion */
-}
 
 .comfyui-node-item {
   margin-bottom: var(--comfy-spacing-sm);

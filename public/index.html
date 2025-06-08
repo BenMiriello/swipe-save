@@ -29,6 +29,35 @@
 <body>
   <div class="container">
     <div class="header-container">
+      <div class="options-container">
+        <button class="btn btn-options">Options</button>
+        <div class="options-dropdown">
+          <ul>
+            <li class="directory-row">
+              <div class="dir-info">
+                <span class="dir-label">From:</span>
+                <span class="dir-path-clickable" id="sourcePathClickable" title="Click to browse">Loading...</span>
+              </div>
+            </li>
+            <li class="directory-row">
+              <div class="dir-info">
+                <span class="dir-label">To:</span>
+                <span class="dir-path-clickable" id="destPathClickable" title="Click to browse">Loading...</span>
+              </div>
+            </li>
+            <li class="separator"></li>
+            <li class="toggle-option">
+              <label class="toggle-label">
+                <input type="checkbox" id="useDatestampFolders" checked>
+                <span class="toggle-text">Use Datestamp Folders</span>
+              </label>
+            </li>
+            <li class="separator"></li>
+            <li id="customName">Custom Name</li>
+            <li id="showInfo">Show Instructions</li>
+          </ul>
+        </div>
+      </div>
       <h1>Swipe-Save</h1>
       <div class="header-icons">
         <button class="icon-button reload-icon" title="Reload Media">
@@ -62,6 +91,7 @@
       <button id="saveFilename">Save</button>
     </div>
   </div>
+
 
   <!-- Modal for ComfyUI (Alpine.js) -->
   <div id="comfyuiModal" 
@@ -226,9 +256,7 @@
             <div class="comfy-setting-container">
               <span class="comfy-setting-label">New Seed</span>
               <label class="comfy-toggle">
-                <input type="checkbox" 
-                       x-model="$store.comfyWorkflow.settings.modifySeeds">
-                <span class="comfy-toggle-slider"></span>
+                <input type="checkbox"  x-model="$store.comfyWorkflow.settings.modifySeeds">
               </label>
             </div>
           </div>

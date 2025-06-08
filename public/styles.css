@@ -170,6 +170,62 @@ h1 {
   background-color: #f9f9f9;
 }
 
+/* Toggle option styling in dropdown */
+.options-dropdown .toggle-option {
+  padding: 12px 15px !important;
+  background-color: #f9f9f9;
+}
+
+.options-dropdown .toggle-option:hover {
+  background-color: #f0f0f0;
+}
+
+.options-dropdown .toggle-label {
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  margin: 0;
+}
+
+.options-dropdown .toggle-label input[type="checkbox"] {
+  margin: 0;
+  position: relative;
+  width: 36px;
+  height: 20px;
+  -webkit-appearance: none;
+  appearance: none;
+  background-color: #ccc;
+  border-radius: 20px;
+  transition: 0.3s;
+  margin-right: 10px;
+}
+
+.options-dropdown .toggle-label input[type="checkbox"]:checked {
+  background-color: #007bff;
+}
+
+.options-dropdown .toggle-label input[type="checkbox"]::before {
+  content: "";
+  position: absolute;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background-color: white;
+  top: 2px;
+  left: 2px;
+  transition: 0.3s;
+}
+
+.options-dropdown .toggle-label input[type="checkbox"]:checked::before {
+  transform: translateX(16px);
+}
+
+.options-dropdown .toggle-text {
+  font-weight: 500;
+  color: #333;
+  font-size: 0.9rem;
+}
+
 .dir-info {
   display: flex;
   flex-direction: column;

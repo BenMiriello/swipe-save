@@ -29,7 +29,9 @@ const defaultConfig = {
     path.resolve(process.env.HOME, 'Documents/swipe-save'),
     path.resolve(process.env.HOME, 'Desktop/swipe-save'),
     path.resolve(process.env.HOME, 'swipe-save')
-  ], process.env.HOME || '/')
+  ], process.env.HOME || '/'),
+  
+  useDatestampFolders: true // Default to current behavior (using datestamp folders)
 };
 
 // Load saved config or use defaults

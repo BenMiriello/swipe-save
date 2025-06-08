@@ -129,7 +129,9 @@ text parameters before queueing. Note: Visual node layout preservation requires 
 - [ ] Ability to select and perform sorting actions on multiple files using updated file picker
 - [ ] Update file browser, including to allow viewing files
 - [ ] Generalize process of setting source and destination directories away from comfyui
-- [ ] Sort by additional parameters
+- [ ] Order current file list by additional parameters (date modified, name, etc)
+- [ ] Option to turn on or off saving of copies
+- [ ] Toggle datestamp folder organization on or off
 
 ### Tagging
 - [ ] Allow suggesting tags based on workflow prompt metadata
@@ -138,7 +140,7 @@ text parameters before queueing. Note: Visual node layout preservation requires 
 - [ ] Allow setting tags in metadata
 
 ### Technical
-- [ ] Port rest of app over into Alpine.js
+- [ ] Port rest of app over into Alpine.js or other framework (probably React tbh)
 - [ ] Improve and centralize state management
 - [ ] Add unit testing
 
