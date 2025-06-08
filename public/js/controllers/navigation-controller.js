@@ -29,7 +29,7 @@ const navigationController = {
     window.interactionHandler.setupSwipeHandlers();
     window.interactionHandler.setupTapHandlers();
 
-    window.uiManager.setupPinchZoom();
+    // Removed setupPinchZoom() call - pinch zoom disabled due to display issues
 
     window.uiManager.updateImageCounter(
       state.currentIndex, 

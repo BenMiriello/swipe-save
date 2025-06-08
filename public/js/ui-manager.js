@@ -69,10 +69,11 @@ const uiManager = {
   },
 
   /**
-   * Setup pinch zoom for images
+   * Setup pinch zoom for images (disabled - was causing display cropping)
    */
   setupPinchZoom() {
-    window.coreUIManager.setupPinchZoom();
+    // Disabled - pinch zoom was causing display issues
+    return;
   },
 
   /**

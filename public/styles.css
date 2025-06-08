@@ -431,14 +431,14 @@ h1 {
   touch-action: pan-y pan-x;
   transition: transform 0.3s ease, opacity 0.3s ease;
   width: 100%;
-  max-height: calc(100vh - 180px);
+  max-height: calc(100vh - 220px);
   display: flex;
   flex-direction: column;
 }
 
 .media-item.portrait .media-content {
   height: auto;
-  max-height: calc(100vh - 180px);
+  max-height: calc(100vh - 260px);
   width: auto;
   max-width: 100%;
   margin: 0 auto;
@@ -447,7 +447,7 @@ h1 {
 .media-item.landscape .media-content {
   width: 100%;
   height: auto;
-  max-height: calc(100vh - 180px);
+  max-height: calc(100vh - 260px);
 }
 
 .media-content {
@@ -1449,12 +1449,13 @@ video.media-content[data-hide-controls]::-webkit-media-controls-volume-slider {
   overflow-y: auto;
 }
 
-/* Pinch zoom */
+/* Pinch zoom - disabled (was causing display cropping issues)
 .pinch-zoom-container {
   overflow: hidden;
   touch-action: none;
   flex: 1;
 }
+*/
 
 /* Responsive styling */
 @media (min-width: 768px) {

@@ -278,33 +278,12 @@ const coreUIManager = {
   },
 
   /**
-   * Setup pinch zoom for images
+   * Setup pinch zoom for images (disabled - was causing display cropping)
    */
   setupPinchZoom() {
-    const mediaContent = document.querySelector('.media-content');
-    if (!mediaContent || mediaContent.tagName !== 'IMG') return;
-
-    if (typeof window.PinchZoom === 'undefined') {
-      console.log('PinchZoom library not available');
-      return;
-    }
-
-    try {
-      const container = mediaContent.parentElement;
-
-      const wrapper = document.createElement('div');
-      wrapper.className = 'pinch-zoom-container';
-
-      container.insertBefore(wrapper, mediaContent);
-      wrapper.appendChild(mediaContent);
-
-      new window.PinchZoom(wrapper, {
-        draggable: true,
-        maxZoom: 5
-      });
-    } catch (error) {
-      console.error('Error initializing PinchZoom:', error);
-    }
+    // Disabled: PinchZoom library not properly loaded and container was causing
+    // media content to be cropped due to overflow: hidden constraint
+    return;
   },
 
   /**

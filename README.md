@@ -132,6 +132,7 @@ text parameters before queueing. Note: Visual node layout preservation requires 
 - [ ] Order current file list by additional parameters (date modified, name, etc)
 - [ ] Option to turn on or off saving of copies
 - [ ] Toggle datestamp folder organization on or off
+- [ ] Support for batch sorting actions
 
 ### Tagging
 - [ ] Allow suggesting tags based on workflow prompt metadata
