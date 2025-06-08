@@ -8,14 +8,14 @@
   <!-- ComfyUI Module Styles -->
   <link rel="stylesheet" href="js/comfyui/styles/modal.css">
   <link rel="stylesheet" href="js/comfyui/styles/components.css">
-  
+
   <!-- Early error handler initialization -->
   <script>
     // Basic error logging before the full error handler loads
     window.addEventListener('error', function(e) {
       console.error('Early error:', e.message, e.filename, e.lineno);
     });
-    
+
     // Define a simple PinchZoom implementation to avoid external dependency
     window.PinchZoom = function(el, options) {
       // This is a simplified version that doesn't actually implement pinch zoom
@@ -70,13 +70,16 @@
        x-show="$store.comfyWorkflow.isModalOpen"
        x-transition.opacity
        style="display: none;">
-    
+
     <div class="comfyui-modal-content" @click.away="allowClickAway && $store.queueViewer && !$store.queueViewer.showItemDetails && !$store.queueViewer.showCancelAllModal && !$store.queueViewer.showCancelItemModal ? closeModal() : null">
-      <!-- Modal Header -->
-      <div class="comfyui-modal-header">
+      <!-- Sticky Modal Header -->
+      <div class="comfyui-modal-header comfyui-modal-header-sticky">
         <h2 class="comfyui-modal-title">Run Workflow</h2>
         <button class="comfyui-modal-close" @click="closeModal()">&times;</button>
       </div>
+
+      <!-- Scrollable Content Area -->
+      <div class="comfyui-modal-body">
 
       <!-- Destination Section -->
       <div class="comfyui-section" x-data="destinationSection()">
@@ -87,7 +90,7 @@
             Open >
           </button>
         </div>
-        
+
         <div class="comfyui-section-content" x-show="isExpanded" x-transition>
 
         <div class="comfy-destination-input-group">
@@ -127,7 +130,7 @@
             </div>
           </div>
         </template>
-        
+
         </div>
       </div>
 
@@ -141,12 +144,12 @@
             <span x-show="!isQueueExpanded && queueItems.length > 0" class="comfyui-queue-indicators">
               <!-- Show active dot for running item -->
               <span class="comfyui-header-dot active"></span>
-              
+
               <!-- Show grey dots: max 3 for pending items -->
               <template x-for="index in Math.min(3, queueItems.length - 1)" :key="index">
                 <span class="comfyui-header-dot"></span>
               </template>
-              
+
               <!-- Show status text -->
               <span class="comfyui-queue-overflow"
                     x-text="(() => {
@@ -154,7 +157,7 @@
                       const queued = queueItems.length - 1;
                       const hasOverflow = queued > 3;
                       const prefix = hasOverflow ? '... ' : '';
-                      
+
                       if (queued === 0) {
                         return `${prefix}${running} running`;
                       } else {
@@ -170,12 +173,12 @@
             Clear Queue
           </button>
         </div>
-        
+
         <div class="comfyui-section-content" x-show="isQueueExpanded" x-transition>
           <template x-if="queueItems.length === 0">
             <div class="comfyui-queue-empty">No items in queue</div>
           </template>
-          
+
           <template x-if="queueItems.length > 0">
             <div class="comfyui-queue-list">
               <template x-for="(item, index) in queueItems" :key="item[0]">
@@ -200,7 +203,7 @@
             <span x-show="!isSettingsExpanded" class="comfyui-status-summary" x-text="getSettingsSummary()"></span>
           </h3>
         </div>
-        
+
         <div class="comfyui-section-content" x-show="isSettingsExpanded" x-transition>
           <!-- Quantity -->
           <div class="comfy-setting-row">
@@ -265,7 +268,7 @@
 
         <!-- Editor content -->
         <div x-show="isEditorExpanded" class="comfyui-section-content" x-transition>
-          
+
           <!-- Controls -->
           <div class="comfyui-editor-controls">
             <label class="comfyui-checkbox-label">
@@ -274,7 +277,7 @@
                      @change="togglePromptsOnly()">
               Show prompt nodes only
             </label>
-            
+
             <button type="button" 
                     class="comfy-btn comfy-btn-secondary comfy-btn-small" 
                     @click="(filteredNodes || []).forEach(node => toggleNode(node.id))">
@@ -292,7 +295,7 @@
           <div x-show="(filteredNodes || []).length > 0" class="comfyui-node-list">
             <template x-for="node in filteredNodes" :key="node.id">
               <div class="comfyui-node">
-                
+
                 <!-- Node header -->
                 <div class="comfyui-node-header" @click="toggleNode(node.id)">
                   <span class="comfyui-node-toggle" x-text="isNodeCollapsed(node.id) ? '▶' : '▼'"></span>
@@ -309,7 +312,7 @@
                 <div x-show="!isNodeCollapsed(node.id)" class="comfyui-node-fields">
                   <template x-for="(field, index) in (node.fields || [])" :key="`${node.id}-${field.fieldName || index}`">
                     <div class="comfyui-field" x-show="field && field.fieldName">
-                      
+
                       <!-- Field header -->
                       <div class="comfyui-field-header">
                         <label class="comfyui-field-label">
@@ -321,7 +324,7 @@
 
                       <!-- Field content -->
                       <div class="comfyui-field-content">
-                        
+
                         <!-- Text area for editing -->
                         <textarea 
                           class="comfyui-field-textarea"
@@ -350,29 +353,41 @@
         </div>
       </div>
 
-      <!-- Action Buttons Section -->
-      <div class="comfy-actions-section">
-        <div></div>
-        <button class="comfy-btn comfy-btn-primary"
-                :class="getButtonClasses('queue')"
-                @click="handleQueue()"
-                :disabled="isProcessing"
-                x-text="getButtonText('queue')">
-        </button>
-      </div>
+      </div> <!-- End scrollable content area -->
 
+      <!-- Sticky Footer Section -->
+      <div class="comfyui-modal-footer" x-data="{ showRunLog: false }">
+        <!-- Error Display -->
+        <div x-show="error" class="comfyui-error" x-text="error"></div>
 
-      <!-- Error Display -->
-      <div x-show="error" class="comfyui-error" x-text="error"></div>
-
-      <!-- Results Log -->
-      <div x-show="$store.comfyWorkflow ? $store.comfyWorkflow.results.length > 0 : false" class="comfyui-results">
-        <template x-for="result in ($store.comfyWorkflow ? $store.comfyWorkflow.results : [])" :key="result.timestamp">
-          <div class="comfyui-result-item" :class="{ 'error': result.isError }">
-            <span x-text="result.message"></span>
-            <span class="comfyui-result-timestamp" x-text="result.timestamp"></span>
+        <!-- Action Buttons and Run Log Toggle -->
+        <div class="comfy-actions-section">
+          <div class="comfy-run-log-toggle" @click="showRunLog = !showRunLog">
+            <span class="comfy-run-log-caret" :class="{ 'expanded': showRunLog }">▶</span>
+            <span class="comfy-run-log-label">Run Log</span>
           </div>
-        </template>
+          <button class="comfy-btn comfy-btn-primary"
+                  :class="getButtonClasses('queue')"
+                  @click="handleQueue()"
+                  :disabled="isProcessing"
+                  x-text="getButtonText('queue')">
+          </button>
+        </div>
+
+        <!-- Collapsible Results Log -->
+        <div x-show="showRunLog" x-transition class="comfyui-results-container">
+          <div class="comfyui-results" x-show="$store.comfyWorkflow ? $store.comfyWorkflow.results.length > 0 : false">
+            <template x-for="result in ($store.comfyWorkflow ? $store.comfyWorkflow.results : [])" :key="result.timestamp">
+              <div class="comfyui-result-item" :class="{ 'error': result.isError }">
+                <span x-text="result.message"></span>
+                <span class="comfyui-result-timestamp" x-text="result.timestamp"></span>
+              </div>
+            </template>
+          </div>
+          <div x-show="!$store.comfyWorkflow || !$store.comfyWorkflow.results.length" class="comfyui-results-empty">
+            No workflow runs yet
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -391,14 +406,14 @@
         <h3>Queue Item Details</h3>
         <!-- <button class="comfyui-modal-close" @click="$store.queueViewer.showItemDetails = false">&times;</button> -->
       </div>
-      
+
       <div class="comfyui-details-body">
         <pre class="comfyui-json-display" x-text="$store.queueViewer?.selectedItemJson"></pre>
         <div class="comfyui-queue-limitation-note">
           <p><em>Note: Individual item cancellation is not yet supported by ComfyUI.</em></p>
         </div>
       </div>
-      
+
       <div class="comfyui-details-actions">
         <!-- Waiting on https://github.com/comfyanonymous/ComfyUI/issues/7513 or similar feature to be implemented in ComfyUI API before we can cancel individual items in the queue -->
         <!--
@@ -480,52 +495,52 @@
   <!-- External libraries -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/hammer.js/2.0.8/hammer.min.js"></script>
   <!-- We're not using pinch-zoom-js anymore, using our own implementation -->
-  
+
   <!-- Application scripts (using regular scripts instead of modules) -->
   <script src="js/error-handler.js"></script>
   <script src="js/config.js"></script>
-  
+
   <!-- API modules (load before main api-service coordinator) -->
   <script src="js/api/file-api.js"></script>
   <script src="js/api/config-api.js"></script>
   <script src="js/api-service.js"></script>
-  
+
   <!-- ComfyUI Module (Alpine.js) - Load in dependency order -->
   <!-- Services layer -->
   <script src="js/comfyui/services/api-client.js"></script>
   <script src="js/comfyui/services/storage-service.js"></script>
-  
+
   <!-- Utils layer -->
   <script src="js/comfyui/utils/workflow-analyzer.js"></script>
   <script src="js/comfyui/utils/validation.js"></script>
-  
+
   <!-- State stores -->
   <script src="js/comfyui/stores/workflow-store.js"></script>
   <script src="js/comfyui/stores/destination-store.js"></script>
   <script src="js/comfyui/stores/queue-store.js"></script>
   <script src="js/comfyui/stores/editor-store.js"></script>
-  
+
   <!-- UI components -->
   <script src="js/comfyui/components/modal-components.js"></script>
   <script src="js/comfyui/components/panel-components.js"></script>
-  
+
   <!-- Main initialization (load last before Alpine.js) -->
   <script src="js/comfyui/index.js"></script>
   <script src="js/comfyui/test.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.1/dist/cdn.min.js" defer></script>
-  
+
   <!-- UI modules (load before main ui-manager coordinator) -->
   <script src="js/ui/core-ui-manager.js"></script>
   <script src="js/ui/element-factory.js"></script>
   <script src="js/ui/modal-manager.js"></script>
   <script src="js/ui/directory-browser.js"></script>
   <script src="js/ui-manager.js"></script>
-  
+
   <!-- Controller modules -->
   <script src="js/controllers/state-manager.js"></script>
   <script src="js/controllers/action-controller.js"></script>
   <script src="js/controllers/navigation-controller.js"></script>
-  
+
   <script src="js/interaction-handler.js"></script>
   <script src="js/app-controller.js"></script>
   <script>

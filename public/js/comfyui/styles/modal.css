@@ -15,36 +15,36 @@
   --comfy-warning-hover: #e0a800;
   --comfy-secondary: #6c757d;
   --comfy-secondary-hover: #5a6268;
-  
+
   /* Background Colors */
   --comfy-bg-primary: #ffffff;
   --comfy-bg-secondary: #f8f9fa;
   --comfy-bg-tertiary: #f5f5f5;
   --comfy-bg-hover: #f0f0f0;
   --comfy-bg-highlight: #fff3cd; /* Light yellow for edited fields */
-  
+
   /* Text Colors */
   --comfy-text-primary: #333333;
   --comfy-text-secondary: #666666;
   --comfy-text-muted: #999999;
-  
+
   /* Border Colors */
   --comfy-border-light: #ddd;
   --comfy-border-medium: #dee2e6;
   --comfy-border-dark: #adb5bd;
-  
+
   /* Spacing */
   --comfy-spacing-xs: 4px;
   --comfy-spacing-sm: 8px;
   --comfy-spacing-md: 12px;
   --comfy-spacing-lg: 16px;
   --comfy-spacing-xl: 20px;
-  
+
   /* Border Radius */
   --comfy-radius-sm: 4px;
   --comfy-radius-md: 6px;
   --comfy-radius-lg: 8px;
-  
+
   /* Shadows */
   --comfy-shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.1);
   --comfy-shadow-md: 0 4px 8px rgba(0, 0, 0, 0.1);
@@ -192,17 +192,147 @@
   margin-left: var(--comfy-spacing-sm);
 }
 
-/* Responsive Design */
+/* Sticky Modal Layout */
+.comfyui-modal-content {
+  display: flex;
+  flex-direction: column;
+  max-height: 90vh;
+}
+
+.comfyui-modal-header-sticky {
+  position: sticky;
+  top: 0;
+  background: var(--comfy-bg-primary);
+  border-bottom: 1px solid var(--comfy-border);
+  z-index: 10;
+}
+
+.comfyui-modal-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: var(--comfy-spacing-md);
+}
+
+.comfyui-modal-footer {
+  position: sticky;
+  bottom: 0;
+  background: var(--comfy-bg-primary);
+  border-top: 1px solid var(--comfy-border);
+  z-index: 10;
+  max-height: 50vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Run Log Toggle */
+.comfy-run-log-toggle {
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  padding: var(--comfy-spacing-xs) var(--comfy-spacing-sm);
+  color: var(--comfy-text-secondary);
+  font-size: 0.9rem;
+  user-select: none;
+  white-space: nowrap;
+}
+
+.comfy-run-log-toggle:hover {
+  color: var(--comfy-text-primary);
+  background: var(--comfy-bg-hover);
+  border-radius: var(--comfy-border-radius-sm);
+}
+
+.comfy-run-log-caret {
+  display: inline-block;
+  margin-right: var(--comfy-spacing-sm);
+  transition: transform 0.2s ease;
+  font-size: 0.8rem;
+}
+
+.comfy-run-log-caret.expanded {
+  transform: rotate(90deg);
+}
+
+.comfy-run-log-label {
+  font-weight: 500;
+}
+
+.comfyui-results-container {
+  max-height: calc(33vh);
+  overflow-y: auto;
+  border-top: 1px solid var(--comfy-border);
+  background: var(--comfy-bg-secondary);
+  flex-shrink: 0;
+}
+
+.comfyui-results {
+  padding: var(--comfy-spacing-sm);
+}
+
+.comfyui-results-empty {
+  padding: var(--comfy-spacing-md);
+  text-align: center;
+  color: var(--comfy-text-muted);
+  font-style: italic;
+}
+
+.comfyui-result-item {
+  padding: var(--comfy-spacing-sm) var(--comfy-spacing-md);
+  border-left: 3px solid var(--comfy-success);
+  background: var(--comfy-bg-primary);
+  margin-bottom: var(--comfy-spacing-xs);
+  border-radius: var(--comfy-border-radius-sm);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.comfyui-result-item.error {
+  border-left-color: var(--comfy-error);
+  background: #fef2f2;
+}
+
+.comfyui-result-timestamp {
+  font-size: 0.75rem;
+  color: var(--comfy-text-muted);
+  font-family: monospace;
+}
+
+.comfy-actions-section {
+  display: flex !important;
+  flex-direction: row !important;
+  justify-content: space-between !important;
+  align-items: center !important;
+  padding: var(--comfy-spacing-md);
+  background: var(--comfy-bg-primary);
+  min-height: 60px; /* Ensure consistent height */
+  width: 100%;
+}
+
 @media (max-width: 768px) {
   .comfyui-modal-content {
     width: 95%;
     margin: 2% auto;
-    padding: var(--comfy-spacing-lg);
   }
-  
+
+  .comfyui-modal-body {
+    padding: var(--comfy-spacing-sm);
+  }
+
   .comfyui-destination-header {
     flex-direction: column;
     align-items: flex-start;
     gap: var(--comfy-spacing-sm);
+  }
+
+  .comfy-actions-section {
+    flex-direction: row;
+    gap: var(--comfy-spacing-sm);
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .comfy-run-log-toggle {
+    align-self: center;
   }
 }
