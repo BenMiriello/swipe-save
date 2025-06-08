@@ -48,7 +48,7 @@ window.comfyUIStores.editorStore = {
       this.currentWorkflow = workflowData;
       
       // Analyze workflow for text fields
-      this.analysisResult = window.comfyUIServices.workflowAnalyzer.analyzeWorkflow(workflowData);
+      this.analysisResult = await window.comfyUIServices.workflowAnalyzer.analyzeWorkflow(workflowData);
       
       // Load saved edits for this file
       this.loadSavedEdits(file.name);
@@ -277,7 +277,7 @@ window.comfyUIStores.editorStore = {
     if (widgetMatch) {
       return parseInt(widgetMatch[1]);
     }
-    
+
     // Widget mappings for different node types
     // These are the reverse of the mappings used in server conversion
     const widgetMappings = {

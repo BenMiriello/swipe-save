@@ -57,7 +57,6 @@ function convertGUIToAPI(guiWorkflow) {
     throw new Error('Invalid GUI workflow format');
   }
 
-
   const apiWorkflow = {};
 
   // Widget-only input mappings - these map widgets_values[index] to input names
@@ -212,9 +211,8 @@ function convertGUIToAPI(guiWorkflow) {
  * Get default ComfyUI URL based on request
  */
 function getDefaultComfyUIUrl(req) {
-  const protocol = req.protocol || 'http';
-  const hostname = req.get('host').split(':')[0];
-  return `${protocol}://${hostname}:8188`;
+  // Use debian as the ComfyUI host since that's where it's running
+  return 'http://debian:8188';
 }
 
 /**
@@ -462,6 +460,32 @@ router.get('/api/comfyui-queue', async (req, res) => {
 
   } catch (error) {
     console.error('Error fetching ComfyUI queue:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Get node definition from ComfyUI
+router.get('/api/comfyui-node-info/:nodeType', async (req, res) => {
+  try {
+    const { nodeType } = req.params;
+    const { comfyUrl } = req.query;
+    const targetUrl = comfyUrl || getDefaultComfyUIUrl(req);
+
+    const fetch = require('node-fetch');
+    const response = await fetch(`${targetUrl}/object_info/${encodeURIComponent(nodeType)}`, {
+      method: 'GET',
+      headers: { 'Content-Type': 'application/json' }
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`ComfyUI node info request failed: ${response.status} - ${errorText}`);
+    }
+
+    const nodeInfo = await response.json();
+    res.json(nodeInfo);
+  } catch (error) {
+    console.error('Error fetching node info:', error);
     res.status(500).json({ error: error.message });
   }
 });

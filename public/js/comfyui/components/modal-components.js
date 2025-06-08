@@ -33,11 +33,16 @@ window.comfyUIComponents.modalComponents = {
             // Load workflow into editor when modal opens
             // Add delay to ensure nested components are initialized
             setTimeout(() => {
-              console.log('Loading workflow after modal is fully open...');
-              this.$store.workflowEditor.loadWorkflow(this.$store.comfyWorkflow.currentFile);
-              
-              // Watch for workflow editor updates and sync to modal
-              this.updateWorkflowEditorState();
+              const currentFile = this.$store.comfyWorkflow.currentFile;
+              if (currentFile) {
+                console.log('Loading workflow after modal is fully open...');
+                this.$store.workflowEditor.loadWorkflow(currentFile);
+                
+                // Watch for workflow editor updates and sync to modal
+                this.updateWorkflowEditorState();
+              } else {
+                console.log('No file selected - skipping workflow load');
+              }
             }, 100);
           } else {
             // Reset workflow editor when modal closes
