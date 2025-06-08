@@ -37,7 +37,7 @@ window.comfyUIComponents.modalComponents = {
               if (currentFile) {
                 console.log('Loading workflow after modal is fully open...');
                 this.$store.workflowEditor.loadWorkflow(currentFile);
-                
+
                 // Watch for workflow editor updates and sync to modal
                 this.updateWorkflowEditorState();
               } else {

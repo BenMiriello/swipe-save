@@ -278,47 +278,15 @@ window.comfyUIStores.editorStore = {
       return parseInt(widgetMatch[1]);
     }
 
-    // Widget mappings for different node types
-    // These are the reverse of the mappings used in server conversion
-    const widgetMappings = {
-      'KSampler': {
-        'seed': 0,
-        'steps': 2,
-        'cfg': 3,
-        'sampler_name': 4,
-        'scheduler': 5,
-        'denoise': 6
-      },
-      'CLIPTextEncode': {
-        'text': 0
-      },
-      'SaveImage': {
-        'filename_prefix': 0
-      },
-      'ImpactWildcardEncode': {
-        'wildcard_text': 0,
-        'populated_text': 1,
-        'mode': 2,
-        'Select to add LoRA': 3,
-        'Select to add Wildcard': 4,
-        'seed': 5
-      },
-      'JWStringMultiline': {
-        'text': 0
-      }
-    };
+    // Note: Widget mappings are now dynamically fetched from ComfyUI
+    // via the workflow analyzer's getWidgetNames() method
+    // This function is mainly used for generic widget_N names now
     
-    const nodeMapping = widgetMappings[nodeType];
-    if (!nodeMapping) {
-      // For unknown node types, try to match by widget name directly
-      if (fieldName === 'text' || fieldName === 'prompt') {
-        return 0; // Most text nodes have text as the first widget
-      }
-      return -1;
+    // For unknown node types, try to match by widget name directly
+    if (fieldName === 'text' || fieldName === 'prompt') {
+      return 0; // Most text nodes have text as the first widget
     }
-    
-    const index = nodeMapping[fieldName];
-    return index !== undefined ? index : -1;
+    return -1;
   },
   
   // Trigger component update by incrementing counter
