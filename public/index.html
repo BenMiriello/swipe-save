@@ -326,7 +326,7 @@
                         <textarea 
                           class="comfyui-field-textarea"
                           :placeholder="field.currentValue || 'Enter text...'"
-                          x-model="getFieldValue(node.id, field.fieldName)"
+                          :value="getFieldValue(node.id, field.fieldName)"
                           @input="updateFieldEdit(node.id, field.fieldName, $event.target.value)"
                           rows="3"
                           :class="{ 'comfyui-field-edited': hasFieldEdit(node.id, field.fieldName) }">

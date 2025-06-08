@@ -14,6 +14,7 @@ window.comfyUIStores.editorStore = {
   // Text field editing state
   nodeEdits: {}, // { nodeId: { fieldName: newValue } }
   hasUnsavedChanges: false,
+  widgetMappings: new Map(), // Cache for nodeType -> widget names mapping
   
   // UI state
   showPromptsOnly: JSON.parse(localStorage.getItem('workflowEditorShowPromptsOnly') || 'true'),
@@ -117,10 +118,14 @@ window.comfyUIStores.editorStore = {
     
     this.hasUnsavedChanges = Object.keys(this.nodeEdits).length > 0;
     this.saveEditsToStorage();
+    this.triggerComponentUpdate();
   },
   
   // Get current value for field (edited or original)
   getFieldValue(nodeId, fieldName) {
+    // Access updateCounter to make this reactive
+    this.updateCounter;
+    
     const editedValue = this.nodeEdits[nodeId]?.[fieldName];
     if (editedValue !== undefined) {
       return editedValue;
@@ -278,11 +283,16 @@ window.comfyUIStores.editorStore = {
       return parseInt(widgetMatch[1]);
     }
 
-    // Note: Widget mappings are now dynamically fetched from ComfyUI
-    // via the workflow analyzer's getWidgetNames() method
-    // This function is mainly used for generic widget_N names now
+    // Use cached widget mappings from ComfyUI
+    const widgetNames = this.widgetMappings.get(nodeType);
+    if (widgetNames) {
+      const index = widgetNames.indexOf(fieldName);
+      if (index !== -1) {
+        return index;
+      }
+    }
     
-    // For unknown node types, try to match by widget name directly
+    // Fallback for unknown node types
     if (fieldName === 'text' || fieldName === 'prompt') {
       return 0; // Most text nodes have text as the first widget
     }

@@ -247,6 +247,11 @@ window.comfyUIServices.workflowAnalyzer = {
 
           // Get real widget names from ComfyUI
           const realWidgetNames = await this.getWidgetNames(node.type);
+          
+          // Cache widget mapping in editor store for edit application
+          if (realWidgetNames.length > 0 && window.Alpine && Alpine.store('workflowEditor')) {
+            Alpine.store('workflowEditor').widgetMappings.set(node.type, realWidgetNames);
+          }
 
           for (let index = 0; index < originalNode.widgets_values.length; index++) {
             const value = originalNode.widgets_values[index];
