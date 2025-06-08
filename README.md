@@ -78,10 +78,10 @@ You can change source and destination directories using the Options menu (top le
 
 ## Workflow Text Editing
 
-The application provides comprehensive text field editing for ComfyUI workflows extracted from PNG metadata. 
-Text edits are automatically saved per-file and preserved across sessions. The workflow editor detects and 
-displays editable text fields from nodes like CLIPTextEncode, allowing modification of prompts and other 
-text parameters before queueing. Note: Visual node layout preservation requires a ComfyUI extension 
+The application provides comprehensive text field editing for ComfyUI workflows extracted from PNG metadata.
+Text edits are automatically saved per-file and preserved across sessions. The workflow editor detects and
+displays editable text fields from nodes like CLIPTextEncode, allowing modification of prompts and other
+text parameters before queueing. Note: Visual node layout preservation requires a ComfyUI extension
 (see roadmap below) as the ComfyUI API does not accept position data during workflow execution.
 
 ## Roadmap
@@ -106,8 +106,7 @@ text parameters before queueing. Note: Visual node layout preservation requires 
 - [x] At-a-glance view of Run Workflow settings
 - [x] At-a-glance view of queue
 - [x] Allow clearing ComfyUI queue (clearing individual items is not possible yet due to comfyui api limitations)
-- [x] Edit workflow text fields with auto-save persistence  
-- [x] Edit and queue workflows without losing node formatting
+- [x] Edit workflow text fields with auto-save persistence
 - [ ] ComfyUI extension for layout preservation and workflow injection (see Extension Development roadmap)
 - [ ] Allow modifying more fields in the workflow when queueing, such as prompts, steps
 - [ ] Allow loading a workflow in comfyui (not just queueing and linking)
@@ -152,7 +151,7 @@ text parameters before queueing. Note: Visual node layout preservation requires 
 
 ### ComfyUI Extension Development
 - [ ] Create ComfyUI extension to preserve visual node layout (positions, sizes) during workflow execution
-- [ ] Add extension API endpoint for injecting workflows into ComfyUI's last_prompt.json  
+- [ ] Add extension API endpoint for injecting workflows into ComfyUI's last_prompt.json
 - [ ] Implement extension detection in our app to enable enhanced features when available
 - [ ] Add layout persistence API that works with or without extension present
 - [ ] Integrate workflow injection capabilities with our text editing system
