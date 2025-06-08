@@ -142,8 +142,11 @@ function convertGUIToAPI(guiWorkflow) {
         const inputName = widgetNames[index];
         if (inputName && inputName !== null) {
           apiNode.inputs[inputName] = value;
-        } else if (inputName !== null) {
-          console.warn(`Missing widget mapping for ${node.type} widget ${index} (value: ${value})`);
+        } else {
+          // For unmapped nodes, use generic widget names to preserve values
+          // This ensures custom node widgets don't get lost during conversion
+          const fallbackName = `widget_${index}`;
+          apiNode.inputs[fallbackName] = value;
         }
       });
     }
