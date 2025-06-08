@@ -359,12 +359,6 @@ window.comfyUIComponents = {
             console.warn('Failed to load saved edits:', e);
           }
         }
-      },
-
-      // Utility functions
-      truncateText(text, maxLength) {
-        if (!text || text.length <= maxLength) return text;
-        return text.substring(0, maxLength) + '...';
       }
     };
   },

@@ -52,8 +52,7 @@ window.comfyUIComponents.panelComponents = {
       getCollapseButtonText() { return Alpine.store('workflowEditor').getCollapseButtonText(); },
       hasFieldEdit(nodeId, fieldName) { return Alpine.store('workflowEditor').hasFieldEdit(nodeId, fieldName); },
       getFieldValue(nodeId, fieldName) { return Alpine.store('workflowEditor').getFieldValue(nodeId, fieldName); },
-      updateFieldEdit(nodeId, fieldName, value) { Alpine.store('workflowEditor').updateFieldEdit(nodeId, fieldName, value); },
-      truncateText(text, maxLength) { return Alpine.store('workflowEditor').truncateText(text, maxLength); }
+      updateFieldEdit(nodeId, fieldName, value) { Alpine.store('workflowEditor').updateFieldEdit(nodeId, fieldName, value); }
     };
   },
 

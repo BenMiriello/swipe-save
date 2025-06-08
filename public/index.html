@@ -322,11 +322,6 @@
                       <!-- Field content -->
                       <div class="comfyui-field-content">
                         
-                        <!-- Original value preview (when not edited) -->
-                        <div x-show="!hasFieldEdit(node.id, field.fieldName)" class="comfyui-field-preview">
-                          <span class="comfyui-field-original" x-text="truncateText(field.currentValue || '', 100)"></span>
-                        </div>
-
                         <!-- Text area for editing -->
                         <textarea 
                           class="comfyui-field-textarea"

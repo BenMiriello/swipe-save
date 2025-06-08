@@ -324,16 +324,5 @@ window.comfyUIStores.editorStore = {
   // Trigger component update by incrementing counter
   triggerComponentUpdate() {
     this.updateCounter++;
-  },
-  
-  // Helper method to truncate text for display
-  truncateText(text, maxLength) {
-    if (!text || typeof text !== 'string') {
-      return '';
-    }
-    if (text.length <= maxLength) {
-      return text;
-    }
-    return text.substring(0, maxLength) + '...';
   }
 };
