@@ -84,7 +84,6 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: var(--comfy-spacing-lg);
   padding-bottom: var(--comfy-spacing-md);
   border-bottom: 1px solid var(--comfy-border-light);
 }
@@ -304,6 +303,7 @@
   justify-content: space-between !important;
   align-items: center !important;
   padding: var(--comfy-spacing-md);
+  padding-bottom: 0px;
   background: var(--comfy-bg-primary);
   min-height: 60px; /* Ensure consistent height */
   width: 100%;

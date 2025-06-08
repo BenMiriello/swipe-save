@@ -194,6 +194,14 @@
   color: var(--comfy-text-primary);
   resize: vertical;
   transition: border-color 0.2s ease, background-color 0.2s ease;
+
+  /* Mobile-specific resize support */
+  -webkit-appearance: none;
+  overflow: auto;
+  touch-action: manipulation;
+  /* Fix for iOS Safari resize handle */
+  -webkit-user-select: text;
+  user-select: text;
 }
 
 .comfyui-field-textarea:focus {
