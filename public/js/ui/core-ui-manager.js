@@ -243,7 +243,15 @@ const coreUIManager = {
     if (totalFiles === 0) {
       this.elements.counterContainer.textContent = 'No images';
     } else {
-      this.elements.counterContainer.textContent = `${currentIndex + 1} of ${totalFiles}`;
+      const current = currentIndex + 1;
+      const total = totalFiles;
+      
+      // Calculate total character count of both numbers
+      const totalChars = current.toString().length + total.toString().length;
+      
+      // Use compact format (n/nn) if combined numbers > 5 characters, otherwise use verbose format (n of nn)
+      const counterText = totalChars > 5 ? `${current}/${total}` : `${current} of ${total}`;
+      this.elements.counterContainer.textContent = counterText;
     }
   },
 
