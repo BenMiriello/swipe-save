@@ -98,6 +98,11 @@ const config = {
   // Server Configuration
   PORT: process.env.PORT || 8081,
 
+  // Logging Configuration
+  get ENABLE_LOGGING() {
+    return currentConfig.enableLogging !== false; // Default to true
+  },
+
   // Config management
   getCurrentConfig: () => ({ ...currentConfig }),
   updateConfig: saveConfig

@@ -168,6 +168,9 @@ router.post('/api/undo', (req, res) => {
 router.post('/api/files/action', async (req, res) => {
   const { filename, action, customFilename } = req.body;
   const sourcePath = path.join(config.OUTPUT_DIR, filename);
+  
+  console.log(`DEBUG: Received request - filename: "${filename}", action: "${action}"`);
+  console.log(`DEBUG: Request body:`, JSON.stringify(req.body, null, 2));
 
   try {
     // More robust file verification
@@ -207,11 +210,12 @@ router.post('/api/files/action', async (req, res) => {
     if (action === 'up') actionType = 'best_complete';
     if (action === 'down') actionType = 'delete';
 
+    console.log(`DEBUG: Processing action "${action}" as actionType "${actionType}"`);
     switch(actionType) {
       case 'archive':
       case 'archive_good':
       case 'archive_bad': {
-        const targetPath = getTargetBasePath(fileDate, config.OUTPUT_DIR);
+        const targetPath = getTargetBasePath(fileDate, config.LOCAL_COPY_DIR);
         const destPath = path.join(targetPath, targetFilename);
 
         // Skip move if source and destination are the same
@@ -245,21 +249,38 @@ router.post('/api/files/action', async (req, res) => {
       case 'saved':
       case 'saved_wip': {
         const subfolder = actionType === 'saved_wip' ? 'wip' : null;
-        const destFolder = getTargetSubfolderPath(fileDate, config.OUTPUT_DIR, subfolder);
+        const destFolder = getTargetSubfolderPath(fileDate, config.LOCAL_COPY_DIR, subfolder);
         const destPath = path.join(destFolder, targetFilename);
+
+        console.log(`SAVED DEBUG: sourcePath = ${sourcePath}`);
+        console.log(`SAVED DEBUG: destPath = ${destPath}`);
+        console.log(`SAVED DEBUG: paths equal? ${sourcePath === destPath}`);
 
         // Skip move if source and destination are the same
         if (sourcePath === destPath) {
-          console.log(`File ${filename} already in correct location, skipping move`);
+          console.log(`SAVED DEBUG: Skipping move - paths are equal`);
           actionRecord.destPath = destPath;
         } else {
+          console.log(`SAVED DEBUG: Creating dest folder if needed: ${destFolder}`);
           if (!fs.existsSync(destFolder)) {
             fs.mkdirSync(destFolder, { recursive: true });
+            console.log(`SAVED DEBUG: Created dest folder`);
           }
 
-          if (!fileOps.moveFile(sourcePath, destPath)) {
+          console.log(`SAVED DEBUG: About to call moveFile(${sourcePath}, ${destPath})`);
+          const moveResult = fileOps.moveFile(sourcePath, destPath);
+          console.log(`SAVED DEBUG: moveFile returned: ${moveResult}`);
+          
+          if (!moveResult) {
             throw new Error(`Failed to move file to ${destPath}`);
           }
+          
+          console.log(`SAVED DEBUG: Checking if source still exists after move`);
+          const sourceStillExists = fs.existsSync(sourcePath);
+          const destExists = fs.existsSync(destPath);
+          console.log(`SAVED DEBUG: Source exists after move: ${sourceStillExists}`);
+          console.log(`SAVED DEBUG: Dest exists after move: ${destExists}`);
+          
           actionRecord.destPath = destPath;
         }
 
@@ -273,30 +294,7 @@ router.post('/api/files/action', async (req, res) => {
           action: actionType
         });
 
-        const copySubfolder = actionType === 'saved_wip' ? 'wip' : null;
-        const copyDestFolder = getTargetSubfolderPath(fileDate, config.LOCAL_COPY_DIR, copySubfolder);
-        
-        if (!fs.existsSync(copyDestFolder)) {
-          fs.mkdirSync(copyDestFolder, { recursive: true });
-        }
-
-        const copyPath = path.join(copyDestFolder, targetFilename);
-
-        if (!fileOps.copyFile(destPath, copyPath)) {
-          throw new Error(`Failed to copy file to ${copyPath}`);
-        }
-
-        actionRecord.copyPath = copyPath;
-
-        fileOps.logSimpleAction(`${actionType}_copy`, {
-          filename,
-          targetFilename,
-          sourcePath: destPath,
-          destPath: copyPath,
-          fileDate,
-          metadata: fileMetadata,
-          action: actionType
-        });
+        // Removed redundant copy operation - saved action now just moves file to destination
 
         break;
       }
@@ -402,7 +400,15 @@ router.post('/api/files/action', async (req, res) => {
 
     actionHistory.push(actionRecord);
 
-    res.json({ success: true });
+    res.json({ 
+      success: true, 
+      debug: {
+        action: actionType,
+        sourcePath,
+        destPath: actionRecord.destPath,
+        fileExists: fs.existsSync(sourcePath)
+      }
+    });
   } catch (error) {
     console.error('Error handling file action:', error);
 
@@ -413,7 +419,10 @@ router.post('/api/files/action', async (req, res) => {
       action
     });
 
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ 
+      error: error.message,
+      debug: { filename, action, sourcePath }
+    });
   }
 });
 

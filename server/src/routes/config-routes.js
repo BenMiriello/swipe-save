@@ -11,7 +11,8 @@ router.get('/api/config', (req, res) => {
     res.json({
       sourceDir: currentConfig.sourceDir,
       destinationDir: currentConfig.destinationDir,
-      useDatestampFolders: currentConfig.useDatestampFolders
+      useDatestampFolders: currentConfig.useDatestampFolders,
+      enableLogging: currentConfig.enableLogging !== false
     });
   } catch (error) {
     console.error('Error getting config:', error);
@@ -22,9 +23,9 @@ router.get('/api/config', (req, res) => {
 // Update configuration
 router.post('/api/config', (req, res) => {
   try {
-    const { sourceDir, destinationDir, useDatestampFolders } = req.body;
+    const { sourceDir, destinationDir, useDatestampFolders, enableLogging } = req.body;
 
-    if (!sourceDir && !destinationDir && useDatestampFolders === undefined) {
+    if (!sourceDir && !destinationDir && useDatestampFolders === undefined && enableLogging === undefined) {
       return res.status(400).json({ error: 'No configuration provided' });
     }
 
@@ -32,6 +33,7 @@ router.post('/api/config', (req, res) => {
     if (sourceDir) updateData.sourceDir = path.resolve(sourceDir);
     if (destinationDir) updateData.destinationDir = path.resolve(destinationDir);
     if (useDatestampFolders !== undefined) updateData.useDatestampFolders = Boolean(useDatestampFolders);
+    if (enableLogging !== undefined) updateData.enableLogging = Boolean(enableLogging);
 
     const success = config.updateConfig(updateData);
 

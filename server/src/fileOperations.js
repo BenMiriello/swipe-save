@@ -117,6 +117,11 @@ async function extractComfyMetadata(sourcePath, filename) {
  */
 function logSimpleAction(actionType, data) {
   try {
+    // Check if logging is enabled
+    if (!config.ENABLE_LOGGING) {
+      return true; // Return success but don't actually log
+    }
+
     // Make sure we're using today's log file
     const todayDate = moment().format('YYYYMMDD');
     const currentLogFile = path.join(config.LOG_DIR, `selection_log_${todayDate}.json`);
@@ -127,6 +132,11 @@ function logSimpleAction(actionType, data) {
       action: actionType,
       ...data
     };
+
+    // Ensure the log directory exists
+    if (!fs.existsSync(config.LOG_DIR)) {
+      fs.mkdirSync(config.LOG_DIR, { recursive: true });
+    }
 
     // Read existing log
     let logData = { selections: [] };
