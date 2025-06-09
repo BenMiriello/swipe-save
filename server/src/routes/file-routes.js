@@ -25,6 +25,62 @@ function getTargetSubfolderPath(fileDate, baseDir, subfolder) {
   return basePath;
 }
 
+// Helper function to create backup copy when toggle is enabled
+function createBackupCopy(sourcePath, filename, fileDate, actionType, saveCopiesEnabled) {
+  if (!saveCopiesEnabled) {
+    return null; // No backup needed
+  }
+
+  try {
+    const currentConfig = config.getCurrentConfig();
+    
+    // Create backup structure: SOURCE/copies/YYYY-MM-DD/action_folder/filename
+    const backupBaseDir = path.join(currentConfig.sourceDir, 'copies');
+    const backupDateDir = currentConfig.useDatestampFolders ? 
+      path.join(backupBaseDir, fileDate) : backupBaseDir;
+    
+    let backupActionDir;
+    switch(actionType) {
+      case 'archive':
+      case 'archive_good':
+      case 'archive_bad':
+        backupActionDir = path.join(backupDateDir, 'archive');
+        break;
+      case 'saved':
+      case 'saved_wip':
+        backupActionDir = path.join(backupDateDir, 'saved');
+        break;
+      case 'best_complete':
+      case 'best_wip':
+        backupActionDir = path.join(backupDateDir, 'best');
+        break;
+      case 'delete':
+        return null; // No backup for delete operations (files go to trash)
+      default:
+        backupActionDir = path.join(backupDateDir, 'other');
+    }
+
+    const backupPath = path.join(backupActionDir, filename);
+
+    // Create backup directory structure
+    if (!fs.existsSync(backupActionDir)) {
+      fs.mkdirSync(backupActionDir, { recursive: true });
+    }
+
+    // Copy file to backup location
+    if (fileOps.copyFile(sourcePath, backupPath)) {
+      console.log(`BACKUP: Created backup copy at ${backupPath}`);
+      return backupPath;
+    } else {
+      console.error(`BACKUP: Failed to create backup copy at ${backupPath}`);
+      return null;
+    }
+  } catch (error) {
+    console.error(`BACKUP ERROR: ${error.message}`);
+    return null;
+  }
+}
+
 // Get list of media files
 router.get('/api/files', (req, res) => {
   const mediaFiles = [];
@@ -166,11 +222,9 @@ router.post('/api/undo', (req, res) => {
 
 // Handle file operations (swipe actions)
 router.post('/api/files/action', async (req, res) => {
-  const { filename, action, customFilename } = req.body;
+  const { filename, action, customFilename, saveCopiesWhenSorting } = req.body;
   const sourcePath = path.join(config.OUTPUT_DIR, filename);
   
-  console.log(`DEBUG: Received request - filename: "${filename}", action: "${action}"`);
-  console.log(`DEBUG: Request body:`, JSON.stringify(req.body, null, 2));
 
   try {
     // More robust file verification
@@ -210,11 +264,17 @@ router.post('/api/files/action', async (req, res) => {
     if (action === 'up') actionType = 'best_complete';
     if (action === 'down') actionType = 'delete';
 
-    console.log(`DEBUG: Processing action "${action}" as actionType "${actionType}"`);
+    
     switch(actionType) {
       case 'archive':
       case 'archive_good':
       case 'archive_bad': {
+        // Create backup copy if enabled
+        const backupPath = createBackupCopy(sourcePath, targetFilename, fileDate, actionType, saveCopiesWhenSorting);
+        if (backupPath) {
+          actionRecord.copyPath = backupPath;
+        }
+
         const targetPath = getTargetBasePath(fileDate, config.LOCAL_COPY_DIR);
         const destPath = path.join(targetPath, targetFilename);
 
@@ -248,39 +308,28 @@ router.post('/api/files/action', async (req, res) => {
 
       case 'saved':
       case 'saved_wip': {
+        // Create backup copy if enabled
+        const backupPath = createBackupCopy(sourcePath, targetFilename, fileDate, actionType, saveCopiesWhenSorting);
+        if (backupPath) {
+          actionRecord.copyPath = backupPath;
+        }
+
         const subfolder = actionType === 'saved_wip' ? 'wip' : null;
         const destFolder = getTargetSubfolderPath(fileDate, config.LOCAL_COPY_DIR, subfolder);
         const destPath = path.join(destFolder, targetFilename);
 
-        console.log(`SAVED DEBUG: sourcePath = ${sourcePath}`);
-        console.log(`SAVED DEBUG: destPath = ${destPath}`);
-        console.log(`SAVED DEBUG: paths equal? ${sourcePath === destPath}`);
-
         // Skip move if source and destination are the same
         if (sourcePath === destPath) {
-          console.log(`SAVED DEBUG: Skipping move - paths are equal`);
+          console.log(`File ${filename} already in correct location, skipping move`);
           actionRecord.destPath = destPath;
         } else {
-          console.log(`SAVED DEBUG: Creating dest folder if needed: ${destFolder}`);
           if (!fs.existsSync(destFolder)) {
             fs.mkdirSync(destFolder, { recursive: true });
-            console.log(`SAVED DEBUG: Created dest folder`);
           }
 
-          console.log(`SAVED DEBUG: About to call moveFile(${sourcePath}, ${destPath})`);
-          const moveResult = fileOps.moveFile(sourcePath, destPath);
-          console.log(`SAVED DEBUG: moveFile returned: ${moveResult}`);
-          
-          if (!moveResult) {
+          if (!fileOps.moveFile(sourcePath, destPath)) {
             throw new Error(`Failed to move file to ${destPath}`);
           }
-          
-          console.log(`SAVED DEBUG: Checking if source still exists after move`);
-          const sourceStillExists = fs.existsSync(sourcePath);
-          const destExists = fs.existsSync(destPath);
-          console.log(`SAVED DEBUG: Source exists after move: ${sourceStillExists}`);
-          console.log(`SAVED DEBUG: Dest exists after move: ${destExists}`);
-          
           actionRecord.destPath = destPath;
         }
 
@@ -303,6 +352,12 @@ router.post('/api/files/action', async (req, res) => {
       case 'best_wip': {
         try {
           console.log(`SUPER SAVE: Processing file: ${filename} as ${actionType}`);
+
+          // Create backup copy if enabled
+          const backupPath = createBackupCopy(sourcePath, targetFilename, fileDate, actionType, saveCopiesWhenSorting);
+          if (backupPath) {
+            actionRecord.copyPath = backupPath;
+          }
 
           const bestSubfolder = actionType === 'best_complete' ? 'best' : 'best/wip';
           const bestFolder = getTargetSubfolderPath(fileDate, config.LOCAL_COPY_DIR, bestSubfolder);
@@ -400,15 +455,7 @@ router.post('/api/files/action', async (req, res) => {
 
     actionHistory.push(actionRecord);
 
-    res.json({ 
-      success: true, 
-      debug: {
-        action: actionType,
-        sourcePath,
-        destPath: actionRecord.destPath,
-        fileExists: fs.existsSync(sourcePath)
-      }
-    });
+    res.json({ success: true });
   } catch (error) {
     console.error('Error handling file action:', error);
 
@@ -419,10 +466,7 @@ router.post('/api/files/action', async (req, res) => {
       action
     });
 
-    res.status(500).json({ 
-      error: error.message,
-      debug: { filename, action, sourcePath }
-    });
+    res.status(500).json({ error: error.message });
   }
 });
 

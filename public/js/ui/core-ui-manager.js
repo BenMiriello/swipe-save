@@ -74,6 +74,17 @@ const coreUIManager = {
     if (useDatestampFoldersEl) {
       useDatestampFoldersEl.checked = config.useDatestampFolders !== false;
     }
+
+    const enableLoggingEl = document.getElementById('enableLogging');
+    if (enableLoggingEl) {
+      enableLoggingEl.checked = config.enableLogging !== false;
+    }
+
+    const saveCopiesWhenSortingEl = document.getElementById('saveCopiesWhenSorting');
+    if (saveCopiesWhenSortingEl) {
+      const savedSetting = localStorage.getItem('saveCopiesWhenSorting');
+      saveCopiesWhenSortingEl.checked = savedSetting !== null ? savedSetting === 'true' : true;
+    }
   },
 
   /**
@@ -97,7 +108,14 @@ const coreUIManager = {
     });
 
     window.addEventListener('click', (event) => {
-      if (!this.elements.optionsButton.contains(event.target) && 
+      // Don't close dropdown if clicking on toggle elements
+      const isToggleClick = event.target.closest('.toggle-option') || 
+                           event.target.id === 'useDatestampFolders' ||
+                           event.target.id === 'enableLogging' ||
+                           event.target.id === 'saveCopiesWhenSorting';
+      
+      if (!isToggleClick && 
+          !this.elements.optionsButton.contains(event.target) && 
           !this.elements.optionsDropdown.contains(event.target)) {
         this.elements.optionsDropdown.classList.remove('show');
       }
@@ -144,6 +162,35 @@ const coreUIManager = {
           });
         } catch (error) {
           console.error('Failed to update datestamp folders setting:', error);
+          // Revert the toggle on error
+          event.target.checked = !event.target.checked;
+        }
+      });
+    }
+
+    const enableLoggingEl = document.getElementById('enableLogging');
+    if (enableLoggingEl) {
+      enableLoggingEl.addEventListener('change', async (event) => {
+        try {
+          await window.configApi.updateConfig({ 
+            enableLogging: event.target.checked 
+          });
+        } catch (error) {
+          console.error('Failed to update logging setting:', error);
+          // Revert the toggle on error
+          event.target.checked = !event.target.checked;
+        }
+      });
+    }
+
+    const saveCopiesWhenSortingEl = document.getElementById('saveCopiesWhenSorting');
+    if (saveCopiesWhenSortingEl) {
+      saveCopiesWhenSortingEl.addEventListener('change', (event) => {
+        try {
+          localStorage.setItem('saveCopiesWhenSorting', event.target.checked);
+
+        } catch (error) {
+          console.error('Failed to save copies setting:', error);
           // Revert the toggle on error
           event.target.checked = !event.target.checked;
         }

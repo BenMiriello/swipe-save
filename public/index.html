@@ -52,6 +52,18 @@
                 <span class="toggle-text">Use Datestamp Folders</span>
               </label>
             </li>
+            <li class="toggle-option">
+              <label class="toggle-label">
+                <input type="checkbox" id="enableLogging">
+                <span class="toggle-text">Enable Logging</span>
+              </label>
+            </li>
+            <li class="toggle-option">
+              <label class="toggle-label">
+                <input type="checkbox" id="saveCopiesWhenSorting" checked>
+                <span class="toggle-text">Save copies when sorting</span>
+              </label>
+            </li>
             <li class="separator"></li>
             <li id="customName">Custom Name</li>
             <li id="showInfo">Show Instructions</li>
@@ -530,6 +542,7 @@
   <!-- API modules (load before main api-service coordinator) -->
   <script src="js/api/file-api.js"></script>
   <script src="js/api/config-api.js"></script>
+  <script src="js/api/copy-api.js"></script>
   <script src="js/api-service.js"></script>
 
   <!-- ComfyUI Module (Alpine.js) - Load in dependency order -->

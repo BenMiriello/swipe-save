@@ -95,11 +95,12 @@ const fileApi = {
         throw new Error(`File ${filename} not found. It may have been moved or deleted.`);
       }
 
-      // Add custom filename if set
+      // Add custom filename and copy setting if set
       const requestData = { 
         filename,
         action,
-        ...(customFilename && { customFilename })
+        ...(customFilename && { customFilename }),
+        ...(window.copyApi && { saveCopiesWhenSorting: window.copyApi.getSaveCopiesWhenSorting() })
       };
 
       const response = await fetch(`${window.appConfig.getApiUrl()}/api/files/action`, {
