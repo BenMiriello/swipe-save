@@ -170,7 +170,9 @@ router.get('/api/history', (req, res) => {
 
 // Undo last action
 router.post('/api/undo', (req, res) => {
+  console.log('=== UNDO ENDPOINT HIT ===');
   try {
+    console.log(`UNDO: Undo called, history length: ${actionHistory.length}`);
     if (actionHistory.length === 0) {
       return res.status(400).json({ error: 'No actions to undo' });
     }
@@ -178,38 +180,59 @@ router.post('/api/undo', (req, res) => {
     const lastAction = actionHistory.pop();
     let successfulUndo = false;
 
+    console.log(`UNDO: Attempting to undo action:`, {
+      action: lastAction.action,
+      sourcePath: lastAction.sourcePath,
+      destPath: lastAction.destPath,
+      bestCopyPath: lastAction.bestCopyPath,
+      copyPath: lastAction.copyPath
+    });
+
     if (lastAction.sourcePath && lastAction.destPath) {
       if (fs.existsSync(lastAction.destPath)) {
         if (fs.statSync(lastAction.destPath).isDirectory()) {
           fs.removeSync(lastAction.destPath);
           console.log(`Removed directory that was supposed to be a file: ${lastAction.destPath}`);
+          successfulUndo = true;
         } else {
           successfulUndo = fileOps.moveFile(lastAction.destPath, lastAction.sourcePath);
           if (successfulUndo) {
-            console.log(`Moved file back from ${lastAction.destPath} to ${lastAction.sourcePath}`);
+            console.log(`UNDO: Moved file back from ${lastAction.destPath} to ${lastAction.sourcePath}`);
+          } else {
+            console.error(`UNDO: Failed to move file back from ${lastAction.destPath} to ${lastAction.sourcePath}`);
           }
         }
-
-        if (successfulUndo && lastAction.bestCopyPath && fs.existsSync(lastAction.bestCopyPath)) {
-          fs.removeSync(lastAction.bestCopyPath);
-          console.log(`Removed copied file: ${lastAction.bestCopyPath}`);
-        }
-
-        if (successfulUndo && lastAction.copyPath && fs.existsSync(lastAction.copyPath)) {
-          fs.removeSync(lastAction.copyPath);
-          console.log(`Removed copied file: ${lastAction.copyPath}`);
-        }
-
-        if (successfulUndo) {
-          fileOps.logSimpleAction('undo', {
-            filename: lastAction.filename,
-            sourcePath: lastAction.destPath,
-            destPath: lastAction.sourcePath
-          });
-        }
       } else {
-        console.log(`Destination file not found for undo: ${lastAction.destPath}`);
+        console.log(`UNDO: Destination file not found: ${lastAction.destPath}`);
         return res.status(404).json({ error: 'File not found for undo operation' });
+      }
+
+      // Clean up best copy if it exists (for best actions)
+      if (lastAction.bestCopyPath && fs.existsSync(lastAction.bestCopyPath)) {
+        try {
+          fs.removeSync(lastAction.bestCopyPath);
+          console.log(`UNDO: Removed best copy: ${lastAction.bestCopyPath}`);
+        } catch (error) {
+          console.error(`UNDO: Failed to remove best copy: ${error.message}`);
+        }
+      }
+
+      // Clean up backup copy if it exists (for copy system)
+      if (lastAction.copyPath && fs.existsSync(lastAction.copyPath)) {
+        try {
+          fs.removeSync(lastAction.copyPath);
+          console.log(`UNDO: Removed backup copy: ${lastAction.copyPath}`);
+        } catch (error) {
+          console.error(`UNDO: Failed to remove backup copy: ${error.message}`);
+        }
+      }
+
+      if (successfulUndo) {
+        fileOps.logSimpleAction('undo', {
+          filename: lastAction.filename,
+          sourcePath: lastAction.destPath,
+          destPath: lastAction.sourcePath
+        });
       }
     }
 
@@ -222,6 +245,7 @@ router.post('/api/undo', (req, res) => {
 
 // Handle file operations (swipe actions)
 router.post('/api/files/action', async (req, res) => {
+  console.log('=== ACTION ENDPOINT HIT ===');
   const { filename, action, customFilename, saveCopiesWhenSorting } = req.body;
   const sourcePath = path.join(config.OUTPUT_DIR, filename);
   
@@ -275,7 +299,9 @@ router.post('/api/files/action', async (req, res) => {
           actionRecord.copyPath = backupPath;
         }
 
-        const targetPath = getTargetBasePath(fileDate, config.LOCAL_COPY_DIR);
+        // Archive goes to SOURCE/archive/, not destination
+        const archiveBaseDir = path.join(config.OUTPUT_DIR, 'archive');
+        const targetPath = getTargetBasePath(fileDate, archiveBaseDir);
         const destPath = path.join(targetPath, targetFilename);
 
         // Skip move if source and destination are the same
@@ -368,39 +394,19 @@ router.post('/api/files/action', async (req, res) => {
 
           const bestDestPath = path.join(bestFolder, targetFilename);
 
-          if (!fileOps.copyFile(sourcePath, bestDestPath)) {
-            throw new Error(`Failed to copy file to: ${bestDestPath}`);
+          if (!fileOps.moveFile(sourcePath, bestDestPath)) {
+            throw new Error(`Failed to move file to: ${bestDestPath}`);
           }
 
-          console.log(`SUPER SAVE: File copied to best folder: ${bestDestPath}`);
+          console.log(`SUPER SAVE: File moved to best folder: ${bestDestPath}`);
 
-          const originalTargetPath = getTargetBasePath(fileDate, config.OUTPUT_DIR);
-          const movedOriginal = path.join(originalTargetPath, targetFilename);
-
-          // Skip move if source and destination are the same
-          if (sourcePath !== movedOriginal) {
-            if (!fs.existsSync(originalTargetPath)) {
-              fs.mkdirSync(originalTargetPath, { recursive: true });
-            }
-
-            if (!fileOps.moveFile(sourcePath, movedOriginal)) {
-              throw new Error(`Failed to move original file to: ${movedOriginal}`);
-            }
-          } else {
-            console.log(`File ${filename} already in correct location for best action`);
-          }
-
-          console.log(`SUPER SAVE: Original file moved to: ${movedOriginal}`);
-
-          actionRecord.bestCopyPath = bestDestPath;
-          actionRecord.destPath = movedOriginal;
+          actionRecord.destPath = bestDestPath;
 
           fileOps.logSimpleAction(actionType, {
             filename,
             targetFilename,
             sourcePath,
-            bestDestPath,
-            movedOriginal,
+            destPath: bestDestPath,
             fileDate,
             metadata: fileMetadata,
             action: actionType
@@ -454,6 +460,14 @@ router.post('/api/files/action', async (req, res) => {
     }
 
     actionHistory.push(actionRecord);
+
+    console.log(`ACTION: Recorded action:`, {
+      action: actionRecord.action,
+      sourcePath: actionRecord.sourcePath,
+      destPath: actionRecord.destPath,
+      bestCopyPath: actionRecord.bestCopyPath,
+      copyPath: actionRecord.copyPath
+    });
 
     res.json({ success: true });
   } catch (error) {

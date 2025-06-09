@@ -8,6 +8,7 @@ const actionController = {
    * @param {string} action - Action to perform
    */
   async performAction(action) {
+    console.log(`FRONTEND ACTION: performAction called with action: ${action}`);
     const state = window.stateManager.getState();
     if (state.allFiles.length === 0) return;
 
@@ -20,6 +21,7 @@ const actionController = {
     window.uiManager.showActionFeedback(mediaItem, action);
 
     try {
+      console.log(`FRONTEND ACTION: Calling apiService.performAction for ${filename}`);
       await window.apiService.performAction(filename, action, state.customFilename);
 
       setTimeout(() => {
@@ -43,7 +45,9 @@ const actionController = {
    * Undo the last action
    */
   async undoLastAction() {
+    console.log('FRONTEND: undoLastAction called');
     try {
+      console.log('FRONTEND: Calling apiService.undoLastAction()');
       const result = await window.apiService.undoLastAction();
 
       if (result.undoneAction) {

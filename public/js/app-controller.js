@@ -146,6 +146,7 @@ class AppController {
    * Undo the last action
    */
   async undoLastAction() {
+    console.log('APP CONTROLLER: undoLastAction called');
     return window.actionController.undoLastAction();
   }
 

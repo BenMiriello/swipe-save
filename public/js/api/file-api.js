@@ -111,12 +111,17 @@ const fileApi = {
         body: JSON.stringify(requestData)
       });
 
+      console.log('FRONTEND API: Action response status:', response.status);
+
       if (!response.ok) {
         const errorData = await response.json();
+        console.log('FRONTEND API: Action error response:', errorData);
         throw new Error(errorData.error || 'Action failed');
       }
 
-      return await response.json();
+      const result = await response.json();
+      console.log('FRONTEND API: Action success response:', result);
+      return result;
     } catch (error) {
       console.error('Error performing action:', error);
       throw error;
@@ -128,7 +133,9 @@ const fileApi = {
    * @returns {Promise<Object>} Undo result with the undone action
    */
   async undoLastAction() {
+    console.log('FRONTEND API: undoLastAction called');
     try {
+      console.log('FRONTEND API: Making fetch request to /api/undo');
       const response = await fetch(`${window.appConfig.getApiUrl()}/api/undo`, {
         method: 'POST',
         headers: {
@@ -136,12 +143,17 @@ const fileApi = {
         }
       });
 
+      console.log('FRONTEND API: Response status:', response.status);
+      
       if (!response.ok) {
         const result = await response.json();
+        console.log('FRONTEND API: Error response:', result);
         throw new Error(result.error || 'Undo failed');
       }
 
-      return await response.json();
+      const result = await response.json();
+      console.log('FRONTEND API: Success response:', result);
+      return result;
     } catch (error) {
       console.error('Error performing undo:', error);
       throw error;
