@@ -18,6 +18,7 @@ function findValidDirectory(preferredPaths, fallback = process.env.HOME || '/') 
 // Default configuration with smart fallbacks
 const defaultConfig = {
   sourceDir: findValidDirectory([
+    path.resolve(process.env.HOME, 'Documents/Data/Images/Text2Img'),
     path.resolve(process.env.HOME, 'Documents/ComfyUI/output'),
     path.resolve(process.env.HOME, 'Documents'),
     path.resolve(process.env.HOME, 'Desktop'),

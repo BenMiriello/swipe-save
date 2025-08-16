@@ -81,45 +81,81 @@ function createBackupCopy(sourcePath, filename, fileDate, actionType, saveCopies
   }
 }
 
+// Recursive function to scan directories for media files
+function scanDirectoryRecursive(dirPath, relativePath = '') {
+  const mediaFiles = [];
+  
+  // Directories to exclude from scanning (created by the app)
+  const excludedDirs = [
+    'archive',    // Archived files (left swipe)
+    'deleted',    // Deleted files (down swipe)
+    'copies',     // Backup copies when sorting
+    'best',       // Best files (up swipe)
+    'wip',        // Work in progress files
+    'swipe-save'  // Destination directory if it exists in source
+  ];
+  
+  try {
+    const entries = fs.readdirSync(dirPath, { withFileTypes: true });
+    
+    for (const entry of entries) {
+      const fullPath = path.join(dirPath, entry.name);
+      const relativeFilePath = path.join(relativePath, entry.name);
+      
+      if (entry.isDirectory()) {
+        // Skip excluded directories
+        if (excludedDirs.includes(entry.name.toLowerCase())) {
+          console.log(`Skipping excluded directory: ${relativeFilePath}`);
+          continue;
+        }
+        
+        // Recursively scan subdirectories
+        const subFiles = scanDirectoryRecursive(fullPath, relativeFilePath);
+        mediaFiles.push(...subFiles);
+      } else if (entry.isFile()) {
+        // Check if it's a media file
+        if (/\.(png|jpe?g|gif|bmp|webp|tiff?|svg|mp4|webm|mov|avi|mkv|flv|wmv|m4v|3gp|ogv)$/i.test(entry.name) && 
+            !entry.name.startsWith('._')) {
+          
+          const stats = fs.statSync(fullPath);
+          const encodedRelativePath = relativeFilePath.split(path.sep).map(encodeURIComponent).join('/');
+          
+          mediaFiles.push({
+            name: entry.name,
+            relativePath: relativeFilePath,
+            path: `/media/${encodedRelativePath}`,
+            size: stats.size,
+            date: stats.mtime
+          });
+        }
+      }
+    }
+  } catch (error) {
+    console.error(`Error reading directory ${dirPath}:`, error);
+  }
+  
+  return mediaFiles;
+}
+
 // Get list of media files
 router.get('/api/files', (req, res) => {
-  const mediaFiles = [];
-
   try {
-    const entries = fs.readdirSync(config.OUTPUT_DIR, { withFileTypes: true });
-
-    const mediaEntries = entries
-      .filter(entry => !entry.isDirectory())
-      .filter(file => /\.(png|jpe?g|gif|bmp|webp|tiff?|svg|mp4|webm|mov|avi|mkv|flv|wmv|m4v|3gp|ogv)$/i.test(file.name))
-      .filter(file => !file.name.startsWith('._'));
-
-    mediaEntries.forEach(file => {
-      const filePath = path.join(config.OUTPUT_DIR, file.name);
-      const stats = fs.statSync(filePath);
-
-      const encodedFilename = encodeURIComponent(file.name);
-
-      mediaFiles.push({
-        name: file.name,
-        path: `/media/${encodedFilename}`,
-        size: stats.size,
-        date: stats.mtime
-      });
-    });
-
+    const mediaFiles = scanDirectoryRecursive(config.OUTPUT_DIR);
     mediaFiles.sort((a, b) => b.date - a.date);
+    res.json(mediaFiles);
   } catch (error) {
-    console.error('Error reading directory:', error);
+    console.error('Error scanning media files:', error);
+    res.json([]);
   }
-
-  res.json(mediaFiles);
 });
 
-// Media file handler
-router.get('/media/:filename', (req, res) => {
+// Media file handler - supports subdirectories
+router.get('/media/*', (req, res) => {
   try {
-    const filename = decodeURIComponent(req.params.filename);
-    const filePath = path.join(config.OUTPUT_DIR, filename);
+    // Get the full path after /media/ (supports subdirectories)
+    const relativePath = req.params[0];
+    const decodedPath = decodeURIComponent(relativePath);
+    const filePath = path.join(config.OUTPUT_DIR, decodedPath);
 
     if (fs.existsSync(filePath)) {
       const stats = fs.statSync(filePath);
@@ -131,6 +167,7 @@ router.get('/media/:filename', (req, res) => {
       res.set('Access-Control-Allow-Origin', '*');
       res.set('Cache-Control', 'no-store');
 
+      const filename = path.basename(decodedPath);
       if (filename.toLowerCase().endsWith('.png')) {
         res.set('Content-Type', 'image/png');
       } else if (filename.toLowerCase().endsWith('.jpg') || filename.toLowerCase().endsWith('.jpeg')) {
@@ -247,7 +284,9 @@ router.post('/api/undo', (req, res) => {
 router.post('/api/files/action', async (req, res) => {
   console.log('=== ACTION ENDPOINT HIT ===');
   const { filename, action, customFilename, saveCopiesWhenSorting } = req.body;
+  // filename may now be a relative path like "WAN/I2V/video.mp4"
   const sourcePath = path.join(config.OUTPUT_DIR, filename);
+  const baseFilename = path.basename(filename);
   
 
   try {
@@ -267,9 +306,9 @@ router.post('/api/files/action', async (req, res) => {
       return res.status(400).json({ error: `${filename} is a directory, not a file.` });
     }
 
-    const fileMetadata = await fileOps.extractComfyMetadata(sourcePath, filename);
+    const fileMetadata = await fileOps.extractComfyMetadata(sourcePath, baseFilename);
 
-    const targetFilename = customFilename || filename;
+    const targetFilename = customFilename || baseFilename;
 
     let actionRecord = {
       action,
