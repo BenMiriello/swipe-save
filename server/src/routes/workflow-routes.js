@@ -214,8 +214,8 @@ function convertGUIToAPI(guiWorkflow) {
  * Get default ComfyUI URL based on request
  */
 function getDefaultComfyUIUrl(req) {
-  // Use debian as the ComfyUI host since that's where it's running
-  return 'http://debian:8188';
+  // Use dynamic config instead of hardcoded URL
+  return config.COMFYUI_URL;
 }
 
 /**
