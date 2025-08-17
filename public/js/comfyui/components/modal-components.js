@@ -14,9 +14,6 @@ window.comfyUIComponents.modalComponents = {
       buttonStates: { queue: 'idle' },
       allowClickAway: false,
       
-      // Workflow editor state (integrated directly)
-      filteredNodes: [],
-      
       init() {
         if (window.location.hostname === 'localhost') {
           console.log('Workflow modal component initialized');
@@ -29,25 +26,8 @@ window.comfyUIComponents.modalComponents = {
             setTimeout(() => {
               this.allowClickAway = true;
             }, 3000); // Wait 3 seconds before allowing click-away
-            
-            // Load workflow into editor when modal opens
-            // Add delay to ensure nested components are initialized
-            setTimeout(() => {
-              const currentFile = this.$store.comfyWorkflow.currentFile;
-              if (currentFile) {
-                console.log('Loading workflow after modal is fully open...');
-                this.$store.workflowEditor.loadWorkflow(currentFile);
-
-                // Watch for workflow editor updates and sync to modal
-                this.updateWorkflowEditorState();
-              } else {
-                console.log('No file selected - skipping workflow load');
-              }
-            }, 100);
           } else {
-            // Reset workflow editor when modal closes
-            console.log('Modal closing - resetting workflow editor state');
-            this.$store.workflowEditor.reset();
+            console.log('Modal closing - resetting state');
             this.filteredNodes = [];
           }
         });
@@ -76,13 +56,11 @@ window.comfyUIComponents.modalComponents = {
             console.log(`ComfyUI: Starting batch of ${settings.quantity} workflows`);
           }
           
-          // Get workflow with text edits applied
-          const modifiedWorkflow = this.$store.workflowEditor.getModifiedWorkflow();
+          // Use current file workflow (field edits will be handled by BentoML system)
           
           for (let i = 0; i < settings.quantity; i++) {
-            await window.comfyUIServices.apiClient.queueWorkflowWithEdits(
+            await window.comfyUIServices.apiClient.queueWorkflow(
               file,
-              modifiedWorkflow,
               settings.modifySeeds,
               settings.controlAfterGenerate,
               Alpine.store('comfyDestinations').selectedDestination
@@ -169,40 +147,6 @@ window.comfyUIComponents.modalComponents = {
         }
       },
       
-      // Workflow editor methods (integrated directly)
-      updateWorkflowEditorState() {
-        console.log('Updating workflow editor state in modal...');
-        
-        // Watch for store changes
-        this.$watch('$store.workflowEditor.updateCounter', () => {
-          console.log('Store update counter changed, syncing to modal...');
-          this.syncWorkflowEditorState();
-        });
-        
-        // Initial sync
-        this.syncWorkflowEditorState();
-      },
-      
-      syncWorkflowEditorState() {
-        const store = Alpine.store('workflowEditor');
-        if (store && typeof store.getFilteredNodes === 'function') {
-          this.filteredNodes = store.getFilteredNodes();
-          console.log('Synced filteredNodes to modal:', this.filteredNodes);
-        }
-      },
-      
-      // Workflow editor UI methods (proxied to store)
-      get hasUnsavedChanges() { return Alpine.store('workflowEditor').hasUnsavedChanges; },
-      get isEditorExpanded() { return Alpine.store('workflowEditor').isEditorExpanded; },
-      get showPromptsOnly() { return Alpine.store('workflowEditor').showPromptsOnly; },
-      
-      toggleEditorSection() { Alpine.store('workflowEditor').toggleEditorSection(); },
-      togglePromptsOnly() { Alpine.store('workflowEditor').togglePromptsOnly(); },
-      toggleNode(nodeId) { Alpine.store('workflowEditor').toggleNode(nodeId); },
-      isNodeCollapsed(nodeId) { return Alpine.store('workflowEditor').isNodeCollapsed(nodeId); },
-      hasFieldEdit(nodeId, fieldName) { return Alpine.store('workflowEditor').hasFieldEdit(nodeId, fieldName); },
-      getFieldValue(nodeId, fieldName) { return Alpine.store('workflowEditor').getFieldValue(nodeId, fieldName); },
-      updateFieldEdit(nodeId, fieldName, value) { Alpine.store('workflowEditor').updateFieldEdit(nodeId, fieldName, value); }
     };
   },
 
