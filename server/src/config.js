@@ -15,6 +15,25 @@ function findValidDirectory(preferredPaths, fallback = process.env.HOME || '/') 
   return fallback;
 }
 
+// Dynamic ComfyUI URL detection
+function getComfyUIUrl() {
+  // Check environment variable first
+  if (process.env.COMFYUI_URL) {
+    return process.env.COMFYUI_URL;
+  }
+  
+  // Try common ComfyUI locations in order of preference
+  const possibleUrls = [
+    'http://127.0.0.1:8188',   // IPv4 localhost (works)
+    'http://debian:8188',      // Named host (current setup)
+    'http://localhost:8188'    // May resolve to IPv6 (problematic)
+  ];
+  
+  // For now, return the first option but this could be enhanced
+  // to actually test connectivity and return the working one
+  return possibleUrls[0];
+}
+
 // Default configuration with smart fallbacks
 const defaultConfig = {
   sourceDir: findValidDirectory([
@@ -98,6 +117,11 @@ const config = {
 
   // Server Configuration
   PORT: process.env.PORT || 8081,
+
+  // ComfyUI Configuration
+  get COMFYUI_URL() {
+    return getComfyUIUrl();
+  },
 
   // Logging Configuration
   get ENABLE_LOGGING() {

@@ -567,6 +567,14 @@
   <!-- Main initialization (load last before Alpine.js) -->
   <script src="js/comfyui/index.js"></script>
   <script src="js/comfyui/test.js"></script>
+
+  <!-- BentoML Integration (load after comfyui, before Alpine.js) -->
+  <script src="js/comfyui-bentoml/services/bentoml-client.js"></script>
+  <script src="js/comfyui-bentoml/services/schema-service.js"></script>
+  <script src="js/comfyui-bentoml/adapters/ui-adapter.js"></script>
+  <script src="js/comfyui-bentoml/index.js"></script>
+  <script src="js/comfyui-bentoml/test-only.js"></script>
+
   <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.1/dist/cdn.min.js" defer></script>
 
   <!-- UI modules (load before main ui-manager coordinator) -->
