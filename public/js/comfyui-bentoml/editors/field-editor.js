@@ -1,0 +1,224 @@
+/**
+ * Field Editor Component
+ * Alpine.js component for displaying and editing extracted workflow fields
+ */
+
+window.comfyUIBentoML = window.comfyUIBentoML || {};
+
+window.comfyUIBentoML.fieldEditor = {
+  /**
+   * Create Alpine.js component for field editing
+   */
+  createComponent() {
+    return {
+      // State
+      fields: { seeds: [], textFields: [], otherFields: [] },
+      summary: null,
+      isLoading: false,
+      isExpanded: false,
+      editingField: null,
+      tempValue: '',
+      
+      // Initialize
+      init() {
+        console.log('Field editor component initialized');
+        
+        // Watch for workflow changes
+        this.$watch('$store.comfyWorkflow.currentFile', (file) => {
+          if (file) {
+            this.loadFields(file);
+          } else {
+            this.resetFields();
+          }
+        });
+      },
+
+      /**
+       * Load and extract fields from workflow
+       */
+      async loadFields(file) {
+        if (!file) return;
+        
+        this.isLoading = true;
+        
+        try {
+          // Get workflow data
+          const response = await fetch(`/api/workflow/${encodeURIComponent(file.name)}`);
+          if (!response.ok) {
+            throw new Error(`Failed to fetch workflow: ${response.status}`);
+          }
+          
+          const workflowData = await response.json();
+          
+          // Extract fields using our service
+          this.fields = await window.comfyUIBentoML.fieldExtractor.extractFields(workflowData);
+          this.summary = window.comfyUIBentoML.fieldExtractor.summarizeFields(this.fields);
+          
+          console.log('Extracted fields:', this.summary);
+          
+        } catch (error) {
+          console.error('Error loading fields:', error);
+          this.resetFields();
+        } finally {
+          this.isLoading = false;
+        }
+      },
+
+      /**
+       * Reset fields state
+       */
+      resetFields() {
+        this.fields = { seeds: [], textFields: [], otherFields: [] };
+        this.summary = null;
+        this.editingField = null;
+        this.tempValue = '';
+      },
+
+      /**
+       * Toggle section expansion
+       */
+      toggleExpanded() {
+        this.isExpanded = !this.isExpanded;
+      },
+
+      /**
+       * Start editing a field
+       */
+      startEditing(field) {
+        this.editingField = `${field.nodeId}-${field.fieldName}`;
+        this.tempValue = field.currentValue.toString();
+      },
+
+      /**
+       * Cancel editing
+       */
+      cancelEditing() {
+        this.editingField = null;
+        this.tempValue = '';
+      },
+
+      /**
+       * Save field edit
+       */
+      saveEdit(field) {
+        // Update the field value
+        field.currentValue = this.tempValue;
+        field.isModified = true;
+        
+        // Store the edit for later application
+        this.storeFieldEdit(field);
+        
+        this.editingField = null;
+        this.tempValue = '';
+        
+        console.log('Saved edit for field:', field);
+      },
+
+      /**
+       * Store field edit for later application to workflow
+       */
+      storeFieldEdit(field) {
+        // Use existing workflow editor store if available
+        if (window.Alpine && Alpine.store('workflowEditor')) {
+          Alpine.store('workflowEditor').updateFieldEdit(
+            field.nodeId.toString(),
+            field.fieldName,
+            field.currentValue
+          );
+        }
+      },
+
+      /**
+       * Check if field is being edited
+       */
+      isEditing(field) {
+        return this.editingField === `${field.nodeId}-${field.fieldName}`;
+      },
+
+      /**
+       * Randomize a seed field
+       */
+      randomizeSeed(seedField) {
+        const newSeed = Math.floor(Math.random() * 2147483647) + 1;
+        seedField.currentValue = newSeed;
+        seedField.isModified = true;
+        this.storeFieldEdit(seedField);
+        console.log('Randomized seed:', newSeed);
+      },
+
+      /**
+       * Randomize all seeds
+       */
+      randomizeAllSeeds() {
+        for (const seedField of this.fields.seeds) {
+          this.randomizeSeed(seedField);
+        }
+      },
+
+      /**
+       * Get field display value
+       */
+      getDisplayValue(field) {
+        return window.comfyUIBentoML.fieldExtractor.formatFieldValue(field);
+      },
+
+      /**
+       * Get field display name
+       */
+      getDisplayName(field) {
+        return window.comfyUIBentoML.fieldExtractor.getFieldDisplayName(field);
+      },
+
+      /**
+       * Get CSS classes for field
+       */
+      getFieldClasses(field) {
+        const baseClasses = 'field-item';
+        const modifiedClasses = field.isModified ? 'field-modified' : '';
+        const promptClasses = field.isPrompt ? 'field-prompt' : '';
+        
+        return [baseClasses, modifiedClasses, promptClasses].filter(Boolean).join(' ');
+      },
+
+      /**
+       * Get summary display text
+       */
+      getSummaryText() {
+        if (!this.summary) return 'No fields found';
+        
+        const parts = [];
+        if (this.summary.totalSeeds > 0) {
+          parts.push(`${this.summary.totalSeeds} seed${this.summary.totalSeeds === 1 ? '' : 's'}`);
+        }
+        if (this.summary.totalTextFields > 0) {
+          parts.push(`${this.summary.totalTextFields} text field${this.summary.totalTextFields === 1 ? '' : 's'}`);
+        }
+        if (this.summary.totalOtherFields > 0) {
+          parts.push(`${this.summary.totalOtherFields} other field${this.summary.totalOtherFields === 1 ? '' : 's'}`);
+        }
+        
+        return parts.length > 0 ? parts.join(', ') : 'No editable fields';
+      },
+
+      /**
+       * Check if there are any fields to display
+       */
+      hasFields() {
+        return this.summary && (
+          this.summary.totalSeeds > 0 ||
+          this.summary.totalTextFields > 0 ||
+          this.summary.totalOtherFields > 0
+        );
+      },
+
+      /**
+       * Handle text area auto-resize
+       */
+      autoResize(event) {
+        const textarea = event.target;
+        textarea.style.height = 'auto';
+        textarea.style.height = textarea.scrollHeight + 'px';
+      }
+    };
+  }
+};

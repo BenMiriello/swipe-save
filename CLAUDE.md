@@ -97,3 +97,6 @@ npm run dev         # Development with nodemon hot reload
 - **Component Architecture**: Moving toward modular, testable components
 - **Framework Choice**: Alpine.js selected for progressive enhancement without build complexity
 - **Documentation**: Extensive technical docs in `notes/chat/` for ComfyUI integration patterns
+
+- Use "panel" cli command to manage service swipe-save - as in "panel info" "panel status swipe-save" "panel restart swipe-save"
+- use "mv" to move things into notes/trash instead of using rm

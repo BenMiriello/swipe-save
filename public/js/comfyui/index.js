@@ -38,27 +38,14 @@ document.addEventListener('alpine:init', () => {
     Alpine.data('destinationSection', window.comfyUIComponents.panelComponents.destinationSection);
     Alpine.data('settingsPanel', window.comfyUIComponents.panelComponents.settingsPanel);
     
-    console.log('About to register workflowEditor component...');
-    console.log('Component available:', !!window.comfyUIComponents.panelComponents.workflowEditor);
-    console.log('Component type:', typeof window.comfyUIComponents.panelComponents.workflowEditor);
-    
-    // Test the component function
-    if (window.comfyUIComponents.panelComponents.workflowEditor) {
-      console.log('Testing component function...');
-      const testResult = window.comfyUIComponents.panelComponents.workflowEditor();
-      console.log('Component function returned:', testResult);
-    }
-    
-    Alpine.data('workflowEditor', window.comfyUIComponents.panelComponents.workflowEditor);
+    // Old workflowEditor component removed - using new field editor system
 
     // Initialize stores 
     setTimeout(() => {
       if (Alpine.store('comfyDestinations')) {
         Alpine.store('comfyDestinations').init();
       }
-      if (Alpine.store('workflowEditor')) {
-        Alpine.store('workflowEditor').init();
-      }
+      // Old workflowEditor store removed
     }, 0);
     
     if (window.location.hostname === 'localhost') {

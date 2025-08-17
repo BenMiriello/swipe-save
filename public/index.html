@@ -236,6 +236,156 @@
         </div>
       </div>
 
+      <!-- Field Editor Section -->
+      <div class="comfyui-section" x-data="window.comfyUIBentoML.fieldEditor.createComponent()">
+        <div class="comfyui-section-header" @click="toggleExpanded()">
+          <span class="comfyui-section-caret" :class="{ 'expanded': isExpanded }">▶</span>
+          <h3 class="comfyui-section-title">
+            Field Editor
+            <span x-show="!isExpanded && summary" class="comfyui-status-summary" x-text="getSummaryText()"></span>
+          </h3>
+          <button class="comfy-btn comfy-btn-primary comfy-btn-small" 
+                  @click.stop="randomizeAllSeeds()"
+                  x-show="fields.seeds && fields.seeds.length > 0 && isExpanded">
+            Randomize Seeds
+          </button>
+        </div>
+
+        <div class="comfyui-section-content" x-show="isExpanded" x-transition>
+          <!-- Loading State -->
+          <template x-if="isLoading">
+            <div class="comfyui-field-loading">Loading fields...</div>
+          </template>
+
+          <!-- No Fields State -->
+          <template x-if="!isLoading && !hasFields()">
+            <div class="comfyui-field-empty">No editable fields found</div>
+          </template>
+
+          <!-- Seeds Section -->
+          <template x-if="fields.seeds && fields.seeds.length > 0">
+            <div class="comfyui-field-group">
+              <h4 class="comfyui-field-group-title">Seeds (<span x-text="fields.seeds.length"></span>)</h4>
+              <div class="comfyui-field-list">
+                <template x-for="seedField in fields.seeds" :key="`${seedField.nodeId}-${seedField.fieldName}`">
+                  <div class="comfyui-field-item" :class="getFieldClasses(seedField)">
+                    <div class="comfyui-field-header">
+                      <span class="comfyui-field-label" x-text="getDisplayName(seedField)"></span>
+                      <span class="comfyui-field-node" x-text="`Node ${seedField.nodeId} (${seedField.nodeType})`"></span>
+                    </div>
+                    <div class="comfyui-field-value">
+                      <template x-if="isEditing(seedField)">
+                        <div class="comfyui-field-edit">
+                          <input type="number" 
+                                 class="comfy-input comfyui-field-input"
+                                 x-model="tempValue"
+                                 @keyup.enter="saveEdit(seedField)"
+                                 @keyup.escape="cancelEditing()">
+                          <div class="comfyui-field-actions">
+                            <button class="comfy-btn comfy-btn-success comfy-btn-xs" @click="saveEdit(seedField)">Save</button>
+                            <button class="comfy-btn comfy-btn-secondary comfy-btn-xs" @click="cancelEditing()">Cancel</button>
+                          </div>
+                        </div>
+                      </template>
+                      <template x-if="!isEditing(seedField)">
+                        <div class="comfyui-field-display">
+                          <span class="comfyui-field-text" x-text="seedField.currentValue"></span>
+                          <div class="comfyui-field-actions">
+                            <button class="comfy-btn comfy-btn-primary comfy-btn-xs" @click="startEditing(seedField)">Edit</button>
+                            <button class="comfy-btn comfy-btn-primary comfy-btn-xs" @click="randomizeSeed(seedField)">Random</button>
+                          </div>
+                        </div>
+                      </template>
+                    </div>
+                  </div>
+                </template>
+              </div>
+            </div>
+          </template>
+
+          <!-- Text Fields Section -->
+          <template x-if="fields.textFields && fields.textFields.length > 0">
+            <div class="comfyui-field-group">
+              <h4 class="comfyui-field-group-title">Text Fields (<span x-text="fields.textFields.length"></span>)</h4>
+              <div class="comfyui-field-list">
+                <template x-for="textField in fields.textFields" :key="`${textField.nodeId}-${textField.fieldName}`">
+                  <div class="comfyui-field-item" :class="getFieldClasses(textField)">
+                    <div class="comfyui-field-header">
+                      <span class="comfyui-field-label" x-text="getDisplayName(textField)"></span>
+                      <span class="comfyui-field-node" x-text="`Node ${textField.nodeId} (${textField.nodeType})`"></span>
+                      <span class="comfyui-field-badge" x-show="textField.isPrompt">Prompt</span>
+                    </div>
+                    <div class="comfyui-field-value">
+                      <template x-if="isEditing(textField)">
+                        <div class="comfyui-field-edit">
+                          <textarea class="comfy-input comfyui-field-textarea"
+                                   x-model="tempValue"
+                                   @input="autoResize($event)"
+                                   @keyup.escape="cancelEditing()"
+                                   rows="3"></textarea>
+                          <div class="comfyui-field-actions">
+                            <button class="comfy-btn comfy-btn-success comfy-btn-xs" @click="saveEdit(textField)">Save</button>
+                            <button class="comfy-btn comfy-btn-secondary comfy-btn-xs" @click="cancelEditing()">Cancel</button>
+                          </div>
+                        </div>
+                      </template>
+                      <template x-if="!isEditing(textField)">
+                        <div class="comfyui-field-display">
+                          <div class="comfyui-field-text comfyui-field-text-multiline" x-text="getDisplayValue(textField)"></div>
+                          <div class="comfyui-field-actions">
+                            <button class="comfy-btn comfy-btn-primary comfy-btn-xs" @click="startEditing(textField)">Edit</button>
+                          </div>
+                        </div>
+                      </template>
+                    </div>
+                  </div>
+                </template>
+              </div>
+            </div>
+          </template>
+
+          <!-- Parameters Section -->
+          <template x-if="fields.parameters && fields.parameters.length > 0">
+            <div class="comfyui-field-group">
+              <h4 class="comfyui-field-group-title">Parameters (<span x-text="fields.parameters.length"></span>)</h4>
+              <div class="comfyui-field-list">
+                <template x-for="paramField in fields.parameters" :key="`${paramField.nodeId}-${paramField.fieldName}`">
+                  <div class="comfyui-field-item" :class="getFieldClasses(paramField)">
+                    <div class="comfyui-field-header">
+                      <span class="comfyui-field-label" x-text="getDisplayName(paramField)"></span>
+                      <span class="comfyui-field-node" x-text="`Node ${paramField.nodeId} (${paramField.nodeType})`"></span>
+                    </div>
+                    <div class="comfyui-field-value">
+                      <template x-if="isEditing(paramField)">
+                        <div class="comfyui-field-edit">
+                          <input type="text" 
+                                 class="comfy-input comfyui-field-input"
+                                 x-model="tempValue"
+                                 @keyup.enter="saveEdit(paramField)"
+                                 @keyup.escape="cancelEditing()">
+                          <div class="comfyui-field-actions">
+                            <button class="comfy-btn comfy-btn-success comfy-btn-xs" @click="saveEdit(paramField)">Save</button>
+                            <button class="comfy-btn comfy-btn-secondary comfy-btn-xs" @click="cancelEditing()">Cancel</button>
+                          </div>
+                        </div>
+                      </template>
+                      <template x-if="!isEditing(paramField)">
+                        <div class="comfyui-field-display">
+                          <span class="comfyui-field-text" x-text="paramField.currentValue"></span>
+                          <div class="comfyui-field-actions">
+                            <button class="comfy-btn comfy-btn-primary comfy-btn-xs" @click="startEditing(paramField)">Edit</button>
+                          </div>
+                        </div>
+                      </template>
+                    </div>
+                  </div>
+                </template>
+              </div>
+            </div>
+          </template>
+        </div>
+      </div>
+
       <!-- Global Settings Section -->
       <div class="comfyui-section" x-data="settingsPanel()">
         <div class="comfyui-section-header" @click="toggleSettingsSection()">
@@ -558,7 +708,6 @@
   <script src="js/comfyui/stores/workflow-store.js"></script>
   <script src="js/comfyui/stores/destination-store.js"></script>
   <script src="js/comfyui/stores/queue-store.js"></script>
-  <script src="js/comfyui/stores/editor-store.js"></script>
 
   <!-- UI components -->
   <script src="js/comfyui/components/modal-components.js"></script>
@@ -572,6 +721,11 @@
   <script src="js/comfyui-bentoml/services/bentoml-client.js"></script>
   <script src="js/comfyui-bentoml/services/schema-service.js"></script>
   <script src="js/comfyui-bentoml/adapters/ui-adapter.js"></script>
+  <script src="js/comfyui-bentoml/extractors/seed-extractor.js"></script>
+  <script src="js/comfyui-bentoml/extractors/text-extractor.js"></script>
+  <script src="js/comfyui-bentoml/extractors/parameter-extractor.js"></script>
+  <script src="js/comfyui-bentoml/extractors/field-extractor.js"></script>
+  <script src="js/comfyui-bentoml/editors/field-editor.js"></script>
   <script src="js/comfyui-bentoml/index.js"></script>
   <script src="js/comfyui-bentoml/test-only.js"></script>
 

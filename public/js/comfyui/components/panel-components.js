@@ -6,55 +6,6 @@
 window.comfyUIComponents = window.comfyUIComponents || {};
 
 window.comfyUIComponents.panelComponents = {
-  // Register workflow editor component  
-  workflowEditor() {
-    return {
-      // Initialize computed values
-      init() {
-        this.$watch('$store.workflowEditor.updateCounter', () => {
-          this.updateFilteredNodes();
-        });
-        this.$watch('$store.workflowEditor.showPromptsOnly', () => {
-          this.updateFilteredNodes();
-        });
-        this.updateFilteredNodes();
-      },
-      
-      // Reactive data
-      filteredNodes: [],
-      
-      // Update filtered nodes
-      updateFilteredNodes() {
-        const store = Alpine.store('workflowEditor');
-        if (store && typeof store.getFilteredNodes === 'function') {
-          this.filteredNodes = store.getFilteredNodes();
-        } else {
-          this.filteredNodes = [];
-        }
-      },
-      
-      // Proxy properties to store
-      get currentWorkflow() { return Alpine.store('workflowEditor').currentWorkflow; },
-      get analysisResult() { return Alpine.store('workflowEditor').analysisResult; },
-      get nodeEdits() { return Alpine.store('workflowEditor').nodeEdits; },
-      get hasUnsavedChanges() { return Alpine.store('workflowEditor').hasUnsavedChanges; },
-      get showPromptsOnly() { return Alpine.store('workflowEditor').showPromptsOnly; },
-      get isEditorExpanded() { return Alpine.store('workflowEditor').isEditorExpanded; },
-      
-      // UI methods
-      toggleEditorSection() { Alpine.store('workflowEditor').toggleEditorSection(); },
-      togglePromptsOnly() { 
-        Alpine.store('workflowEditor').togglePromptsOnly(); 
-      },
-      toggleNode(nodeId) { Alpine.store('workflowEditor').toggleNode(nodeId); },
-      isNodeCollapsed(nodeId) { return Alpine.store('workflowEditor').isNodeCollapsed(nodeId); },
-      toggleAllNodes() { Alpine.store('workflowEditor').toggleAllNodes(); },
-      getCollapseButtonText() { return Alpine.store('workflowEditor').getCollapseButtonText(); },
-      hasFieldEdit(nodeId, fieldName) { return Alpine.store('workflowEditor').hasFieldEdit(nodeId, fieldName); },
-      getFieldValue(nodeId, fieldName) { return Alpine.store('workflowEditor').getFieldValue(nodeId, fieldName); },
-      updateFieldEdit(nodeId, fieldName, value) { Alpine.store('workflowEditor').updateFieldEdit(nodeId, fieldName, value); }
-    };
-  },
 
   // Register destination section component
   destinationSection() {
