@@ -9,14 +9,12 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
   
-  // Initialize and start the application
-  const app = new window.AppController();
-  app.init();
+  // Start with list view immediately, don't load single view first
+  if (window.simpleListView) {
+    window.simpleListView.init();
+  }
   
-  // After app loads, switch to simple list view by default
-  setTimeout(() => {
-    if (window.simpleListView) {
-      window.simpleListView.init();
-    }
-  }, 1000);
+  // Initialize the app controller but don't auto-load files in single view
+  const app = new window.AppController();
+  app.initWithoutAutoLoad();
 });

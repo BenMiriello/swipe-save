@@ -45,6 +45,15 @@ class AppController {
   }
 
   /**
+   * Initialize without auto-loading files (for list view default)
+   */
+  initWithoutAutoLoad() {
+    // Expose globally for UI manager
+    window.appController = this;
+    // Don't call fetchMediaFiles() - let list view handle file loading
+  }
+
+  /**
    * Get current state (for backward compatibility)
    */
   get state() {
