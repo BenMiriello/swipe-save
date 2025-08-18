@@ -8,6 +8,8 @@
   <!-- ComfyUI Module Styles -->
   <link rel="stylesheet" href="js/comfyui/styles/modal.css">
   <link rel="stylesheet" href="js/comfyui/styles/components.css">
+  <!-- File List Viewer Styles -->
+  <link rel="stylesheet" href="css/file-list-viewer.css">
 
   <!-- Early error handler initialization -->
   <script>
@@ -83,6 +85,7 @@
           </svg>
         </button>
         <button class="icon-button comfyui-icon" title="Load in ComfyUI">&#x2192;</button>
+        <button class="icon-button list-view-icon" title="List View" onclick="window.navigationController?.showListView?.()">☰</button>
       </div>
     </div>
 
@@ -730,6 +733,14 @@
   <script src="js/comfyui-bentoml/test-only.js"></script>
 
   <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.1/dist/cdn.min.js" defer></script>
+
+  <!-- Shared Components -->
+  <script src="js/shared/toolbar.js"></script>
+  <script src="js/shared/navigation.js"></script>
+  <script src="js/shared/queue-viewer.js"></script>
+
+  <!-- Views -->
+  <script src="js/views/file-list-viewer.js"></script>
 
   <!-- UI modules (load before main ui-manager coordinator) -->
   <script src="js/ui/core-ui-manager.js"></script>

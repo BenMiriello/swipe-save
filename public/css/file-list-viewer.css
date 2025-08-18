@@ -1,0 +1,245 @@
+/**
+ * File List Viewer Styles
+ * Styling for the scrollable file list interface
+ */
+
+/* List view button in header */
+.list-view-icon {
+  font-size: 1.2rem;
+  font-weight: bold;
+}
+
+/* Main container */
+.file-list-viewer {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  overflow: hidden;
+}
+
+/* Header section */
+.file-list-header {
+  flex-shrink: 0;
+  background: var(--bg-primary, #ffffff);
+  border-bottom: 1px solid var(--border-color, #e0e0e0);
+  padding: 1rem;
+  z-index: 10;
+}
+
+/* Queue viewer in list mode */
+.file-list-queue {
+  margin-bottom: 1rem;
+}
+
+/* Toggle button */
+.file-list-toggle {
+  margin: 0.5rem 0;
+  width: 100%;
+}
+
+/* Navigation controls in list mode */
+.file-list-navigation {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  margin: 1rem 0;
+  padding: 0.5rem;
+  background: var(--bg-secondary, #f5f5f5);
+  border-radius: 8px;
+}
+
+.file-list-navigation .nav-button {
+  padding: 0.5rem 1rem;
+  border: 1px solid var(--border-color, #ddd);
+  background: var(--bg-primary, #fff);
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.file-list-navigation .nav-button:hover {
+  background: var(--bg-hover, #f0f0f0);
+}
+
+.file-list-navigation .nav-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.file-list-navigation .slider-container {
+  flex: 1;
+  max-width: 300px;
+}
+
+.file-list-navigation .navigation-slider {
+  width: 100%;
+}
+
+.file-list-navigation .image-counter {
+  min-width: 60px;
+  text-align: center;
+  font-size: 0.9rem;
+  color: var(--text-secondary, #666);
+}
+
+/* Action buttons in list mode */
+.file-list-actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.file-list-actions .header-icons {
+  gap: 0.5rem;
+}
+
+/* File list container */
+.file-list-container {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  scroll-behavior: smooth;
+}
+
+/* File list */
+.file-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 1rem;
+  padding: 1rem;
+}
+
+/* Individual file list items */
+.file-list-item {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--border-color, #e0e0e0);
+  border-radius: 8px;
+  overflow: hidden;
+  background: var(--bg-primary, #ffffff);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.file-list-item:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  border-color: var(--accent-color, #007bff);
+}
+
+/* Media in list items */
+.file-list-media {
+  width: 100%;
+  height: 200px;
+  object-fit: cover;
+  background: var(--bg-secondary, #f5f5f5);
+}
+
+.file-list-media img,
+.file-list-media video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* File info section */
+.file-list-info {
+  padding: 0.75rem;
+  border-top: 1px solid var(--border-light, #f0f0f0);
+}
+
+.file-list-name {
+  font-weight: 500;
+  font-size: 0.9rem;
+  color: var(--text-primary, #333);
+  margin-bottom: 0.25rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.file-list-meta {
+  font-size: 0.8rem;
+  color: var(--text-secondary, #666);
+  display: flex;
+  justify-content: space-between;
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+  .file-list {
+    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+    gap: 0.75rem;
+    padding: 0.75rem;
+  }
+  
+  .file-list-navigation {
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+  
+  .file-list-navigation .slider-container {
+    max-width: 100%;
+    order: -1;
+  }
+}
+
+@media (max-width: 480px) {
+  .file-list {
+    grid-template-columns: 1fr;
+    gap: 0.5rem;
+    padding: 0.5rem;
+  }
+  
+  .file-list-header {
+    padding: 0.5rem;
+  }
+  
+  .file-list-media {
+    height: 150px;
+  }
+}
+
+/* Dark mode support */
+@media (prefers-color-scheme: dark) {
+  .file-list-viewer {
+    --bg-primary: #1a1a1a;
+    --bg-secondary: #2d2d2d;
+    --bg-hover: #404040;
+    --text-primary: #ffffff;
+    --text-secondary: #cccccc;
+    --border-color: #404040;
+    --border-light: #2d2d2d;
+    --accent-color: #4a9eff;
+  }
+  
+  .file-list-item {
+    background: var(--bg-primary);
+    border-color: var(--border-color);
+  }
+  
+  .file-list-item:hover {
+    border-color: var(--accent-color);
+  }
+}
+
+/* Loading states */
+.file-list-loading {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 200px;
+  color: var(--text-secondary, #666);
+  font-style: italic;
+}
+
+/* Empty state */
+.file-list-empty {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 200px;
+  color: var(--text-secondary, #666);
+  font-style: italic;
+}
