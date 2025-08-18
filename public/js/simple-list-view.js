@@ -6,6 +6,7 @@ window.simpleListView = {
   isActive: false,
   container: null,
   showPreviews: false, // Off by default
+  fileListOpen: JSON.parse(localStorage.getItem('fileListOpen') || 'false'),
 
   /**
    * Initialize and show the list view
@@ -124,9 +125,9 @@ window.simpleListView = {
     const contentDiv = document.createElement('div');
     contentDiv.innerHTML = `
       <div class="list-header">
-        <button id="openFileList" class="toggle-btn">Open File List</button>
+        <button id="openFileList" class="toggle-btn" style="display: ${this.fileListOpen ? 'none' : 'block'};">Open File List</button>
       </div>
-      <div id="fileGrid" class="file-grid" style="display: none;">
+      <div id="fileGrid" class="file-grid" style="display: ${this.fileListOpen ? 'block' : 'none'};">
         <div class="file-grid-header">
           <h2>File List</h2>
           <div class="controls">
@@ -179,6 +180,9 @@ window.simpleListView = {
     
     fileGrid.style.display = 'block';
     openBtn.style.display = 'none';
+    
+    this.fileListOpen = true;
+    localStorage.setItem('fileListOpen', 'true');
   },
 
   /**
@@ -190,6 +194,9 @@ window.simpleListView = {
     
     fileGrid.style.display = 'none';
     openBtn.style.display = 'block';
+    
+    this.fileListOpen = false;
+    localStorage.setItem('fileListOpen', 'false');
   },
 
   /**
@@ -275,9 +282,9 @@ window.simpleListView = {
       </div>
     `).join('');
 
-    const fileGridContent = document.querySelector('.file-grid-header').nextElementSibling;
-    if (fileGridContent) {
-      fileGridContent.remove();
+    const fileGridHeader = document.querySelector('.file-grid-header');
+    if (fileGridHeader && fileGridHeader.nextElementSibling) {
+      fileGridHeader.nextElementSibling.remove();
     }
     
     const newContent = document.createElement('div');
@@ -533,47 +540,7 @@ style.textContent = `
   padding: 20px;
 }
 
-.comfyui-queue-list {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.comfyui-queue-item {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 8px 12px;
-  border: 1px solid #dee2e6;
-  border-radius: 4px;
-  cursor: pointer;
-  transition: background-color 0.2s;
-}
-
-.comfyui-queue-item:hover {
-  background-color: #f8f9fa;
-}
-
-.comfyui-queue-item.active {
-  background-color: #e3f2fd;
-  border-color: #2196f3;
-}
-
-.comfyui-queue-item-indicator {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: #6c757d;
-}
-
-.comfyui-queue-item.active .comfyui-queue-item-indicator {
-  background: #28a745;
-}
-
-.comfyui-queue-item-id {
-  font-family: monospace;
-  font-size: 12px;
-}
+/* Queue styles removed - using components.css instead */
 
 .comfy-btn {
   background: #007bff;
