@@ -247,6 +247,60 @@
         </div>
       </div>
 
+      <!-- Global Settings Section -->
+      <div class="comfyui-section" x-data="settingsPanel()">
+        <div class="comfyui-section-header" @click="toggleSettingsSection()">
+          <span class="comfyui-section-caret" :class="{ 'expanded': isSettingsExpanded }">▶</span>
+          <h3 class="comfyui-section-title">
+            Global Settings
+            <span x-show="!isSettingsExpanded" class="comfyui-status-summary" x-text="getSettingsSummary()"></span>
+          </h3>
+        </div>
+
+        <div class="comfyui-section-content" x-show="isSettingsExpanded" x-transition>
+          <!-- Quantity -->
+          <div class="comfy-setting-row">
+            <div class="comfy-setting-container">
+              <span class="comfy-setting-label">Quantity</span>
+              <div class="comfy-number-picker">
+                <button class="comfy-number-btn" @click="decrementQuantity()">‹</button>
+                <input type="number" 
+                       class="comfy-number-input"
+                       x-model.number="$store.comfyWorkflow.settings.quantity"
+                       @blur="validateQuantity()"
+                       min="1" max="99">
+                <button class="comfy-number-btn" @click="incrementQuantity()">›</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- New Seed -->
+          <div class="comfy-setting-row">
+            <div class="comfy-setting-container">
+              <span class="comfy-setting-label">New Seed</span>
+              <label class="comfy-toggle">
+                <input type="checkbox"  x-model="$store.comfyWorkflow.settings.modifySeeds">
+              </label>
+            </div>
+          </div>
+
+          <!-- Control After Generate -->
+          <div class="comfy-setting-row">
+            <div class="comfy-setting-container">
+              <span class="comfy-setting-label">Control After Generate</span>
+              <select class="comfy-select" 
+                      x-model="$store.comfyWorkflow.settings.controlAfterGenerate"
+                      @change="updateControlAfterGenerate($event.target.value)">
+                <option value="increment">Increment</option>
+                <option value="randomize">Randomize</option>
+                <option value="decrement">Decrement</option>
+                <option value="fixed">Fixed</option>
+              </select>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <!-- Field Editor Section -->
       <div class="comfyui-section" x-data="window.comfyUIBentoML.fieldEditor.createComponent()">
         <div class="comfyui-section-header" @click="toggleExpanded()">
@@ -335,46 +389,6 @@
             </div>
           </template>
 
-          <!-- Text Fields Section -->
-          <template x-if="getFilteredTextFields().length > 0">
-            <div class="comfyui-field-group">
-              <h4 class="comfyui-field-group-title">Text Fields (<span x-text="getFilteredTextFields().length"></span>)</h4>
-              <div class="comfyui-field-list">
-                <template x-for="textField in getFilteredTextFields()" :key="`${textField.nodeId}-${textField.fieldName}`">
-                  <div class="comfyui-field-item" :class="getFieldClasses(textField)">
-                    <div class="comfyui-field-header">
-                      <span class="comfyui-field-label" x-text="getDisplayName(textField)"></span>
-                      <span class="comfyui-field-node" x-text="`Node ${textField.nodeId} (${textField.nodeType})`"></span>
-                      <span class="comfyui-field-badge" x-show="textField.isPrompt">Prompt</span>
-                    </div>
-                    <div class="comfyui-field-value">
-                      <template x-if="isEditing(textField)">
-                        <div class="comfyui-field-edit">
-                          <textarea class="comfy-input comfyui-field-textarea"
-                                   x-model="tempValue"
-                                   @input="autoResize($event)"
-                                   @keyup.escape="cancelEditing()"
-                                   rows="3"></textarea>
-                          <div class="comfyui-field-actions">
-                            <button class="comfy-btn comfy-btn-success comfy-btn-xs" @click="saveEdit(textField)">Save</button>
-                            <button class="comfy-btn comfy-btn-secondary comfy-btn-xs" @click="cancelEditing()">Cancel</button>
-                          </div>
-                        </div>
-                      </template>
-                      <template x-if="!isEditing(textField)">
-                        <div class="comfyui-field-display">
-                          <div class="comfyui-field-text comfyui-field-text-multiline" x-text="getDisplayValue(textField)"></div>
-                          <div class="comfyui-field-actions">
-                            <button class="comfy-btn comfy-btn-primary comfy-btn-xs" @click="startEditing(textField)">Edit</button>
-                          </div>
-                        </div>
-                      </template>
-                    </div>
-                  </div>
-                </template>
-              </div>
-            </div>
-          </template>
 
           <!-- Parameters Section -->
           <template x-if="fields.parameters && fields.parameters.length > 0">
@@ -418,59 +432,6 @@
         </div>
       </div>
 
-      <!-- Global Settings Section -->
-      <div class="comfyui-section" x-data="settingsPanel()">
-        <div class="comfyui-section-header" @click="toggleSettingsSection()">
-          <span class="comfyui-section-caret" :class="{ 'expanded': isSettingsExpanded }">▶</span>
-          <h3 class="comfyui-section-title">
-            Global Settings
-            <span x-show="!isSettingsExpanded" class="comfyui-status-summary" x-text="getSettingsSummary()"></span>
-          </h3>
-        </div>
-
-        <div class="comfyui-section-content" x-show="isSettingsExpanded" x-transition>
-          <!-- Quantity -->
-          <div class="comfy-setting-row">
-            <div class="comfy-setting-container">
-              <span class="comfy-setting-label">Quantity</span>
-              <div class="comfy-number-picker">
-                <button class="comfy-number-btn" @click="decrementQuantity()">‹</button>
-                <input type="number" 
-                       class="comfy-number-input"
-                       x-model.number="$store.comfyWorkflow.settings.quantity"
-                       @blur="validateQuantity()"
-                       min="1" max="99">
-                <button class="comfy-number-btn" @click="incrementQuantity()">›</button>
-              </div>
-            </div>
-          </div>
-
-          <!-- New Seed -->
-          <div class="comfy-setting-row">
-            <div class="comfy-setting-container">
-              <span class="comfy-setting-label">New Seed</span>
-              <label class="comfy-toggle">
-                <input type="checkbox"  x-model="$store.comfyWorkflow.settings.modifySeeds">
-              </label>
-            </div>
-          </div>
-
-          <!-- Control After Generate -->
-          <div class="comfy-setting-row">
-            <div class="comfy-setting-container">
-              <span class="comfy-setting-label">Control After Generate</span>
-              <select class="comfy-select" 
-                      x-model="$store.comfyWorkflow.settings.controlAfterGenerate"
-                      @change="updateControlAfterGenerate($event.target.value)">
-                <option value="increment">Increment</option>
-                <option value="randomize">Randomize</option>
-                <option value="decrement">Decrement</option>
-                <option value="fixed">Fixed</option>
-              </select>
-            </div>
-          </div>
-        </div>
-      </div>
 
       <!-- Workflow Editor Section -->
       <div class="comfyui-section">
