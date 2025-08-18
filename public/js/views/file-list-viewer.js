@@ -37,6 +37,11 @@ window.views.fileListViewer = {
     
     container.appendChild(this.currentView);
     
+    // Initialize Alpine.js for dynamically created elements
+    if (window.Alpine) {
+      window.Alpine.initTree(this.currentView);
+    }
+    
     // Load media files
     this.loadMediaFiles();
   },

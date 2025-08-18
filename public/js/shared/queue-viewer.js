@@ -75,5 +75,4 @@ window.sharedComponents.queueViewer = {
     
     return container;
   }
-}
 };
