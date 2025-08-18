@@ -95,8 +95,6 @@ window.views.fileListViewer = {
     const toggleButton = document.createElement('button');
     toggleButton.className = 'comfy-btn comfy-btn-primary file-list-toggle';
     toggleButton.textContent = 'Show File List';
-    toggleButton.setAttribute('x-data', '{ listVisible: false }');
-    toggleButton.setAttribute('@click', 'listVisible = !listVisible; updateToggleText()');
     toggleButton.addEventListener('click', () => this.toggleFileList());
     header.appendChild(toggleButton);
     
