@@ -1161,3 +1161,36 @@
   min-height: 24px;
   border-radius: 3px;
 }
+
+/* Field Filtering */
+.comfyui-field-filters {
+  padding: var(--comfy-spacing-md);
+  background: var(--comfy-bg-secondary);
+  border-radius: var(--comfy-radius-md);
+  margin-bottom: var(--comfy-spacing-md);
+  border: 1px solid var(--comfy-border-light);
+}
+
+.comfyui-filter-input {
+  margin-bottom: var(--comfy-spacing-sm);
+}
+
+.comfyui-filter-options {
+  display: flex;
+  gap: var(--comfy-spacing-md);
+  align-items: center;
+}
+
+.comfyui-filter-checkbox {
+  display: flex;
+  align-items: center;
+  gap: var(--comfy-spacing-xs);
+  font-size: 0.9rem;
+  cursor: pointer;
+  user-select: none;
+}
+
+.comfyui-filter-checkbox input[type="checkbox"] {
+  margin: 0;
+  cursor: pointer;
+}

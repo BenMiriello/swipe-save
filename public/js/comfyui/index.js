@@ -18,7 +18,6 @@ document.addEventListener('alpine:init', () => {
   Alpine.store('comfyWorkflow', window.comfyUIStores.workflowStore);
   Alpine.store('comfyDestinations', window.comfyUIStores.destinationStore);
   Alpine.store('queueViewer', window.comfyUIStores.queueStore);
-  Alpine.store('workflowEditor', window.comfyUIStores.editorStore);
 
   // Initialize Alpine stores and components
   function initializeComfyUI() {
@@ -45,7 +44,12 @@ document.addEventListener('alpine:init', () => {
       if (Alpine.store('comfyDestinations')) {
         Alpine.store('comfyDestinations').init();
       }
-      // Old workflowEditor store removed
+      if (Alpine.store('comfyWorkflow')) {
+        Alpine.store('comfyWorkflow').init();
+      }
+      if (Alpine.store('queueViewer')) {
+        Alpine.store('queueViewer').init();
+      }
     }, 0);
     
     if (window.location.hostname === 'localhost') {

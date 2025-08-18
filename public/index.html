@@ -31,48 +31,57 @@
 <body>
   <div class="container">
     <div class="header-container">
-      <div class="options-container">
-        <button class="btn btn-options">Options</button>
-        <div class="options-dropdown">
-          <ul>
-            <li class="directory-row">
-              <div class="dir-info">
-                <span class="dir-label">From:</span>
-                <span class="dir-path-clickable" id="sourcePathClickable" title="Click to browse">Loading...</span>
-              </div>
-            </li>
-            <li class="directory-row">
-              <div class="dir-info">
-                <span class="dir-label">To:</span>
-                <span class="dir-path-clickable" id="destPathClickable" title="Click to browse">Loading...</span>
-              </div>
-            </li>
-            <li class="separator"></li>
-            <li class="toggle-option">
-              <label class="toggle-label">
-                <input type="checkbox" id="useDatestampFolders" checked>
-                <span class="toggle-text">Use Datestamp Folders</span>
-              </label>
-            </li>
-            <li class="toggle-option">
-              <label class="toggle-label">
-                <input type="checkbox" id="enableLogging">
-                <span class="toggle-text">Enable Logging</span>
-              </label>
-            </li>
-            <li class="toggle-option">
-              <label class="toggle-label">
-                <input type="checkbox" id="saveCopiesWhenSorting" checked>
-                <span class="toggle-text">Save copies when sorting</span>
-              </label>
-            </li>
-            <li class="separator"></li>
-            <li id="customName">Custom Name</li>
-            <li id="showInfo">Show Instructions</li>
-          </ul>
+      <div class="header-left">
+        <div class="options-container">
+          <button class="btn btn-options">Options</button>
+          <div class="options-dropdown">
+            <ul>
+              <li class="directory-row">
+                <div class="dir-info">
+                  <span class="dir-label">From:</span>
+                  <span class="dir-path-clickable" id="sourcePathClickable" title="Click to browse">Loading...</span>
+                </div>
+              </li>
+              <li class="directory-row">
+                <div class="dir-info">
+                  <span class="dir-label">To:</span>
+                  <span class="dir-path-clickable" id="destPathClickable" title="Click to browse">Loading...</span>
+                </div>
+              </li>
+              <li class="separator"></li>
+              <li class="toggle-option">
+                <label class="toggle-label">
+                  <input type="checkbox" id="useDatestampFolders" checked>
+                  <span class="toggle-text">Use Datestamp Folders</span>
+                </label>
+              </li>
+              <li class="toggle-option">
+                <label class="toggle-label">
+                  <input type="checkbox" id="enableLogging">
+                  <span class="toggle-text">Enable Logging</span>
+                </label>
+              </li>
+              <li class="toggle-option">
+                <label class="toggle-label">
+                  <input type="checkbox" id="saveCopiesWhenSorting" checked>
+                  <span class="toggle-text">Save copies when sorting</span>
+                </label>
+              </li>
+              <li class="separator"></li>
+              <li id="customName">Custom Name</li>
+              <li id="showInfo">Show Instructions</li>
+            </ul>
+          </div>
         </div>
+        <button id="listViewButton" class="icon-button list-view-icon" title="Return to List View" style="display: none;">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="3" y1="6" x2="21" y2="6"></line>
+            <line x1="3" y1="12" x2="21" y2="12"></line>
+            <line x1="3" y1="18" x2="21" y2="18"></line>
+          </svg>
+        </button>
       </div>
-      <h1 id="appTitle" style="cursor: pointer;" title="Return to List View">Swipe-Save</h1>
+      <h1 id="appTitle">Swipe-Save</h1>
       <div class="header-icons">
         <button class="icon-button reload-icon" title="Reload Media">
           <svg width="50px" height="50px" stroke="currentColor" stroke-width="1" fill="currentColor" color="currentColor" viewBox="0 0 50 50" xmlns="http://www.w3.org/2000/svg"><path d="M25 38c-7.2 0-13-5.8-13-13 0-3.2 1.2-6.2 3.3-8.6l1.5 1.3C15 19.7 14 22.3 14 25c0 6.1 4.9 11 11 11 1.6 0 3.1-.3 4.6-1l.8 1.8c-1.7.8-3.5 1.2-5.4 1.2z"/><path d="M34.7 33.7l-1.5-1.3c1.8-2 2.8-4.6 2.8-7.3 0-6.1-4.9-11-11-11-1.6 0-3.1.3-4.6 1l-.8-1.8c1.7-.8 3.5-1.2 5.4-1.2 7.2 0 13 5.8 13 13 0 3.1-1.2 6.2-3.3 8.6z"/><path d="M18 24h-2v-6h-6v-2h8z"/><path d="M40 34h-8v-8h2v6h6z"/></svg>
@@ -264,12 +273,33 @@
             <div class="comfyui-field-empty">No editable fields found</div>
           </template>
 
+          <!-- Field Filters -->
+          <template x-if="hasFields()">
+            <div class="comfyui-field-filters">
+              <input type="text" 
+                     class="comfy-input comfyui-filter-input" 
+                     placeholder="Filter fields by name, node type, or content..."
+                     x-model="fieldFilter"
+                     @input="applyFieldFilter()">
+              <div class="comfyui-filter-options">
+                <label class="comfyui-filter-checkbox">
+                  <input type="checkbox" x-model="showSeedsOnly" @change="applyFieldFilter()">
+                  Seeds only
+                </label>
+                <label class="comfyui-filter-checkbox">
+                  <input type="checkbox" x-model="showTextFieldsOnly" @change="applyFieldFilter()">
+                  Text/Prompts only
+                </label>
+              </div>
+            </div>
+          </template>
+
           <!-- Seeds Section -->
-          <template x-if="fields.seeds && fields.seeds.length > 0">
+          <template x-if="getFilteredSeeds().length > 0">
             <div class="comfyui-field-group">
-              <h4 class="comfyui-field-group-title">Seeds (<span x-text="fields.seeds.length"></span>)</h4>
+              <h4 class="comfyui-field-group-title">Seeds (<span x-text="getFilteredSeeds().length"></span>)</h4>
               <div class="comfyui-field-list">
-                <template x-for="seedField in fields.seeds" :key="`${seedField.nodeId}-${seedField.fieldName}`">
+                <template x-for="seedField in getFilteredSeeds()" :key="`${seedField.nodeId}-${seedField.fieldName}`">
                   <div class="comfyui-field-item" :class="getFieldClasses(seedField)">
                     <div class="comfyui-field-header">
                       <span class="comfyui-field-label" x-text="getDisplayName(seedField)"></span>
@@ -306,11 +336,11 @@
           </template>
 
           <!-- Text Fields Section -->
-          <template x-if="fields.textFields && fields.textFields.length > 0">
+          <template x-if="getFilteredTextFields().length > 0">
             <div class="comfyui-field-group">
-              <h4 class="comfyui-field-group-title">Text Fields (<span x-text="fields.textFields.length"></span>)</h4>
+              <h4 class="comfyui-field-group-title">Text Fields (<span x-text="getFilteredTextFields().length"></span>)</h4>
               <div class="comfyui-field-list">
-                <template x-for="textField in fields.textFields" :key="`${textField.nodeId}-${textField.fieldName}`">
+                <template x-for="textField in getFilteredTextFields()" :key="`${textField.nodeId}-${textField.fieldName}`">
                   <div class="comfyui-field-item" :class="getFieldClasses(textField)">
                     <div class="comfyui-field-header">
                       <span class="comfyui-field-label" x-text="getDisplayName(textField)"></span>

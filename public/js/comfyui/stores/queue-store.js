@@ -51,6 +51,17 @@ window.comfyUIStores.queueStore = {
       
       const queueData = await response.json();
       
+      // Check if there's an error from the API (ComfyUI not available)
+      if (queueData.error) {
+        // ComfyUI is not available - clear queue but don't spam console
+        if (this.queueItems.length > 0 || this.lastQueueCount > 0) {
+          console.log('ComfyUI not available - clearing queue display');
+        }
+        this.queueItems = [];
+        this.lastQueueCount = 0;
+        return;
+      }
+      
       // Combine running and pending queue items
       const running = queueData.queue_running || [];
       const pending = queueData.queue_pending || [];
@@ -65,8 +76,12 @@ window.comfyUIStores.queueStore = {
       }
       
     } catch (error) {
-      console.error('Error fetching queue:', error);
+      // Only log connection errors once to avoid spam
+      if (this.queueItems.length > 0 || this.lastQueueCount > 0) {
+        console.log('Queue connection lost - ComfyUI may not be running');
+      }
       this.queueItems = [];
+      this.lastQueueCount = 0;
     } finally {
       this.isLoading = false;
     }
