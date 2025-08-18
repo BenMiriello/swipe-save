@@ -16,10 +16,8 @@ window.views.fileListViewer = {
     
     this.isInitialized = true;
     
-    // Show list view immediately after app loads
-    setTimeout(() => {
-      this.show();
-    }, 1000);
+    // Show list view immediately
+    this.show();
   },
   
   /**
