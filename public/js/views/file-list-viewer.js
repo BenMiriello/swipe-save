@@ -9,12 +9,17 @@ window.views.fileListViewer = {
   currentView: null,
   
   /**
-   * Initialize the file list viewer
+   * Initialize the file list viewer and show by default
    */
   init() {
     if (this.isInitialized) return;
     
     this.isInitialized = true;
+    
+    // Show list view immediately after app loads
+    setTimeout(() => {
+      this.show();
+    }, 1000);
   },
   
   /**
@@ -42,8 +47,16 @@ window.views.fileListViewer = {
       window.Alpine.initTree(this.currentView);
     }
     
-    // Load media files
+    // Load media files and auto-expand the list
     this.loadMediaFiles();
+    
+    // Auto-expand the file list by default
+    setTimeout(() => {
+      const toggleButton = document.querySelector('.file-list-toggle');
+      if (toggleButton && toggleButton.textContent === 'Show File List') {
+        toggleButton.click();
+      }
+    }, 100);
   },
   
   /**
