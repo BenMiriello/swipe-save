@@ -30,6 +30,13 @@ window.simpleListView = {
     this.container = document.createElement('div');
     this.container.className = 'simple-list-view';
     this.container.innerHTML = `
+      <div class="queue-section">
+        <div class="queue-header">
+          <span>▶</span>
+          <h3>Active Queue</h3>
+          <span class="queue-status">empty</span>
+        </div>
+      </div>
       <div class="list-header">
         <h2>File List View</h2>
         <button id="toggleFiles" class="toggle-btn">Show Files</button>
@@ -77,7 +84,7 @@ window.simpleListView = {
    */
   async loadFiles() {
     try {
-      const response = await fetch('/api/media');
+      const response = await fetch('/api/files');
       const data = await response.json();
       
       if (data.success && data.files) {
@@ -210,6 +217,36 @@ style.textContent = `
   padding: 20px;
   max-width: 1200px;
   margin: 0 auto;
+}
+
+.queue-section {
+  background: #f8f9fa;
+  border: 1px solid #dee2e6;
+  border-radius: 8px;
+  padding: 15px;
+  margin-bottom: 20px;
+}
+
+.queue-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.queue-header span:first-child {
+  font-size: 12px;
+  color: #6c757d;
+}
+
+.queue-header h3 {
+  margin: 0;
+  font-size: 16px;
+  color: #495057;
+}
+
+.queue-status {
+  color: #6c757d;
+  font-style: italic;
 }
 
 .list-header {
