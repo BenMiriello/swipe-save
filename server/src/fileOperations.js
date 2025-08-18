@@ -34,8 +34,52 @@ async function extractComfyMetadata(sourcePath, filename) {
       absolutePath: sourcePath
     };
 
-    // Skip non-PNG files
-    if (!filename.toLowerCase().endsWith('.png')) {
+    // Check if this is a PNG file
+    const isPng = filename.toLowerCase().endsWith('.png');
+    
+    // For non-PNG files (videos), look for companion PNG file with workflow metadata
+    if (!isPng) {
+      const baseName = path.parse(filename).name;
+      const dir = path.dirname(sourcePath);
+      const companionPngPath = path.join(dir, baseName + '.png');
+      
+      // Check if companion PNG exists
+      if (fs.existsSync(companionPngPath)) {
+        console.log(`Found companion PNG for video ${filename}: ${path.basename(companionPngPath)}`);
+        try {
+          // Extract metadata from companion PNG
+          const companionMetadata = await extractComfyMetadata(companionPngPath, path.basename(companionPngPath));
+          
+          // Copy workflow/prompt data to video metadata
+          if (companionMetadata.workflow) {
+            metadata.workflow = companionMetadata.workflow;
+            console.log(`Copied workflow metadata from companion PNG to ${filename}`);
+          }
+          if (companionMetadata.prompt) {
+            metadata.prompt = companionMetadata.prompt;
+            console.log(`Copied prompt metadata from companion PNG to ${filename}`);
+          }
+          if (companionMetadata.parameters) {
+            metadata.parameters = companionMetadata.parameters;
+            console.log(`Copied parameters metadata from companion PNG to ${filename}`);
+          }
+          
+          // Copy any other ComfyUI metadata
+          Object.keys(companionMetadata).forEach(key => {
+            if (!['filename', 'filesize', 'createdAt', 'modifiedAt', 'absolutePath', 'extractionError'].includes(key)) {
+              metadata[key] = companionMetadata[key];
+            }
+          });
+          
+          metadata.companionPng = companionPngPath;
+        } catch (companionError) {
+          console.error(`Error extracting metadata from companion PNG ${companionPngPath}:`, companionError.message);
+          metadata.companionError = companionError.message;
+        }
+      } else {
+        console.log(`No companion PNG found for ${filename}, skipping workflow extraction`);
+      }
+      
       return metadata;
     }
 

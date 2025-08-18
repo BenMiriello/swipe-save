@@ -16,8 +16,16 @@ window.comfyUIBentoML.fieldEditor = {
       summary: null,
       isLoading: false,
       isExpanded: false,
+      isEditorExpanded: false, // Add missing property
       editingField: null,
       tempValue: '',
+      
+      // Filtering
+      fieldFilter: '',
+      showSeedsOnly: false,
+      showTextFieldsOnly: false,
+      filteredSeeds: [],
+      filteredTextFields: [],
       
       // Initialize
       init() {
@@ -54,6 +62,9 @@ window.comfyUIBentoML.fieldEditor = {
           this.fields = await window.comfyUIBentoML.fieldExtractor.extractFields(workflowData);
           this.summary = window.comfyUIBentoML.fieldExtractor.summarizeFields(this.fields);
           
+          // Apply initial filtering
+          this.applyFieldFilter();
+          
           console.log('Extracted fields:', this.summary);
           
         } catch (error) {
@@ -72,6 +83,58 @@ window.comfyUIBentoML.fieldEditor = {
         this.summary = null;
         this.editingField = null;
         this.tempValue = '';
+        this.filteredSeeds = [];
+        this.filteredTextFields = [];
+        this.fieldFilter = '';
+      },
+      
+      /**
+       * Apply field filtering
+       */
+      applyFieldFilter() {
+        const filter = this.fieldFilter.toLowerCase();
+        
+        // Filter seeds
+        this.filteredSeeds = this.fields.seeds.filter(field => {
+          if (this.showTextFieldsOnly) return false;
+          if (!filter) return true;
+          
+          return (
+            field.fieldName.toLowerCase().includes(filter) ||
+            field.nodeType.toLowerCase().includes(filter) ||
+            String(field.currentValue).toLowerCase().includes(filter)
+          );
+        });
+        
+        // Filter text fields
+        this.filteredTextFields = this.fields.textFields.filter(field => {
+          if (this.showSeedsOnly) return false;
+          if (!filter) return true;
+          
+          return (
+            field.fieldName.toLowerCase().includes(filter) ||
+            field.nodeType.toLowerCase().includes(filter) ||
+            String(field.currentValue).toLowerCase().includes(filter)
+          );
+        });
+      },
+      
+      /**
+       * Get filtered seeds
+       */
+      getFilteredSeeds() {
+        if (this.showTextFieldsOnly) return [];
+        if (!this.fieldFilter && !this.showSeedsOnly) return this.fields.seeds || [];
+        return this.filteredSeeds;
+      },
+      
+      /**
+       * Get filtered text fields
+       */
+      getFilteredTextFields() {
+        if (this.showSeedsOnly) return [];
+        if (!this.fieldFilter && !this.showTextFieldsOnly) return this.fields.textFields || [];
+        return this.filteredTextFields;
       },
 
       /**
@@ -79,6 +142,7 @@ window.comfyUIBentoML.fieldEditor = {
        */
       toggleExpanded() {
         this.isExpanded = !this.isExpanded;
+        this.isEditorExpanded = !this.isEditorExpanded;
       },
 
       /**
@@ -209,6 +273,22 @@ window.comfyUIBentoML.fieldEditor = {
           this.summary.totalTextFields > 0 ||
           this.summary.totalOtherFields > 0
         );
+      },
+
+      /**
+       * Check if there are unsaved changes
+       */
+      get hasUnsavedChanges() {
+        if (!this.fields) return false;
+        
+        // Check if any field has been modified
+        const allFields = [
+          ...this.fields.seeds,
+          ...this.fields.textFields,
+          ...this.fields.otherFields
+        ];
+        
+        return allFields.some(field => field.isModified);
       },
 
       /**

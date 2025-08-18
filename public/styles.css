@@ -73,12 +73,19 @@ h1 {
   height: 1.5rem;
 }
 
-/* New Options styling (top left) */
-.options-container {
+/* Header left section with options and list view button */
+.header-left {
   position: absolute;
   left: 0;
   z-index: 10;
   margin-left: 10px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.options-container {
+  position: relative;
 }
 
 .options-container .btn-options {

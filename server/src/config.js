@@ -24,14 +24,21 @@ function getComfyUIUrl() {
   
   // Try common ComfyUI locations in order of preference
   const possibleUrls = [
-    'http://127.0.0.1:8188',   // IPv4 localhost (works)
+    'http://127.0.0.1:8188',   // IPv4 localhost (reliable)
     'http://debian:8188',      // Named host (current setup)
-    'http://localhost:8188'    // May resolve to IPv6 (problematic)
+    'http://localhost:8188'    // May resolve to IPv6 (can be problematic)
   ];
   
-  // For now, return the first option but this could be enhanced
-  // to actually test connectivity and return the working one
+  // Return the first reliable option
   return possibleUrls[0];
+}
+
+// Ensure ComfyUI URL uses IPv4 localhost for reliability
+function normalizeComfyUIUrl(url) {
+  if (!url) return url;
+  
+  // Replace localhost with 127.0.0.1 to force IPv4 and avoid DNS resolution issues
+  return url.replace(/localhost/g, '127.0.0.1');
 }
 
 // Default configuration with smart fallbacks
@@ -122,6 +129,9 @@ const config = {
   get COMFYUI_URL() {
     return getComfyUIUrl();
   },
+  
+  // ComfyUI URL normalization
+  normalizeComfyUIUrl,
 
   // Logging Configuration
   get ENABLE_LOGGING() {

@@ -1,8 +1,8 @@
 document.addEventListener('DOMContentLoaded', () => {
-  // Set up title click handler to return to list view
-  const appTitle = document.getElementById('appTitle');
-  if (appTitle) {
-    appTitle.addEventListener('click', () => {
+  // Set up list view button handler
+  const listViewButton = document.getElementById('listViewButton');
+  if (listViewButton) {
+    listViewButton.addEventListener('click', () => {
       if (window.simpleListView) {
         window.simpleListView.show();
       }

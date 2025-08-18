@@ -326,7 +326,10 @@ router.post('/api/queue-workflow-with-edits', async (req, res) => {
 
     const clientId = 'swipe-save-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9);
 
-    const targetUrl = comfyUrl || getDefaultComfyUIUrl(req);
+    let targetUrl = comfyUrl || getDefaultComfyUIUrl(req);
+    
+    // Normalize URL to ensure reliable connection
+    targetUrl = config.normalizeComfyUIUrl(targetUrl);
 
     const fetch = require('node-fetch');
     const response = await fetch(`${targetUrl}/prompt`, {
@@ -408,7 +411,10 @@ router.post('/api/queue-workflow', async (req, res) => {
 
     const clientId = 'swipe-save-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9);
 
-    const targetUrl = comfyUrl || getDefaultComfyUIUrl(req);
+    let targetUrl = comfyUrl || getDefaultComfyUIUrl(req);
+    
+    // Normalize URL to ensure reliable connection
+    targetUrl = config.normalizeComfyUIUrl(targetUrl);
 
     const fetch = require('node-fetch');
     const response = await fetch(`${targetUrl}/prompt`, {
@@ -446,10 +452,13 @@ router.post('/api/queue-workflow', async (req, res) => {
 router.get('/api/comfyui-queue', async (req, res) => {
   try {
     const { comfyUrl } = req.query;
-    const targetUrl = comfyUrl || getDefaultComfyUIUrl(req);
-
+    let targetUrl = comfyUrl || getDefaultComfyUIUrl(req);
+    
+    // Normalize URL to ensure reliable connection
+    targetUrl = config.normalizeComfyUIUrl(targetUrl);
 
     const fetch = require('node-fetch');
+    console.log(`Fetching ComfyUI queue from: ${targetUrl}/queue`);
     const response = await fetch(`${targetUrl}/queue`);
 
     if (!response.ok) {
@@ -458,6 +467,7 @@ router.get('/api/comfyui-queue', async (req, res) => {
     }
 
     const queueData = await response.json();
+    console.log(`ComfyUI queue data: ${queueData.queue_running?.length || 0} running, ${queueData.queue_pending?.length || 0} pending`);
 
     res.json(queueData);
 
@@ -497,7 +507,10 @@ router.get('/api/comfyui-node-info/:nodeType', async (req, res) => {
 router.post('/api/comfyui-queue/cancel', async (req, res) => {
   try {
     const { comfyUrl, cancel } = req.body;
-    const targetUrl = comfyUrl || getDefaultComfyUIUrl(req);
+    let targetUrl = comfyUrl || getDefaultComfyUIUrl(req);
+    
+    // Normalize URL to ensure reliable connection
+    targetUrl = config.normalizeComfyUIUrl(targetUrl);
 
     const fetch = require('node-fetch');
 

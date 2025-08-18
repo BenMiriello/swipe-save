@@ -6,8 +6,8 @@
 window.comfyUIStores = window.comfyUIStores || {};
 
 window.comfyUIStores.destinationStore = {
-  destinations: ['http://localhost:8188'],
-  selectedDestination: 'http://localhost:8188',
+  destinations: [],
+  selectedDestination: '',
   showMoreOptions: false,
   
   init() {
@@ -16,20 +16,29 @@ window.comfyUIStores.destinationStore = {
     }
     this.loadDestinations();
   },
+
+  getDefaultDestination() {
+    // Use current hostname with port 8188
+    const currentHost = window.location.hostname;
+    return `http://${currentHost}:8188`;
+  },
   
   loadDestinations() {
     try {
       const saved = JSON.parse(localStorage.getItem('comfyui-destinations') || '[]');
+      const defaultDest = this.getDefaultDestination();
+      
       if (saved.length === 0) {
-        saved.push('http://localhost:8188');
+        saved.push(defaultDest);
         this.saveDestinations(saved);
       }
       this.destinations = saved;
-      this.selectedDestination = saved[0] || '';
+      this.selectedDestination = saved[0] || defaultDest;
     } catch (error) {
       console.error('Error loading destinations:', error);
-      this.destinations = ['http://localhost:8188'];
-      this.selectedDestination = 'http://localhost:8188';
+      const defaultDest = this.getDefaultDestination();
+      this.destinations = [defaultDest];
+      this.selectedDestination = defaultDest;
     }
   },
   
@@ -46,7 +55,8 @@ window.comfyUIStores.destinationStore = {
   removeDestination(url) {
     this.destinations = this.destinations.filter(dest => dest !== url);
     if (this.destinations.length === 0) {
-      this.destinations.push('http://localhost:8188');
+      const defaultDest = this.getDefaultDestination();
+      this.destinations.push(defaultDest);
     }
     this.saveDestinations(this.destinations);
     
