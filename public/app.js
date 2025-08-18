@@ -3,8 +3,8 @@ document.addEventListener('DOMContentLoaded', () => {
   const appTitle = document.getElementById('appTitle');
   if (appTitle) {
     appTitle.addEventListener('click', () => {
-      if (window.views?.fileListViewer) {
-        window.views.fileListViewer.show();
+      if (window.simpleListView) {
+        window.simpleListView.show();
       }
     });
   }
@@ -13,10 +13,10 @@ document.addEventListener('DOMContentLoaded', () => {
   const app = new window.AppController();
   app.init();
   
-  // After app loads, switch to list view by default
+  // After app loads, switch to simple list view by default
   setTimeout(() => {
-    if (window.views?.fileListViewer) {
-      window.views.fileListViewer.init();
+    if (window.simpleListView) {
+      window.simpleListView.init();
     }
-  }, 500);
+  }, 1000);
 });
