@@ -5,6 +5,7 @@
 window.simpleListView = {
   isActive: false,
   container: null,
+  showPreviews: false, // Off by default
 
   /**
    * Initialize and show the list view
@@ -39,7 +40,12 @@ window.simpleListView = {
       </div>
       <div class="list-header">
         <h2>File List View</h2>
-        <button id="toggleFiles" class="toggle-btn">Show Files</button>
+        <div class="controls">
+          <button id="toggleFiles" class="toggle-btn">Show Files</button>
+          <button id="togglePreviews" class="toggle-btn preview-btn" title="Toggle Previews">
+            <span class="eye-icon">👁</span>
+          </button>
+        </div>
       </div>
       <div id="fileGrid" class="file-grid" style="display: none;">
         <div class="loading">Loading files...</div>
@@ -54,10 +60,16 @@ window.simpleListView = {
       document.body.appendChild(this.container);
     }
 
-    // Set up toggle button
+    // Set up toggle buttons
     const toggleBtn = document.getElementById('toggleFiles');
     if (toggleBtn) {
       toggleBtn.addEventListener('click', () => this.toggleFileGrid());
+    }
+
+    const previewBtn = document.getElementById('togglePreviews');
+    if (previewBtn) {
+      previewBtn.addEventListener('click', () => this.togglePreviews());
+      this.updatePreviewButton(); // Set initial state
     }
 
     this.isActive = true;
@@ -76,6 +88,37 @@ window.simpleListView = {
     } else {
       fileGrid.style.display = 'none';
       toggleBtn.textContent = 'Show Files';
+    }
+  },
+
+  /**
+   * Toggle preview visibility
+   */
+  togglePreviews() {
+    this.showPreviews = !this.showPreviews;
+    this.updatePreviewButton();
+    
+    // Update existing file items
+    const fileItems = document.querySelectorAll('.file-preview');
+    fileItems.forEach(preview => {
+      preview.style.display = this.showPreviews ? 'flex' : 'none';
+    });
+  },
+
+  /**
+   * Update preview button appearance
+   */
+  updatePreviewButton() {
+    const previewBtn = document.getElementById('togglePreviews');
+    if (previewBtn) {
+      const eyeIcon = previewBtn.querySelector('.eye-icon');
+      if (this.showPreviews) {
+        eyeIcon.textContent = '👁'; // Open eye
+        previewBtn.classList.add('active');
+      } else {
+        eyeIcon.textContent = '🙈'; // Closed eye / no see
+        previewBtn.classList.remove('active');
+      }
     }
   },
 
@@ -114,7 +157,7 @@ window.simpleListView = {
 
     const gridHtml = files.slice(0, 20).map((file, index) => `
       <div class="file-item" onclick="window.simpleListView.openFile(${index})" data-index="${index}">
-        <div class="file-preview">
+        <div class="file-preview" style="display: ${this.showPreviews ? 'flex' : 'none'};">
           ${this.getFilePreview(file)}
         </div>
         <div class="file-info">
@@ -260,6 +303,12 @@ style.textContent = `
   border-bottom: 2px solid #ddd;
 }
 
+.controls {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
 .toggle-btn {
   background: #007bff;
   color: white;
@@ -268,10 +317,30 @@ style.textContent = `
   border-radius: 5px;
   cursor: pointer;
   font-size: 16px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
 }
 
 .toggle-btn:hover {
   background: #0056b3;
+}
+
+.preview-btn {
+  padding: 10px 15px;
+  min-width: auto;
+}
+
+.preview-btn.active {
+  background: #28a745;
+}
+
+.preview-btn.active:hover {
+  background: #218838;
+}
+
+.eye-icon {
+  font-size: 18px;
 }
 
 .file-count {
