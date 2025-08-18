@@ -81,6 +81,18 @@ const stateManager = {
   },
 
   /**
+   * Set current index directly
+   * @param {number} index - Index to set
+   */
+  setCurrentIndex(index) {
+    if (index < 0 || index >= this.state.allFiles.length) return false;
+    
+    this.state.currentIndex = index;
+    this.state.customFilename = null;
+    return true;
+  },
+
+  /**
    * Navigate to previous file
    */
   gotoPrevious() {

@@ -2,6 +2,7 @@
  * Handles file navigation logic
  */
 const navigationController = {
+  currentView: 'single', // 'single' or 'list'
 
   /**
    * Display the current image
@@ -70,6 +71,52 @@ const navigationController = {
     if (window.stateManager.goToIndex(index)) {
       this.displayCurrentImage();
     }
+  },
+
+  /**
+   * Show list view
+   */
+  showListView() {
+    this.currentView = 'list';
+    
+    // Initialize and show file list viewer
+    if (window.views?.fileListViewer) {
+      window.views.fileListViewer.init();
+      window.views.fileListViewer.show();
+    }
+  },
+
+  /**
+   * Show single view
+   */
+  showSingleView() {
+    this.currentView = 'single';
+    
+    // Hide file list viewer
+    if (window.views?.fileListViewer) {
+      window.views.fileListViewer.hide();
+    }
+    
+    // Display current image
+    this.displayCurrentImage();
+  },
+
+  /**
+   * Toggle between views
+   */
+  toggleView() {
+    if (this.currentView === 'single') {
+      this.showListView();
+    } else {
+      this.showSingleView();
+    }
+  },
+
+  /**
+   * Get current view mode
+   */
+  getCurrentView() {
+    return this.currentView;
   }
 };
 
