@@ -168,12 +168,20 @@ window.sharedComponents.navigation = {
     const containerHeight = listContainer.clientHeight;
     const itemHeight = item.offsetHeight;
     const itemTop = item.offsetTop;
+    const maxScrollTop = listContainer.scrollHeight - containerHeight;
     
     // Try to center the item in the viewport
-    const scrollTop = itemTop - (containerHeight / 2) + (itemHeight / 2);
+    let scrollTop = itemTop - (containerHeight / 2) + (itemHeight / 2);
+    
+    // Handle edge cases: if too close to top or bottom, scroll to limits
+    if (scrollTop < 0) {
+      scrollTop = 0; // Scroll to top
+    } else if (scrollTop > maxScrollTop) {
+      scrollTop = maxScrollTop; // Scroll to bottom
+    }
     
     listContainer.scrollTo({
-      top: Math.max(0, scrollTop),
+      top: scrollTop,
       behavior: 'smooth'
     });
   },
