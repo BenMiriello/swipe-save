@@ -85,10 +85,12 @@ window.simpleListView = {
   async loadFiles() {
     try {
       const response = await fetch('/api/files');
-      const data = await response.json();
+      const files = await response.json();
       
-      if (data.success && data.files) {
-        this.displayFiles(data.files);
+      if (Array.isArray(files) && files.length > 0) {
+        this.displayFiles(files);
+      } else if (Array.isArray(files) && files.length === 0) {
+        this.showError('No files found in directory');
       } else {
         this.showError('Failed to load files');
       }
