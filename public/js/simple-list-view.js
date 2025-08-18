@@ -155,7 +155,7 @@ window.simpleListView = {
       return;
     }
 
-    const gridHtml = files.slice(0, 20).map((file, index) => `
+    const gridHtml = files.map((file, index) => `
       <div class="file-item" onclick="window.simpleListView.openFile(${index})" data-index="${index}">
         <div class="file-preview" style="display: ${this.showPreviews ? 'flex' : 'none'};">
           ${this.getFilePreview(file)}
@@ -168,7 +168,7 @@ window.simpleListView = {
     `).join('');
 
     fileGrid.innerHTML = `
-      <div class="file-count">${files.length} files total (showing first 20)</div>
+      <div class="file-count">${files.length} files total</div>
       <div class="grid-container">
         ${gridHtml}
       </div>
@@ -210,6 +210,12 @@ window.simpleListView = {
   openFile(index) {
     if (!this.files || !this.files[index]) return;
     
+    // Make sure state manager has all the files
+    if (window.stateManager && this.files) {
+      window.stateManager.setFiles(this.files);
+      window.stateManager.setCurrentIndex(index);
+    }
+    
     // Show the original media container
     const mediaContainer = document.querySelector('.media-container');
     if (mediaContainer) {
@@ -221,9 +227,8 @@ window.simpleListView = {
       this.container.style.display = 'none';
     }
 
-    // Set the file index and display
-    if (window.stateManager) {
-      window.stateManager.setCurrentIndex(index);
+    // Display the current image
+    if (window.navigationController) {
       window.navigationController.displayCurrentImage();
     }
   },
