@@ -558,7 +558,42 @@
         </div>
       </div>
 
+      <!-- Save to Inputs Section -->
+      <div class="comfyui-section" x-data="saveToInputsSection()">
+        <div class="comfyui-section-header" @click="isExpanded = !isExpanded">
+          <span class="comfyui-section-caret" :class="{ 'expanded': isExpanded }">▶</span>
+          <h3 class="comfyui-section-title">Save to Inputs</h3>
+        </div>
 
+        <div class="comfyui-section-content" x-show="isExpanded" x-transition>
+          <div class="comfy-save-inputs-group">
+            <label class="comfy-label">Save Path:</label>
+            <div class="comfy-destination-input-group">
+              <input type="text" 
+                     class="comfy-input monospace"
+                     x-model="savePath"
+                     placeholder="Enter save path">
+              <button class="comfy-btn comfy-btn-secondary comfy-btn-small" 
+                      @click="resetToDefault()">
+                Reset
+              </button>
+            </div>
+            <div class="comfyui-path-info">
+              <small>Default: /home/simonsays/Documents/Data/Packages/ComfyUI/input/</small>
+            </div>
+          </div>
+
+          <div class="comfy-save-inputs-actions">
+            <button class="comfy-btn comfy-btn-success"
+                    @click="saveToInputs()"
+                    :disabled="!mediaAvailable">
+              Save Copy to Inputs
+            </button>
+          </div>
+
+          <div x-show="saveStatus" class="comfyui-save-status" x-text="saveStatus"></div>
+        </div>
+      </div>
 
       </div> <!-- End scrollable content area -->
 

@@ -186,7 +186,8 @@ function scanDirectoryRecursive(dirPath, relativePath = '') {
 // Get list of media files using multi-directory system with pagination
 router.get('/api/media', async (req, res) => {
   try {
-    const limit = parseInt(req.query.limit) || config.FILE_LIMIT;
+    // Use unlimited when no limit specified, or use provided limit
+    const limit = req.query.limit ? parseInt(req.query.limit) : undefined;
     const offset = parseInt(req.query.offset) || 0;
     const sortBy = req.query.sortBy || 'date';
     const order = req.query.order || 'desc';
@@ -231,9 +232,19 @@ router.get('/api/media', async (req, res) => {
     
     // Apply pagination
     const totalItems = allFiles.length;
-    const totalPages = Math.ceil(totalItems / limit);
-    const currentPage = Math.floor(offset / limit) + 1;
-    const mediaFiles = allFiles.slice(offset, offset + limit);
+    // Handle unlimited vs paginated requests
+    let totalPages, currentPage, mediaFiles;
+    if (limit) {
+      // Paginated request
+      totalPages = Math.ceil(totalItems / limit);
+      currentPage = Math.floor(offset / limit) + 1;
+      mediaFiles = allFiles.slice(offset, offset + limit);
+    } else {
+      // Unlimited request - return all files
+      totalPages = 1;
+      currentPage = 1;
+      mediaFiles = allFiles;
+    }
     
     // Generate previews if requested
     let processedFiles = mediaFiles;
@@ -247,10 +258,10 @@ router.get('/api/media', async (req, res) => {
       pagination: {
         currentPage,
         totalPages,
-        itemsPerPage: limit,
+        itemsPerPage: limit || totalItems,
         totalItems,
         offset,
-        hasNext: offset + limit < totalItems,
+        hasNext: limit ? (offset + limit < totalItems) : false,
         hasPrev: offset > 0
       }
     };
@@ -395,32 +406,70 @@ router.get('/media/*', (req, res) => {
       }
 
       res.set('Access-Control-Allow-Origin', '*');
-      res.set('Cache-Control', 'no-store');
-
+      
       const filename = path.basename(decodedPath);
-      if (filename.toLowerCase().endsWith('.png')) {
-        res.set('Content-Type', 'image/png');
-      } else if (filename.toLowerCase().endsWith('.jpg') || filename.toLowerCase().endsWith('.jpeg')) {
-        res.set('Content-Type', 'image/jpeg');
-      } else if (filename.toLowerCase().endsWith('.gif')) {
-        res.set('Content-Type', 'image/gif');
-      } else if (filename.toLowerCase().endsWith('.webp')) {
-        res.set('Content-Type', 'image/webp');
-      } else if (filename.toLowerCase().endsWith('.mp4') || filename.toLowerCase().endsWith('.m4v')) {
-        res.set('Content-Type', 'video/mp4');
-      } else if (filename.toLowerCase().endsWith('.webm')) {
-        res.set('Content-Type', 'video/webm');
-      } else if (filename.toLowerCase().endsWith('.mov')) {
-        res.set('Content-Type', 'video/quicktime');
-      } else if (filename.toLowerCase().endsWith('.avi')) {
-        res.set('Content-Type', 'video/x-msvideo');
-      } else if (filename.toLowerCase().endsWith('.mkv')) {
-        res.set('Content-Type', 'video/x-matroska');
-      } else if (filename.toLowerCase().endsWith('.ogv')) {
-        res.set('Content-Type', 'video/ogg');
+      const isVideo = /\.(mp4|m4v|webm|mov|avi|mkv|ogv)$/i.test(filename);
+      
+      if (isVideo) {
+        // Handle video streaming with proper range support
+        const range = req.headers.range;
+        const videoSize = stats.size;
+        
+        // Set appropriate content type
+        if (filename.toLowerCase().endsWith('.mp4') || filename.toLowerCase().endsWith('.m4v')) {
+          res.set('Content-Type', 'video/mp4');
+        } else if (filename.toLowerCase().endsWith('.webm')) {
+          res.set('Content-Type', 'video/webm');
+        } else if (filename.toLowerCase().endsWith('.mov')) {
+          res.set('Content-Type', 'video/quicktime');
+        } else if (filename.toLowerCase().endsWith('.avi')) {
+          res.set('Content-Type', 'video/x-msvideo');
+        } else if (filename.toLowerCase().endsWith('.mkv')) {
+          res.set('Content-Type', 'video/x-matroska');
+        } else if (filename.toLowerCase().endsWith('.ogv')) {
+          res.set('Content-Type', 'video/ogg');
+        }
+        
+        res.set('Accept-Ranges', 'bytes');
+        
+        if (range) {
+          // Parse range header
+          const parts = range.replace(/bytes=/, "").split("-");
+          const start = parseInt(parts[0], 10);
+          const end = parts[1] ? parseInt(parts[1], 10) : videoSize - 1;
+          const chunksize = (end - start) + 1;
+          
+          // Create read stream with range
+          const readStream = fs.createReadStream(filePath, { start, end });
+          
+          // Set partial content headers
+          res.writeHead(206, {
+            'Content-Range': `bytes ${start}-${end}/${videoSize}`,
+            'Content-Length': chunksize,
+          });
+          
+          readStream.pipe(res);
+        } else {
+          // No range requested - send full file
+          res.set('Content-Length', videoSize);
+          fs.createReadStream(filePath).pipe(res);
+        }
+      } else {
+        // Handle images normally
+        res.set('Cache-Control', 'no-store');
+        
+        if (filename.toLowerCase().endsWith('.png')) {
+          res.set('Content-Type', 'image/png');
+        } else if (filename.toLowerCase().endsWith('.jpg') || filename.toLowerCase().endsWith('.jpeg')) {
+          res.set('Content-Type', 'image/jpeg');
+        } else if (filename.toLowerCase().endsWith('.gif')) {
+          res.set('Content-Type', 'image/gif');
+        } else if (filename.toLowerCase().endsWith('.webp')) {
+          res.set('Content-Type', 'image/webp');
+        }
+        
+        fs.createReadStream(filePath).pipe(res);
       }
-
-      fs.createReadStream(filePath).pipe(res);
     } else {
       res.status(404).send('File not found');
     }
@@ -775,6 +824,131 @@ router.post('/api/files/action', async (req, res) => {
     });
 
     res.status(500).json({ error: error.message });
+  }
+});
+
+// Save file copy to ComfyUI inputs directory
+router.post('/api/save-to-inputs', async (req, res) => {
+  console.log('=== SAVE TO INPUTS ENDPOINT HIT ===');
+  const { sourceFile, destinationPath } = req.body;
+  
+  if (!sourceFile || !destinationPath) {
+    return res.status(400).json({ 
+      error: 'Missing required parameters: sourceFile and destinationPath' 
+    });
+  }
+
+  try {
+    // Find the source file in enabled directories
+    let sourcePath = null;
+    const DirectoryConfigService = require('../services/directory-config-service');
+    const dirService = new DirectoryConfigService();
+    const dirConfig = dirService.loadConfig();
+    
+    // Search through only ENABLED source directories for the file
+    for (const directory of dirConfig.sources.directories) {
+      if (!directory.enabled) continue;
+      
+      const testPath = path.join(directory.path, sourceFile);
+      if (fs.existsSync(testPath)) {
+        sourcePath = testPath;
+        console.log(`Found source file in directory ${directory.name}: ${sourcePath}`);
+        break;
+      }
+    }
+    
+    if (!sourcePath) {
+      return res.status(404).json({ 
+        error: `Source file ${sourceFile} not found in enabled directories` 
+      });
+    }
+
+    // Verify source file exists and is a file
+    if (!fs.existsSync(sourcePath)) {
+      return res.status(404).json({ 
+        error: `Source file ${sourceFile} not found` 
+      });
+    }
+
+    const sourceStats = fs.statSync(sourcePath);
+    if (sourceStats.isDirectory()) {
+      return res.status(400).json({ 
+        error: `Source path is a directory, not a file` 
+      });
+    }
+
+    // Ensure destination directory exists
+    if (!fs.existsSync(destinationPath)) {
+      try {
+        fs.mkdirSync(destinationPath, { recursive: true });
+        console.log(`Created destination directory: ${destinationPath}`);
+      } catch (error) {
+        return res.status(500).json({ 
+          error: `Failed to create destination directory: ${error.message}` 
+        });
+      }
+    }
+
+    // Verify destination is a directory
+    const destStats = fs.statSync(destinationPath);
+    if (!destStats.isDirectory()) {
+      return res.status(400).json({ 
+        error: `Destination path is not a directory` 
+      });
+    }
+
+    // Generate destination file path
+    const filename = path.basename(sourceFile);
+    const destFilePath = path.join(destinationPath, filename);
+
+    // Check if destination file already exists
+    if (fs.existsSync(destFilePath)) {
+      // Generate unique filename by adding timestamp
+      const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+      const ext = path.extname(filename);
+      const nameWithoutExt = path.basename(filename, ext);
+      const uniqueFilename = `${nameWithoutExt}_${timestamp}${ext}`;
+      const uniqueDestPath = path.join(destinationPath, uniqueFilename);
+      
+      console.log(`Destination file exists, using unique name: ${uniqueFilename}`);
+      
+      // Copy file with unique name
+      try {
+        fs.copySync(sourcePath, uniqueDestPath);
+        console.log(`Saved copy to inputs: ${uniqueDestPath}`);
+        
+        res.json({ 
+          success: true, 
+          savedPath: uniqueDestPath,
+          originalRequested: destFilePath,
+          actualSaved: uniqueDestPath
+        });
+      } catch (error) {
+        return res.status(500).json({ 
+          error: `Failed to copy file: ${error.message}` 
+        });
+      }
+    } else {
+      // Copy file to destination
+      try {
+        fs.copySync(sourcePath, destFilePath);
+        console.log(`Saved copy to inputs: ${destFilePath}`);
+        
+        res.json({ 
+          success: true, 
+          savedPath: destFilePath 
+        });
+      } catch (error) {
+        return res.status(500).json({ 
+          error: `Failed to copy file: ${error.message}` 
+        });
+      }
+    }
+  } catch (error) {
+    console.error('Error in save-to-inputs:', error);
+    res.status(500).json({ 
+      error: `Server error: ${error.message}` 
+    });
   }
 });
 

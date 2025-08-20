@@ -80,5 +80,129 @@ window.comfyUIComponents.panelComponents = {
         return parts.length > 0 ? parts.join(', ') : 'Default settings';
       }
     };
+  },
+
+  // Register save to inputs section component
+  saveToInputsSection() {
+    return {
+      isExpanded: JSON.parse(localStorage.getItem('saveToInputsExpanded') || 'false'),
+      savePath: '/home/simonsays/Documents/Data/Packages/ComfyUI/input/',
+      defaultPath: '/home/simonsays/Documents/Data/Packages/ComfyUI/input/',
+      saveStatus: '',
+      mediaAvailable: false,
+      
+      init() {
+        this.$watch('isExpanded', (value) => {
+          localStorage.setItem('saveToInputsExpanded', JSON.stringify(value));
+        });
+        
+        // Load saved path from localStorage
+        const savedPath = localStorage.getItem('saveToInputsPath');
+        if (savedPath) {
+          this.savePath = savedPath;
+        }
+        
+        this.$watch('savePath', (value) => {
+          localStorage.setItem('saveToInputsPath', value);
+        });
+        
+        // Check media availability
+        const checkMedia = () => {
+          const available = this.hasSelectedMedia();
+          if (this.mediaAvailable !== available) {
+            this.mediaAvailable = available;
+          }
+        };
+        
+        // Initial check
+        checkMedia();
+        
+        // Set up periodic checks (every 500ms is sufficient)
+        setInterval(checkMedia, 500);
+        
+        // Also listen for global events that might indicate state changes
+        if (window.addEventListener) {
+          const events = ['click', 'keydown', 'hashchange'];
+          events.forEach(event => {
+            window.addEventListener(event, () => {
+              setTimeout(checkMedia, 100); // Small delay to let state update
+            });
+          });
+        }
+      },
+      
+      resetToDefault() {
+        this.savePath = this.defaultPath;
+        this.saveStatus = 'Path reset to default';
+        setTimeout(() => { this.saveStatus = ''; }, 3000);
+      },
+      
+      hasSelectedMedia() {
+        // Simple check: are there any files available?
+        if (window.stateManager) {
+          const state = window.stateManager.getState();
+          return state && state.allFiles && state.allFiles.length > 0;
+        }
+        return false;
+      },
+      
+      async saveToInputs() {
+        if (!this.mediaAvailable) {
+          this.saveStatus = 'No media file selected';
+          setTimeout(() => { this.saveStatus = ''; }, 3000);
+          return;
+        }
+        
+        this.saveStatus = 'Saving...';
+        
+        try {
+          // Get current file from state manager
+          if (!window.stateManager) {
+            throw new Error('State manager not available');
+          }
+          
+          const state = window.stateManager.getState();
+          if (!state || !state.allFiles || state.allFiles.length === 0) {
+            throw new Error('No files available');
+          }
+          
+          // Use current file if available, otherwise use first file
+          let fileIndex = 0;
+          if (typeof state.currentIndex === 'number' && 
+              state.currentIndex >= 0 && 
+              state.currentIndex < state.allFiles.length) {
+            fileIndex = state.currentIndex;
+          }
+          
+          const currentFile = state.allFiles[fileIndex];
+          
+          // Make API call to save file
+          const response = await fetch('/api/save-to-inputs', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              sourceFile: currentFile.name,
+              destinationPath: this.savePath
+            })
+          });
+          
+          const result = await response.json();
+          
+          if (response.ok && result.success) {
+            this.saveStatus = `Saved to ${result.savedPath}`;
+          } else {
+            this.saveStatus = `Error: ${result.error || 'Save failed'}`;
+          }
+        } catch (error) {
+          console.error('Save to inputs error:', error);
+          this.saveStatus = `Error: ${error.message}`;
+        }
+        
+        // Clear status after 5 seconds
+        setTimeout(() => { this.saveStatus = ''; }, 5000);
+      }
+    };
   }
 };

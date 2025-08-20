@@ -223,3 +223,35 @@ input[type="number"] {
     min-height: 100px;
   }
 }
+
+/* Save to Inputs Section */
+.comfy-save-inputs-group {
+  margin-bottom: 16px;
+}
+
+.comfyui-path-info {
+  margin-top: 6px;
+  color: #666;
+  font-size: 0.85em;
+}
+
+.comfy-save-inputs-actions {
+  margin-top: 16px;
+  display: flex;
+  justify-content: center;
+}
+
+.comfyui-save-status {
+  margin-top: 12px;
+  padding: 8px 12px;
+  border-radius: 4px;
+  font-size: 0.9em;
+  text-align: center;
+  background-color: #e8f4f8;
+  border: 1px solid #bee5eb;
+  color: #0c5460;
+}
+
+.comfyui-save-status:empty {
+  display: none;
+}

@@ -36,6 +36,7 @@ document.addEventListener('alpine:init', () => {
     Alpine.data('queueViewer', window.comfyUIComponents.modalComponents.queueViewer);
     Alpine.data('destinationSection', window.comfyUIComponents.panelComponents.destinationSection);
     Alpine.data('settingsPanel', window.comfyUIComponents.panelComponents.settingsPanel);
+    Alpine.data('saveToInputsSection', window.comfyUIComponents.panelComponents.saveToInputsSection);
     
     // Old workflowEditor component removed - using new field editor system
 
