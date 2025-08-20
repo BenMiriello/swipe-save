@@ -47,7 +47,7 @@ window.comfyUIBentoML.extractors.textExtractor = {
         textFields.push({
           nodeId: node.id,
           nodeType: node.type,
-          fieldName: this.inferFieldName(node, i),
+          fieldName: `input_${i}`,
           currentValue: value,
           isPrompt: this.isPromptValue(node, value),
           source: 'gui',

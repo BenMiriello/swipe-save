@@ -17,8 +17,6 @@ window.comfyUIBentoML.fieldExtractor = {
     const textFields = window.comfyUIBentoML.extractors.textExtractor.extractTextFields(workflowData);
     const parameters = window.comfyUIBentoML.extractors.parameterExtractor.extractParameters(workflowData);
 
-    console.log(`Field extractor found: ${seeds.length} seeds, ${textFields.length} text fields, ${parameters.length} parameters`);
-
     return {
       seeds,
       textFields,
