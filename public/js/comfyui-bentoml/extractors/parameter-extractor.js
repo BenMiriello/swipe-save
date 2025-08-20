@@ -98,16 +98,68 @@ window.comfyUIBentoML.extractors.parameterExtractor = {
         5: 'sampler_name',
         6: 'scheduler'
       },
+      'CheckpointLoaderSimple': {
+        0: 'ckpt_name'
+      },
+      'VAELoader': {
+        0: 'vae_name'
+      },
+      'LoraLoader': {
+        0: 'lora_name'
+      },
       'EmptyLatentImage': {
         0: 'width',
         1: 'height',
         2: 'batch_size'
       },
       'Int Literal': {
-        0: 'value'
+        0: 'int'
       },
       'Cfg Literal': {
-        0: 'value'
+        0: 'float'
+      },
+      'VHS_VideoCombine': {
+        0: 'frame_rate',
+        1: 'loop_count',
+        2: 'filename_prefix',
+        3: 'format',
+        4: 'pix_fmt',
+        5: 'crf',
+        6: 'save_metadata'
+      },
+      'ModelSamplingSD3': {
+        0: 'shift'
+      },
+      'easy mathInt': {
+        0: 'a',
+        1: 'b',
+        2: 'operation'
+      },
+      'LoraLoaderModelOnly': {
+        0: 'lora_name',
+        1: 'strength_model'
+      },
+      'UnetLoaderGGUF': {
+        0: 'unet_name'
+      },
+      'VAELoader': {
+        0: 'vae_name'
+      },
+      'CLIPLoader': {
+        0: 'clip_name',
+        1: 'type',
+        2: 'device'
+      },
+      'UpscaleModelLoader': {
+        0: 'model_name'
+      },
+      'ImageResizeKJ': {
+        0: 'width',
+        1: 'height',
+        2: 'upscale_method',
+        3: 'keep_proportion',
+        4: 'divisible_by',
+        5: 'crop'
       }
     };
 
@@ -118,15 +170,12 @@ window.comfyUIBentoML.extractors.parameterExtractor = {
    * Check if API input is a parameter
    */
   isParameterInput(inputName, value) {
-    // Skip connection arrays and text values
-    if (Array.isArray(value) || typeof value === 'string') return false;
+    // Skip connection arrays (node connections)
+    if (Array.isArray(value)) return false;
     
-    const parameterNames = [
-      'steps', 'cfg', 'denoise', 'width', 'height', 'batch_size',
-      'sampler_name', 'scheduler', 'strength', 'scale'
-    ];
-    
-    return parameterNames.includes(inputName);
+    // Include ALL non-connection values (numbers, strings, booleans)
+    // This captures all editable parameters instead of a restrictive whitelist
+    return typeof value === 'number' || typeof value === 'string' || typeof value === 'boolean';
   },
 
   /**
@@ -144,7 +193,32 @@ window.comfyUIBentoML.extractors.parameterExtractor = {
       'scheduler': 'Scheduler',
       'strength': 'Strength',
       'scale': 'Scale',
-      'value': 'Value'
+      'value': 'Value',
+      'int': 'Integer Value',
+      'float': 'Float Value',
+      'frame_rate': 'Frame Rate',
+      'loop_count': 'Loop Count',
+      'filename_prefix': 'Filename Prefix',
+      'format': 'Video Format',
+      'pix_fmt': 'Pixel Format',
+      'crf': 'Quality (CRF)',
+      'save_metadata': 'Save Metadata',
+      'shift': 'Shift Value',
+      'a': 'Value A',
+      'b': 'Value B',
+      'operation': 'Math Operation',
+      'lora_name': 'LoRA Name',
+      'strength_model': 'Model Strength',
+      'unet_name': 'UNet Model',
+      'vae_name': 'VAE Model',
+      'clip_name': 'CLIP Model',
+      'type': 'Type',
+      'device': 'Device',
+      'model_name': 'Model Name',
+      'upscale_method': 'Upscale Method',
+      'keep_proportion': 'Keep Proportion',
+      'divisible_by': 'Divisible By',
+      'crop': 'Crop Method'
     };
     
     return displayNames[fieldName] || fieldName;

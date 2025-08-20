@@ -24,8 +24,15 @@ window.comfyUIBentoML.fieldEditor = {
       fieldFilter: '',
       showSeedsOnly: false,
       showTextFieldsOnly: false,
+      showParametersOnly: false,
+      showAllFields: false,
       filteredSeeds: [],
       filteredTextFields: [],
+      filteredParameters: [],
+      
+      // Dropdown search
+      dropdownSearchTerms: {}, // Key: fieldId, Value: search term
+      filteredDropdownOptions: {}, // Key: fieldId, Value: filtered options
       
       // Initialize
       init() {
@@ -87,12 +94,13 @@ window.comfyUIBentoML.fieldEditor = {
        * Reset fields state
        */
       resetFields() {
-        this.fields = { seeds: [], textFields: [], otherFields: [] };
+        this.fields = { seeds: [], textFields: [], parameters: [] };
         this.summary = null;
         this.editingField = null;
         this.tempValue = '';
         this.filteredSeeds = [];
         this.filteredTextFields = [];
+        this.filteredParameters = [];
         this.fieldFilter = '';
       },
       
@@ -102,36 +110,111 @@ window.comfyUIBentoML.fieldEditor = {
       applyFieldFilter() {
         const filter = this.fieldFilter.toLowerCase();
         
-        // Filter seeds
-        this.filteredSeeds = this.fields.seeds.filter(field => {
-          if (this.showTextFieldsOnly) return false;
+        // Helper function to check if field matches filter
+        const matchesFilter = (field) => {
           if (!filter) return true;
           
-          return (
-            field.fieldName.toLowerCase().includes(filter) ||
-            field.nodeType.toLowerCase().includes(filter) ||
-            String(field.currentValue).toLowerCase().includes(filter)
-          );
+          const fieldName = (field.fieldName || '').toLowerCase();
+          const nodeType = (field.nodeType || '').toLowerCase();
+          const currentValue = String(field.currentValue || '').toLowerCase();
+          const displayName = this.getDisplayName(field).toLowerCase();
+          
+          return fieldName.includes(filter) ||
+                 nodeType.includes(filter) ||
+                 currentValue.includes(filter) ||
+                 displayName.includes(filter);
+        };
+        
+        // When "Show All" is enabled, show everything but still apply filter
+        if (this.showAllFields) {
+          this.filteredSeeds = this.fields.seeds.filter(matchesFilter);
+          this.filteredTextFields = this.fields.textFields.filter(matchesFilter);
+          this.filteredParameters = this.fields.parameters.filter(matchesFilter);
+          return;
+        }
+        
+        // Filter seeds
+        this.filteredSeeds = this.fields.seeds.filter(field => {
+          if (this.showTextFieldsOnly || this.showParametersOnly) return false;
+          return matchesFilter(field);
         });
         
         // Filter text fields
         this.filteredTextFields = this.fields.textFields.filter(field => {
-          if (this.showSeedsOnly) return false;
-          if (!filter) return true;
-          
-          return (
-            field.fieldName.toLowerCase().includes(filter) ||
-            field.nodeType.toLowerCase().includes(filter) ||
-            String(field.currentValue).toLowerCase().includes(filter)
-          );
+          if (this.showSeedsOnly || this.showParametersOnly) return false;
+          return matchesFilter(field);
         });
+        
+        // Filter parameters
+        this.filteredParameters = this.fields.parameters.filter(field => {
+          if (this.showSeedsOnly || this.showTextFieldsOnly) return false;
+          return matchesFilter(field);
+        });
+      },
+
+
+      /**
+       * Get field ID for dropdown search
+       */
+      getFieldId(field) {
+        return `${field.nodeId}-${field.fieldName}`;
+      },
+
+      /**
+       * Handle dropdown search input
+       */
+      onDropdownSearchInput(field, searchTerm) {
+        const fieldId = this.getFieldId(field);
+        this.dropdownSearchTerms[fieldId] = searchTerm;
+        this.updateFilteredDropdownOptions(field);
+      },
+
+      /**
+       * Update filtered options for a dropdown
+       */
+      updateFilteredDropdownOptions(field) {
+        const fieldId = this.getFieldId(field);
+        const searchTerm = (this.dropdownSearchTerms[fieldId] || '').toLowerCase();
+        const allOptions = this.getFieldOptions(field);
+        
+        if (!searchTerm) {
+          this.filteredDropdownOptions[fieldId] = allOptions;
+        } else {
+          this.filteredDropdownOptions[fieldId] = allOptions.filter(option =>
+            option.toLowerCase().includes(searchTerm)
+          );
+        }
+      },
+
+      /**
+       * Get filtered options for a dropdown
+       */
+      getFilteredDropdownOptions(field) {
+        const fieldId = this.getFieldId(field);
+        
+        // If no filtered options exist yet, initialize them
+        if (!this.filteredDropdownOptions[fieldId]) {
+          this.updateFilteredDropdownOptions(field);
+        }
+        
+        return this.filteredDropdownOptions[fieldId] || [];
+      },
+
+      /**
+       * Clear dropdown search
+       */
+      clearDropdownSearch(field) {
+        const fieldId = this.getFieldId(field);
+        this.dropdownSearchTerms[fieldId] = '';
+        this.updateFilteredDropdownOptions(field);
       },
       
       /**
        * Get filtered seeds
        */
       getFilteredSeeds() {
-        if (this.showTextFieldsOnly) return [];
+        if (this.showTextFieldsOnly || this.showParametersOnly) return [];
+        if (this.showAllFields) return this.fields.seeds || [];
         if (!this.fieldFilter && !this.showSeedsOnly) return this.fields.seeds || [];
         return this.filteredSeeds;
       },
@@ -140,9 +223,20 @@ window.comfyUIBentoML.fieldEditor = {
        * Get filtered text fields
        */
       getFilteredTextFields() {
-        if (this.showSeedsOnly) return [];
+        if (this.showSeedsOnly || this.showParametersOnly) return [];
+        if (this.showAllFields) return this.fields.textFields || [];
         if (!this.fieldFilter && !this.showTextFieldsOnly) return this.fields.textFields || [];
         return this.filteredTextFields;
+      },
+
+      /**
+       * Get filtered parameters
+       */
+      getFilteredParameters() {
+        if (this.showSeedsOnly || this.showTextFieldsOnly) return [];
+        if (this.showAllFields) return this.fields.parameters || [];
+        if (!this.fieldFilter && !this.showParametersOnly) return this.fields.parameters || [];
+        return this.filteredParameters;
       },
 
       /**
@@ -154,11 +248,113 @@ window.comfyUIBentoML.fieldEditor = {
       },
 
       /**
+       * Check if field is a dropdown type
+       */
+      isDropdownField(field) {
+        return field.fieldType && field.fieldType.type === 'dropdown';
+      },
+
+      /**
+       * Get options for a dropdown field
+       */
+      getFieldOptions(field) {
+        if (!this.isDropdownField(field)) return [];
+        
+        const fieldType = field.fieldType;
+        
+        // Check if options are loaded and available
+        if (fieldType.options && Array.isArray(fieldType.options) && fieldType.options.length > 0) {
+          return fieldType.options;
+        }
+        
+        // Filesystem options that haven't loaded yet - don't show Loading placeholder
+        if (fieldType.subtype === 'filesystem' && !fieldType.loaded) {
+          // Return empty array to hide dropdown until loaded
+          return [];
+        }
+        
+        return [];
+      },
+
+      /**
+       * Check if dropdown field should be shown (has options or is loading)
+       */
+      shouldShowDropdown(field) {
+        if (!this.isDropdownField(field)) return false;
+        
+        const options = this.getFieldOptions(field);
+        const fieldType = field.fieldType;
+        
+        // Show if we have options
+        if (options.length > 0) return true;
+        
+        // Show if it's a filesystem dropdown that's loaded (even if empty)
+        if (fieldType.subtype === 'filesystem' && fieldType.loaded) return true;
+        
+        // Show for non-filesystem dropdowns even if empty
+        if (fieldType.subtype !== 'filesystem') return true;
+        
+        return false;
+      },
+
+      /**
+       * Handle dropdown selection change
+       */
+      handleDropdownChange(field, event) {
+        this.tempValue = event.target.value;
+      },
+
+      /**
        * Start editing a field
        */
       startEditing(field) {
         this.editingField = `${field.nodeId}-${field.fieldName}`;
         this.tempValue = field.currentValue.toString();
+        
+        // For dropdown fields, load options if needed
+        if (this.isDropdownField(field)) {
+          this.loadDropdownOptions(field);
+        }
+      },
+
+      /**
+       * Load dropdown options for filesystem-based dropdowns
+       */
+      async loadDropdownOptions(field) {
+        const fieldType = field.fieldType;
+        
+        if (fieldType.subtype === 'filesystem' && fieldType.modelType && !fieldType.loaded) {
+          try {
+            console.log(`Loading ${fieldType.modelType} options for ${field.fieldName}`);
+            
+            // Fetch model files from API
+            const response = await fetch(`/api/comfyui/models/${fieldType.modelType}`);
+            if (response.ok) {
+              const data = await response.json();
+              
+              // Extract just the filenames for the dropdown
+              const options = data.files.map(file => file.name);
+              
+              // Update the field type with loaded options
+              fieldType.options = options;
+              fieldType.loaded = true;
+              
+              console.log(`Loaded ${options.length} ${fieldType.modelType} files`);
+              
+              // Trigger reactivity by updating the field object
+              field.fieldType = {...fieldType};
+              
+            } else {
+              console.error('Failed to load model files:', response.status);
+              fieldType.options = ['Error loading files'];
+              fieldType.loaded = true;
+            }
+          } catch (error) {
+            console.error('Failed to load dropdown options:', error);
+            fieldType.options = ['Error loading files'];  
+            fieldType.loaded = true;
+          }
+        }
       },
 
       /**
@@ -277,8 +473,8 @@ window.comfyUIBentoML.fieldEditor = {
         if (this.summary.totalTextFields > 0) {
           parts.push(`${this.summary.totalTextFields} text field${this.summary.totalTextFields === 1 ? '' : 's'}`);
         }
-        if (this.summary.totalOtherFields > 0) {
-          parts.push(`${this.summary.totalOtherFields} other field${this.summary.totalOtherFields === 1 ? '' : 's'}`);
+        if (this.summary.totalParameters > 0) {
+          parts.push(`${this.summary.totalParameters} parameter${this.summary.totalParameters === 1 ? '' : 's'}`);
         }
         
         return parts.length > 0 ? parts.join(', ') : 'No editable fields';
@@ -291,7 +487,7 @@ window.comfyUIBentoML.fieldEditor = {
         return this.summary && (
           this.summary.totalSeeds > 0 ||
           this.summary.totalTextFields > 0 ||
-          this.summary.totalOtherFields > 0
+          this.summary.totalParameters > 0
         );
       },
 
@@ -305,7 +501,7 @@ window.comfyUIBentoML.fieldEditor = {
         const allFields = [
           ...this.fields.seeds,
           ...this.fields.textFields,
-          ...this.fields.otherFields
+          ...this.fields.parameters
         ];
         
         return allFields.some(field => field.isModified);

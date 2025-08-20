@@ -93,14 +93,35 @@ const elementFactory = {
     video.src = `${apiUrl}${file.path}`;
     video.controls = true;
     video.autoplay = false;
-    video.muted = false;
+    video.muted = true;  // Mute to allow autoplay for preview
     video.loop = false;
     video.playsInline = true;
-    video.preload = 'auto';
+    video.preload = 'auto';  // Restore auto preload for preview frames
     video.className = 'media-content';
 
+    // Add error handling
+    video.addEventListener('error', function(e) {
+      console.error('Video error:', this.error?.message || 'Unknown error', 'Code:', this.error?.code);
+      console.error('Video source:', this.src);
+    });
+
     video.addEventListener('loadedmetadata', function() {
-      this.play().catch(e => console.log('Auto-play prevented:', e));
+      console.log('Video metadata loaded:', this.videoWidth + 'x' + this.videoHeight, 'Duration:', this.duration);
+    });
+
+    // Restore autoplay for preview but handle failures gracefully
+    video.addEventListener('loadedmetadata', function() {
+      // Try to play muted for preview, then pause after a brief moment
+      this.play().then(() => {
+        setTimeout(() => {
+          this.pause();
+          this.muted = false; // Unmute for when user actually plays
+          this.currentTime = 0; // Reset to beginning
+        }, 100);
+      }).catch(e => {
+        console.log('Auto-preview prevented:', e);
+        this.muted = false; // Ensure unmuted even if preview fails
+      });
     });
 
     video.addEventListener('play', function() {

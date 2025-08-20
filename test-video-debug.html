@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Video Debug Test</title>
+</head>
+<body>
+    <h1>Video Debug Test</h1>
+    <video id="testVideo" controls preload="auto" width="400">
+        <source src="http://localhost:8081/media/Wan22Video_ComfyUI_07-08-2025_095743_00003.mp4" type="video/mp4">
+        Your browser doesn't support video.
+    </video>
+    
+    <div id="log"></div>
+    
+    <script>
+        const video = document.getElementById('testVideo');
+        const log = document.getElementById('log');
+        
+        function logMessage(msg) {
+            console.log(msg);
+            log.innerHTML += '<p>' + msg + '</p>';
+        }
+        
+        video.addEventListener('loadstart', () => logMessage('loadstart'));
+        video.addEventListener('durationchange', () => logMessage('durationchange - Duration: ' + video.duration));
+        video.addEventListener('loadedmetadata', () => logMessage('loadedmetadata - Video: ' + video.videoWidth + 'x' + video.videoHeight));
+        video.addEventListener('loadeddata', () => logMessage('loadeddata'));
+        video.addEventListener('progress', () => logMessage('progress'));
+        video.addEventListener('canplay', () => logMessage('canplay'));
+        video.addEventListener('canplaythrough', () => logMessage('canplaythrough'));
+        video.addEventListener('error', (e) => logMessage('ERROR: ' + e.message + ' - ' + video.error?.message));
+        
+        // Test direct fetch
+        fetch('http://localhost:8081/media/Wan22Video_ComfyUI_07-08-2025_095743_00003.mp4')
+            .then(response => {
+                logMessage('Fetch response: ' + response.status + ' - ' + response.statusText);
+                logMessage('Content-Type: ' + response.headers.get('Content-Type'));
+                logMessage('Content-Length: ' + response.headers.get('Content-Length'));
+                logMessage('Accept-Ranges: ' + response.headers.get('Accept-Ranges'));
+            })
+            .catch(error => logMessage('Fetch error: ' + error.message));
+    </script>
+</body>
+</html>

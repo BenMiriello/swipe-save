@@ -56,12 +56,15 @@ window.comfyUIBentoML.schemaService = {
    * Get ComfyUI object_info and convert to schema format
    */
   async getComfyUIObjectInfo() {
-    const response = await fetch('/object_info');
+    const response = await fetch('/api/comfyui/object_info');
     if (!response.ok) {
       throw new Error(`ComfyUI object_info failed: ${response.status}`);
     }
     
     const objectInfo = await response.json();
+    
+    // Store for later use in field inference
+    this.comfyUIObjectInfo = objectInfo;
     
     // Convert ComfyUI object_info to schema-like format
     return this.convertObjectInfoToSchema(objectInfo);
@@ -98,17 +101,241 @@ window.comfyUIBentoML.schemaService = {
     };
   },
 
-  /**
-   * Infer field type from ComfyUI input definition
-   */
-  inferTypeFromComfyInput(inputDef) {
-    if (Array.isArray(inputDef)) {
-      const firstElement = inputDef[0];
-      if (typeof firstElement === 'string') return 'string';
-      if (typeof firstElement === 'number') return 'number';
-      if (Array.isArray(firstElement)) return 'string'; // Enum/choices
+  // Static dropdown option mappings
+  STATIC_DROPDOWN_OPTIONS: {
+    sampler_name: [
+      'euler', 'euler_cfg_pp', 'euler_ancestral', 'euler_ancestral_cfg_pp',
+      'heun', 'heunpp2', 'dpm_2', 'dpm_2_ancestral', 'lms', 'dpm_fast',
+      'dpm_adaptive', 'dpmpp_2s_ancestral', 'dpmpp_2s_ancestral_cfg_pp',
+      'dpmpp_sde', 'dpmpp_sde_gpu', 'dpmpp_2m', 'dpmpp_2m_cfg_pp',
+      'dpmpp_2m_sde', 'dpmpp_2m_sde_gpu', 'dpmpp_3m_sde', 'dpmpp_3m_sde_gpu',
+      'ddpm', 'lcm', 'ipndm', 'ipndm_v', 'deis', 'res_multistep',
+      'res_multistep_cfg_pp', 'res_multistep_ancestral', 'res_multistep_ancestral_cfg_pp',
+      'gradient_estimation', 'ddim', 'uni_pc', 'uni_pc_bh2'
+    ],
+    scheduler: [
+      'normal', 'karras', 'exponential', 'sgm_uniform', 'simple',
+      'ddim_uniform', 'beta', 'linear_quadratic', 'kl_optimal',
+      'AYS SD1', 'AYS SDXL', 'AYS SVD'
+    ],
+    clip_skip: [-1, -2, -3, -4, -5, -6, -7, -8, -9, -10, -11, -12],
+    stop_at_clip_layer: [-1, -2, -3, -4, -5, -6, -7, -8, -9, -10, -11, -12],
+    
+    // Boolean fields - common true/false options
+    add_noise: ['enable', 'disable'],
+    return_with_leftover_noise: ['enable', 'disable'],
+    force_offload: ['enable', 'disable'],
+    fp8: ['enable', 'disable'],
+    tiled: [true, false],
+    use_tiled_vae: [true, false],
+    fast: [true, false],
+    
+    // Upscaling model types
+    upscale_method: ['nearest-exact', 'bilinear', 'area', 'bicubic', 'lanczos'],
+    
+    // Image format options (default - will be overridden by node-specific detection)
+    format: ['PNG', 'JPEG', 'WEBP'],
+    
+    // Video format options  
+    video_format: ['mp4', 'webm', 'avi', 'mov', 'mkv', 'wmv', 'flv', 'gif'],
+    
+    // Audio format options
+    audio_format: ['mp3', 'wav', 'flac', 'aac', 'ogg', 'm4a'],
+    
+    // Common dimensions (powers of 2)
+    width: [512, 576, 640, 704, 768, 832, 896, 960, 1024, 1152, 1280, 1408, 1536],
+    height: [512, 576, 640, 704, 768, 832, 896, 960, 1024, 1152, 1280, 1408, 1536],
+    
+    // Batch sizes
+    batch_size: [1, 2, 4, 8, 16, 32],
+    
+    // Frame rates for video
+    frame_rate: [8, 12, 15, 24, 25, 30, 48, 60],
+    
+    // Loop counts for video
+    loop_count: [0, 1, 2, 3, 4, 5, 10, -1], // -1 for infinite
+    
+    // Seed controls
+    control_after_generate: ['fixed', 'increment', 'decrement', 'randomize'],
+    
+    // Interpolation methods
+    interpolation: ['linear', 'cubic', 'lanczos'],
+    
+    // Color spaces
+    color_space: ['sRGB', 'Adobe RGB', 'ProPhoto RGB'],
+    
+    // Resize methods
+    resize_method: ['lanczos', 'bicubic', 'bilinear', 'nearest']
+  },
+
+  // Boolean field detection patterns
+  BOOLEAN_FIELD_PATTERNS: [
+    'add_noise', 'return_with_leftover_noise', 'force_offload', 'fp8',
+    'tiled', 'use_tiled_vae', 'fast', 'enable', 'disable', 'toggle',
+    'use_', 'is_', 'has_', 'can_', 'should_', 'preview_method'
+  ],
+
+  // Node-specific field mappings (override generic field names based on node type)  
+  NODE_SPECIFIC_MAPPINGS: {
+    'VHS_VideoCombine': {
+      'format': ['image/gif', 'image/webp', 'video/webm', 'video/mp4', 'video/h264-mp4', 'video/h265-mp4']
+    },
+    'VHS_LoadVideo': {
+      'format': ['mp4', 'webm', 'avi', 'mov', 'mkv', 'wmv', 'flv', 'gif']
+    },
+    'VideoHelperSuite': {
+      'format': ['image/gif', 'image/webp', 'video/webm', 'video/mp4']
+    },
+    'Save Image': {
+      'format': ['PNG', 'JPEG', 'WEBP', 'BMP', 'TIFF']
+    },
+    'SaveImage': {
+      'format': ['PNG', 'JPEG', 'WEBP', 'BMP', 'TIFF']  
+    },
+    'LoadImage': {
+      'format': ['PNG', 'JPEG', 'WEBP', 'BMP', 'TIFF', 'GIF']
     }
-    return 'string'; // Default
+  },
+
+  // Filesystem-based dropdown field mappings
+  FILESYSTEM_DROPDOWN_FIELDS: {
+    ckpt_name: 'checkpoints',
+    model_name: 'checkpoints',
+    vae_name: 'vae',
+    lora_name: 'loras',
+    control_net_name: 'controlnet',
+    controlnet_name: 'controlnet'
+  },
+
+  /**
+   * Enhanced field type inference with dropdown support
+   */
+  inferTypeFromComfyInput(inputDef, fieldName, nodeType) {
+    // Check if inputDef is a ComfyUI COMBO (dropdown) first - this should be highest priority
+    if (Array.isArray(inputDef) && inputDef.length > 0 && Array.isArray(inputDef[0])) {
+      return {
+        type: 'dropdown',
+        subtype: 'combo',
+        options: inputDef[0], // Use the actual ComfyUI options
+        fieldName: fieldName,
+        nodeType: nodeType
+      };
+    }
+    
+    // If we have ComfyUI object_info, try to get options from there
+    if (this.comfyUIObjectInfo && nodeType && fieldName) {
+      const nodeInfo = this.comfyUIObjectInfo[nodeType];
+      if (nodeInfo && nodeInfo.input && nodeInfo.input.required && nodeInfo.input.required[fieldName]) {
+        const fieldDef = nodeInfo.input.required[fieldName];
+        if (Array.isArray(fieldDef) && fieldDef.length > 0 && Array.isArray(fieldDef[0])) {
+          return {
+            type: 'dropdown',
+            subtype: 'combo_from_objectinfo',
+            options: fieldDef[0], // Use the real ComfyUI options
+            fieldName: fieldName,
+            nodeType: nodeType
+          };
+        }
+      }
+    }
+    
+    // Node-specific mappings (fallback for when ComfyUI data isn't available)
+    if (nodeType && fieldName && this.NODE_SPECIFIC_MAPPINGS[nodeType] && this.NODE_SPECIFIC_MAPPINGS[nodeType][fieldName]) {
+      return {
+        type: 'dropdown',
+        subtype: 'node_specific',
+        options: this.NODE_SPECIFIC_MAPPINGS[nodeType][fieldName],
+        fieldName: fieldName,
+        nodeType: nodeType
+      };
+    }
+    
+    // Removed static dropdown detection - use only ComfyUI's actual data
+    
+    // Boolean field pattern detection
+    if (fieldName && this.isBooleanField(fieldName, inputDef)) {
+      return {
+        type: 'dropdown',
+        subtype: 'boolean',
+        options: [true, false],
+        fieldName: fieldName
+      };
+    }
+    
+    // Filesystem dropdown detection  
+    if (fieldName && this.FILESYSTEM_DROPDOWN_FIELDS[fieldName]) {
+      return {
+        type: 'dropdown',
+        subtype: 'filesystem', 
+        modelType: this.FILESYSTEM_DROPDOWN_FIELDS[fieldName],
+        fieldName: fieldName,
+        options: [], // Will be populated when loaded
+        loaded: false
+      };
+    }
+    
+    // ComfyUI COMBO format detection
+    if (Array.isArray(inputDef)) {
+      // New COMBO format: ["COMBO", {"options": [...]}]
+      if (inputDef[0] === "COMBO" && inputDef[1]?.options) {
+        return {
+          type: 'dropdown',
+          subtype: 'combo',
+          options: inputDef[1].options,
+          fieldName: fieldName
+        };
+      }
+      
+      // Old array format: [["option1", "option2"]]
+      const firstElement = inputDef[0];
+      if (Array.isArray(firstElement)) {
+        return {
+          type: 'dropdown', 
+          subtype: 'array',
+          options: firstElement,
+          fieldName: fieldName
+        };
+      }
+      
+      // Simple array format: ["option1", "option2"]
+      if (typeof firstElement === 'string' && inputDef.length > 1) {
+        return {
+          type: 'dropdown',
+          subtype: 'simple_array', 
+          options: inputDef,
+          fieldName: fieldName
+        };
+      }
+      
+      // Type detection fallbacks
+      if (typeof firstElement === 'string') return { type: 'text', fieldName };
+      if (typeof firstElement === 'number') return { type: 'number', fieldName };
+    }
+    
+    return { type: 'text', fieldName }; // Default fallback
+  },
+
+  /**
+   * Check if a field should be treated as boolean
+   */
+  isBooleanField(fieldName, inputDef) {
+    if (!fieldName) return false;
+    
+    // Check if field name matches boolean patterns
+    for (const pattern of this.BOOLEAN_FIELD_PATTERNS) {
+      if (fieldName.includes(pattern) || fieldName === pattern) {
+        return true;
+      }
+    }
+    
+    // Check if input definition suggests boolean (two-element array with true/false)
+    if (Array.isArray(inputDef) && inputDef.length === 2) {
+      const hasTrue = inputDef.includes(true) || inputDef.includes('true') || inputDef.includes('enable');
+      const hasFalse = inputDef.includes(false) || inputDef.includes('false') || inputDef.includes('disable');
+      if (hasTrue && hasFalse) return true;
+    }
+    
+    return false;
   },
 
   /**

@@ -147,6 +147,93 @@
   margin-bottom: 8px;
 }
 
+/* Search Input Styles */
+.comfyui-search-input-container {
+  position: relative;
+  margin-bottom: 8px;
+}
+
+.comfyui-search-input {
+  width: 100%;
+  padding-right: 30px; /* Make room for clear button */
+}
+
+.comfyui-search-clear {
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  color: #6b7280;
+  font-size: 18px;
+  font-weight: bold;
+  cursor: pointer;
+  padding: 0;
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  transition: all 0.2s ease;
+}
+
+.comfyui-search-clear:hover {
+  background-color: #f3f4f6;
+  color: #374151;
+}
+
+/* Searchable Dropdown Styles */
+.comfyui-searchable-dropdown {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.comfyui-dropdown-search-container {
+  position: relative;
+}
+
+.comfyui-dropdown-search {
+  width: 100%;
+  padding-right: 30px;
+  font-size: 0.85rem;
+}
+
+.comfyui-dropdown-search-clear {
+  position: absolute;
+  right: 6px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  color: #6b7280;
+  font-size: 16px;
+  font-weight: bold;
+  cursor: pointer;
+  padding: 0;
+  width: 18px;
+  height: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  transition: all 0.2s ease;
+}
+
+.comfyui-dropdown-search-clear:hover {
+  background-color: #f3f4f6;
+  color: #374151;
+}
+
+.comfyui-dropdown-filter-info {
+  font-size: 0.75rem;
+  color: #6b7280;
+  text-align: center;
+  padding: 2px 0;
+}
+
 .comfyui-filter-options {
   display: flex;
   gap: 16px;
@@ -254,4 +341,41 @@ input[type="number"] {
 
 .comfyui-save-status:empty {
   display: none;
+}
+
+/* Field Editor Dropdown Styles */
+.comfyui-field-dropdown {
+  min-width: 200px;
+  max-width: 100%;
+  background-color: var(--comfy-bg-primary);
+  border: 1px solid var(--comfy-border-light);
+  border-radius: var(--comfy-radius-sm);
+  color: var(--comfy-text-primary);
+  font-family: inherit;
+  font-size: 0.9rem;
+}
+
+.comfyui-field-dropdown:focus {
+  outline: none;
+  border-color: var(--comfy-primary);
+  box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.1);
+}
+
+.comfyui-field-dropdown option {
+  background-color: var(--comfy-bg-primary);
+  color: var(--comfy-text-primary);
+  padding: 4px 8px;
+}
+
+/* Field type indicator */
+.comfyui-field-item[data-field-type="dropdown"] .comfyui-field-label::after {
+  content: " 🔽";
+  font-size: 0.7em;
+  opacity: 0.6;
+}
+
+/* Enhanced field display for dropdown fields */
+.comfyui-field-display .comfyui-field-text[data-field-type="dropdown"] {
+  font-weight: 500;
+  color: var(--comfy-primary);
 }

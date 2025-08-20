@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Minimal Video Test</title>
+    <style>
+        video { width: 400px; margin: 20px; border: 1px solid red; }
+        .log { background: #f0f0f0; padding: 10px; margin: 10px 0; }
+    </style>
+</head>
+<body>
+    <h1>Minimal Video Test</h1>
+    
+    <!-- Test 1: Direct file access (should work) -->
+    <h2>Test 1: Direct file access</h2>
+    <video controls preload="auto">
+        <source src="/home/simonsays/Documents/ComfyUI/output/Wan22Video_ComfyUI_07-08-2025_095743_00003.mp4" type="video/mp4">
+    </video>
+    
+    <!-- Test 2: API endpoint (main test) -->
+    <h2>Test 2: API endpoint</h2>
+    <video id="apiVideo" controls preload="auto">
+        <source src="http://localhost:8081/media/Wan22Video_ComfyUI_07-08-2025_095743_00003.mp4" type="video/mp4">
+    </video>
+    
+    <!-- Test 3: Same as app uses -->
+    <h2>Test 3: App-style video element</h2>
+    <div id="appVideo"></div>
+    
+    <div id="log" class="log">Loading...</div>
+    
+    <script>
+        const log = document.getElementById('log');
+        
+        function logMessage(msg) {
+            console.log(msg);
+            log.innerHTML += '<div>' + new Date().toLocaleTimeString() + ': ' + msg + '</div>';
+        }
+        
+        // Test API video specifically
+        const apiVideo = document.getElementById('apiVideo');
+        
+        apiVideo.addEventListener('loadstart', () => logMessage('API Video: loadstart'));
+        apiVideo.addEventListener('durationchange', () => logMessage('API Video: durationchange - Duration: ' + apiVideo.duration));
+        apiVideo.addEventListener('loadedmetadata', () => logMessage('API Video: loadedmetadata - Video: ' + apiVideo.videoWidth + 'x' + apiVideo.videoHeight));
+        apiVideo.addEventListener('loadeddata', () => logMessage('API Video: loadeddata'));
+        apiVideo.addEventListener('progress', () => logMessage('API Video: progress'));
+        apiVideo.addEventListener('canplay', () => logMessage('API Video: canplay'));
+        apiVideo.addEventListener('canplaythrough', () => logMessage('API Video: canplaythrough'));
+        apiVideo.addEventListener('error', (e) => logMessage('API Video ERROR: ' + (apiVideo.error?.message || 'Unknown error')));
+        
+        // Create app-style video element using the same code
+        function createAppVideo() {
+            const video = document.createElement('video');
+            video.src = 'http://localhost:8081/media/Wan22Video_ComfyUI_07-08-2025_095743_00003.mp4';
+            video.controls = true;
+            video.autoplay = false;
+            video.muted = false;
+            video.loop = false;
+            video.playsInline = true;
+            video.preload = 'auto';
+            video.className = 'media-content';
+            
+            video.addEventListener('loadedmetadata', function() {
+                logMessage('App Video: loadedmetadata - attempting play');
+                this.play().catch(e => logMessage('App Video: Auto-play prevented: ' + e.message));
+            });
+            
+            video.addEventListener('error', function(e) {
+                logMessage('App Video ERROR: ' + (this.error?.message || 'Unknown error'));
+                logMessage('App Video error code: ' + this.error?.code);
+            });
+            
+            video.addEventListener('canplay', () => logMessage('App Video: canplay'));
+            video.addEventListener('canplaythrough', () => logMessage('App Video: canplaythrough'));
+            
+            return video;
+        }
+        
+        document.getElementById('appVideo').appendChild(createAppVideo());
+        
+        // Test fetch headers
+        fetch('http://localhost:8081/media/Wan22Video_ComfyUI_07-08-2025_095743_00003.mp4', {
+            method: 'HEAD'
+        })
+        .then(response => {
+            logMessage('Fetch HEAD response: ' + response.status);
+            logMessage('Content-Type: ' + response.headers.get('Content-Type'));
+            logMessage('Content-Length: ' + response.headers.get('Content-Length'));
+            logMessage('Accept-Ranges: ' + response.headers.get('Accept-Ranges'));
+        })
+        .catch(error => logMessage('Fetch error: ' + error.message));
+        
+        logMessage('Test initialized');
+    </script>
+</body>
+</html>

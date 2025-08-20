@@ -68,7 +68,7 @@ class MultiDirectoryScanner {
    * Scan multiple directories from configuration
    */
   scanEnabledDirectories(directories, options = {}) {
-    const { limit = config.FILE_LIMIT, sortBy = 'date', order = 'desc' } = options;
+    const { limit, sortBy = 'date', order = 'desc' } = options;
     const allFiles = [];
     
     console.log(`Scanning ${directories.length} enabled directories with limit ${limit}`);
@@ -95,11 +95,11 @@ class MultiDirectoryScanner {
     // Sort ALL files first
     this.sortFiles(allFiles, sortBy, order);
     
-    // Then apply limit to get the top N sorted files
-    const limitedFiles = allFiles.slice(0, limit);
+    // Apply limit only if specified, otherwise return all files
+    const finalFiles = limit ? allFiles.slice(0, limit) : allFiles;
     
-    console.log(`Multi-directory scan complete: returning ${limitedFiles.length} files (limited from ${allFiles.length}) sorted by ${sortBy} ${order}`);
-    return limitedFiles;
+    console.log(`Multi-directory scan complete: returning ${finalFiles.length} files ${limit ? `(limited from ${allFiles.length})` : '(unlimited)'} sorted by ${sortBy} ${order}`);
+    return finalFiles;
   }
 
   /**
