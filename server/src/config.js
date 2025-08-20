@@ -22,23 +22,18 @@ function getComfyUIUrl() {
     return process.env.COMFYUI_URL;
   }
   
-  // Try common ComfyUI locations in order of preference
-  const possibleUrls = [
-    'http://127.0.0.1:8188',   // IPv4 localhost (reliable)
-    'http://debian:8188',      // Named host (current setup)
-    'http://localhost:8188'    // May resolve to IPv6 (can be problematic)
-  ];
-  
-  // Return the first reliable option
-  return possibleUrls[0];
+  // Always use reliable IPv4 localhost
+  return 'http://127.0.0.1:8188';
 }
 
 // Ensure ComfyUI URL uses IPv4 localhost for reliability
 function normalizeComfyUIUrl(url) {
   if (!url) return url;
   
-  // Replace localhost with 127.0.0.1 to force IPv4 and avoid DNS resolution issues
-  return url.replace(/localhost/g, '127.0.0.1');
+  // Replace any hostname with 127.0.0.1 to force IPv4 localhost and avoid DNS resolution issues
+  return url.replace(/localhost/g, '127.0.0.1')
+            .replace(/debian/g, '127.0.0.1')
+            .replace(/http:\/\/[^:]+:8188/, 'http://127.0.0.1:8188');
 }
 
 // Default configuration with smart fallbacks
