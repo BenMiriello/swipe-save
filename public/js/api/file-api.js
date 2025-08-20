@@ -8,7 +8,15 @@ const fileApi = {
    */
   async fetchMediaFiles() {
     try {
-      const response = await fetch(`${window.appConfig.getApiUrl()}/api/files`, {
+      // Get sort parameters from sort manager
+      const sortParams = window.sortManager ? window.sortManager.getSortParams() : { sortBy: 'date', order: 'desc' };
+      const queryParams = new URLSearchParams({
+        sortBy: sortParams.sortBy,
+        order: sortParams.order,
+        limit: '500' // Default limit
+      });
+
+      const response = await fetch(`${window.appConfig.getApiUrl()}/api/files?${queryParams.toString()}`, {
         headers: {
           'Cache-Control': 'no-cache',
           'Pragma': 'no-cache'

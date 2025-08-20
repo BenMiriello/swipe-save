@@ -81,7 +81,49 @@ function createBackupCopy(sourcePath, filename, fileDate, actionType, saveCopies
   }
 }
 
-// Recursive function to scan directories for media files
+// Flat directory scanning - no recursion for performance
+function scanDirectoryFlat(dirPath, limit = 500) {
+  const mediaFiles = [];
+  
+  try {
+    console.log(`Flat scanning directory: ${dirPath}`);
+    const entries = fs.readdirSync(dirPath, { withFileTypes: true });
+    
+    for (const entry of entries) {
+      // Stop if we've reached limit
+      if (mediaFiles.length >= limit) {
+        console.log(`Reached limit of ${limit} files, stopping scan`);
+        break;
+      }
+      
+      // Only process files, no subdirectories
+      if (entry.isFile()) {
+        // Check if it's a media file
+        if (/\.(png|jpe?g|gif|bmp|webp|tiff?|svg|mp4|webm|mov|avi|mkv|flv|wmv|m4v|3gp|ogv)$/i.test(entry.name) && 
+            !entry.name.startsWith('._')) {
+          
+          const fullPath = path.join(dirPath, entry.name);
+          const stats = fs.statSync(fullPath);
+          
+          mediaFiles.push({
+            name: entry.name,
+            relativePath: entry.name, // Just filename for flat scan
+            path: `/media/${encodeURIComponent(entry.name)}`,
+            size: stats.size,
+            date: stats.mtime
+          });
+        }
+      }
+    }
+  } catch (error) {
+    console.error(`Error reading directory ${dirPath}:`, error);
+  }
+  
+  console.log(`Flat scan found ${mediaFiles.length} media files`);
+  return mediaFiles;
+}
+
+// Recursive function to scan directories for media files (DEPRECATED - causes performance issues)
 function scanDirectoryRecursive(dirPath, relativePath = '') {
   const mediaFiles = [];
   
@@ -137,25 +179,98 @@ function scanDirectoryRecursive(dirPath, relativePath = '') {
   return mediaFiles;
 }
 
-// Get list of media files
+// Get list of media files using multi-directory system
 router.get('/api/files', (req, res) => {
   try {
-    const mediaFiles = scanDirectoryRecursive(config.OUTPUT_DIR);
-    mediaFiles.sort((a, b) => b.date - a.date);
+    const limit = parseInt(req.query.limit) || 500;
+    const sortBy = req.query.sortBy || 'date';
+    const order = req.query.order || 'desc';
+    const sources = req.query.sources; // 'enabled', 'all', or specific IDs
+    const directories = req.query.directories; // Specific directory IDs
+    const groups = req.query.groups; // Specific group IDs
+    
+    // Load directory configuration
+    const DirectoryConfigService = require('../services/directory-config-service');
+    const MultiDirectoryScanner = require('../services/multi-directory-scanner');
+    
+    const dirService = new DirectoryConfigService();
+    const scanner = new MultiDirectoryScanner();
+    const config = dirService.loadConfig();
+    
+    let mediaFiles = [];
+    
+    if (groups) {
+      // Get files from specific groups
+      const groupIds = groups.split(',');
+      mediaFiles = scanner.getFilesFromGroups(
+        config.sources.directories, 
+        config.sources.groups, 
+        groupIds, 
+        { limit, sortBy, order }
+      );
+    } else if (directories) {
+      // Get files from specific directories
+      const directoryIds = directories.split(',');
+      mediaFiles = scanner.getFilesFromDirectories(
+        config.sources.directories, 
+        directoryIds, 
+        { limit, sortBy, order }
+      );
+    } else {
+      // Default: get files from all enabled directories
+      const enabledDirectories = dirService.getEnabledDirectories(config);
+      mediaFiles = scanner.scanEnabledDirectories(enabledDirectories, { limit, sortBy, order });
+    }
+    
+    console.log(`Returning ${mediaFiles.length} files from multi-directory scan`);
     res.json(mediaFiles);
   } catch (error) {
     console.error('Error scanning media files:', error);
-    res.json([]);
+    res.status(500).json({ error: 'Failed to scan directories: ' + error.message });
   }
 });
 
-// Media file handler - supports subdirectories
+// Media file handler - supports multi-directory system
 router.get('/media/*', (req, res) => {
   try {
-    // Get the full path after /media/ (supports subdirectories)
+    // Get the full path after /media/
     const relativePath = req.params[0];
     const decodedPath = decodeURIComponent(relativePath);
-    const filePath = path.join(config.OUTPUT_DIR, decodedPath);
+    
+    let filePath = null;
+    let sourceDirectory = null;
+    
+    // Try multi-directory system - only check ENABLED directories
+    try {
+      const DirectoryConfigService = require('../services/directory-config-service');
+      const dirService = new DirectoryConfigService();
+      const dirConfig = dirService.loadConfig();
+      
+      // Search through only ENABLED source directories for the file
+      for (const directory of dirConfig.sources.directories) {
+        // Skip disabled directories - this is the key fix
+        if (!directory.enabled) {
+          continue;
+        }
+        
+        const testPath = path.join(directory.path, decodedPath);
+        if (fs.existsSync(testPath)) {
+          filePath = testPath;
+          sourceDirectory = directory;
+          console.log(`Found file in enabled directory ${directory.name}: ${filePath}`);
+          break;
+        }
+      }
+      
+      // If file not found in enabled directories, don't fall back to legacy path
+      if (!filePath) {
+        console.log(`File ${decodedPath} not found in any enabled source directories`);
+        return res.status(404).send('File not found in enabled source directories');
+      }
+    } catch (error) {
+      console.log('Multi-directory system error:', error);
+      return res.status(500).send('Directory configuration error');
+    }
 
     if (fs.existsSync(filePath)) {
       const stats = fs.statSync(filePath);
@@ -284,10 +399,35 @@ router.post('/api/undo', (req, res) => {
 router.post('/api/files/action', async (req, res) => {
   console.log('=== ACTION ENDPOINT HIT ===');
   const { filename, action, customFilename, saveCopiesWhenSorting } = req.body;
-  // filename may now be a relative path like "WAN/I2V/video.mp4"
-  const sourcePath = path.join(config.OUTPUT_DIR, filename);
   const baseFilename = path.basename(filename);
   
+  // Find the file in enabled source directories
+  let sourcePath = null;
+  try {
+    const DirectoryConfigService = require('../services/directory-config-service');
+    const dirService = new DirectoryConfigService();
+    const dirConfig = dirService.loadConfig();
+    
+    // Search through only ENABLED source directories for the file
+    for (const directory of dirConfig.sources.directories) {
+      if (!directory.enabled) continue;
+      
+      const testPath = path.join(directory.path, filename);
+      if (fs.existsSync(testPath)) {
+        sourcePath = testPath;
+        console.log(`Found file for action in directory ${directory.name}: ${sourcePath}`);
+        break;
+      }
+    }
+    
+    if (!sourcePath) {
+      console.log(`File ${filename} not found in any enabled source directories`);
+      return res.status(404).json({ error: `File ${filename} not found in enabled source directories. It may have been moved or the source directory may be disabled.` });
+    }
+  } catch (error) {
+    console.error('Error resolving file path with multi-directory system:', error);
+    return res.status(500).json({ error: 'Directory configuration error' });
+  }
 
   try {
     // More robust file verification

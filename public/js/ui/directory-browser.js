@@ -22,8 +22,8 @@ const directoryBrowser = {
       const startPath = type === 'source' ? config.sourceDir : config.destinationDir;
       await this.browseDirectory(startPath);
     } catch (error) {
-      const homePath = '/Users/' + (window.navigator.userAgent.includes('Mac') ? process.env.USER || 'user' : 'user');
-      await this.browseDirectory(homePath);
+      // Start from root directory if config fails, let user navigate
+      await this.browseDirectory('/home');
     }
 
     this.setupDirectoryBrowserHandlers();
@@ -135,18 +135,17 @@ const directoryBrowser = {
   },
 
   /**
-   * Use default directory for source or destination
+   * Use default directory for source or destination - gets defaults from server
    * @param {string} type - 'source' or 'destination'
    */
   async useDefaultDirectory(type) {
     try {
-      const defaults = {
-        source: '/home/simonsays/Documents/ComfyUI/output',
-        destination: '/home/simonsays/Documents/ComfyUI/output/swipe-save'
-      };
-
+      // Get dynamic defaults from the server instead of hardcoding
+      const response = await fetch(`${window.appConfig.getApiUrl()}/api/default-paths`);
+      const defaults = await response.json();
+      
       const updateData = {};
-      updateData[type + 'Dir'] = defaults[type];
+      updateData[type + 'Dir'] = defaults[type] || '/home'; // Fallback to /home
 
       const result = await window.apiService.updateConfig(updateData);
 

@@ -12,7 +12,7 @@ window.comfyUIBentoML.schemaService = {
   schemaTimeout: 300000, // 5 minutes
 
   /**
-   * Get BentoML service schema with caching
+   * Get schema with caching - try BentoML first, fallback to ComfyUI
    */
   async getSchema() {
     const now = Date.now();
@@ -23,24 +23,96 @@ window.comfyUIBentoML.schemaService = {
     }
 
     try {
+      // Try BentoML schema first
       const schema = await window.comfyUIBentoML.client.getServiceSchema();
       
       if (schema) {
         this.cachedSchema = schema;
         this.lastSchemaFetch = now;
         console.log('BentoML schema updated from service');
+        return schema;
       }
-      
-      return schema;
     } catch (error) {
-      console.warn('Failed to fetch BentoML schema:', error.message);
-      return this.cachedSchema; // Return cached version if available
+      console.warn('BentoML schema unavailable, trying ComfyUI object_info:', error.message);
     }
+
+    try {
+      // Fallback to ComfyUI object_info endpoint
+      const comfySchema = await this.getComfyUIObjectInfo();
+      if (comfySchema) {
+        this.cachedSchema = comfySchema;
+        this.lastSchemaFetch = now;
+        console.log('Using ComfyUI object_info as schema source');
+        return comfySchema;
+      }
+    } catch (error) {
+      console.warn('ComfyUI object_info also failed:', error.message);
+    }
+
+    return this.cachedSchema; // Return cached version if available
   },
 
   /**
-   * Identify text fields using BentoML schema
-   * Replaces complex hardcoded widget mapping
+   * Get ComfyUI object_info and convert to schema format
+   */
+  async getComfyUIObjectInfo() {
+    const response = await fetch('/object_info');
+    if (!response.ok) {
+      throw new Error(`ComfyUI object_info failed: ${response.status}`);
+    }
+    
+    const objectInfo = await response.json();
+    
+    // Convert ComfyUI object_info to schema-like format
+    return this.convertObjectInfoToSchema(objectInfo);
+  },
+
+  /**
+   * Convert ComfyUI object_info to our schema format
+   */
+  convertObjectInfoToSchema(objectInfo) {
+    const properties = {};
+    
+    // Extract input definitions from node types
+    for (const [nodeType, nodeInfo] of Object.entries(objectInfo)) {
+      if (nodeInfo.input && nodeInfo.input.required) {
+        for (const [inputName, inputDef] of Object.entries(nodeInfo.input.required)) {
+          const fieldPath = `${nodeType}.${inputName}`;
+          
+          // Convert ComfyUI input definition to schema property
+          properties[fieldPath] = {
+            type: this.inferTypeFromComfyInput(inputDef),
+            title: inputName,
+            description: `${nodeType} - ${inputName}`,
+            nodeType: nodeType,
+            comfyUISource: true
+          };
+        }
+      }
+    }
+    
+    return {
+      input_schema: { properties },
+      source: 'comfyui_object_info',
+      node_types: Object.keys(objectInfo)
+    };
+  },
+
+  /**
+   * Infer field type from ComfyUI input definition
+   */
+  inferTypeFromComfyInput(inputDef) {
+    if (Array.isArray(inputDef)) {
+      const firstElement = inputDef[0];
+      if (typeof firstElement === 'string') return 'string';
+      if (typeof firstElement === 'number') return 'number';
+      if (Array.isArray(firstElement)) return 'string'; // Enum/choices
+    }
+    return 'string'; // Default
+  },
+
+  /**
+   * Identify text fields using schema to check actual workflow nodes
    */
   async identifyTextFields(workflowData) {
     const schema = await this.getSchema();
@@ -52,32 +124,129 @@ window.comfyUIBentoML.schemaService = {
     }
 
     try {
-      // Schema-driven field detection
-      if (schema.input_schema && schema.input_schema.properties) {
-        for (const [fieldPath, fieldDef] of Object.entries(schema.input_schema.properties)) {
-          if (this.isTextFieldType(fieldDef)) {
-            const fieldValue = this.getValueByPath(workflowData, fieldPath);
-            
-            textFields.push({
-              path: fieldPath,
-              name: fieldDef.title || fieldPath,
-              type: fieldDef.type,
-              currentValue: fieldValue || '',
-              isPromptLike: this.isPromptField(fieldDef, fieldPath),
-              description: fieldDef.description,
-              schemaSource: true
-            });
+      // Check if we have GUI format (nodes array) or API format (object with nodeIds)
+      if (workflowData.nodes && Array.isArray(workflowData.nodes)) {
+        // GUI format
+        for (const node of workflowData.nodes) {
+          const nodeFields = this.extractTextFieldsFromGUINode(node, schema);
+          textFields.push(...nodeFields);
+        }
+      } else {
+        // API format  
+        for (const [nodeId, node] of Object.entries(workflowData)) {
+          if (node && typeof node === 'object' && node.class_type) {
+            const nodeFields = this.extractTextFieldsFromAPINode(nodeId, node, schema);
+            textFields.push(...nodeFields);
           }
         }
       }
 
-      console.log(`BentoML schema identified ${textFields.length} text fields`);
+      console.log(`Schema identified ${textFields.length} text fields from actual workflow nodes`);
       return textFields;
 
     } catch (error) {
       console.error('Schema-based field detection failed:', error);
       return this.fallbackTextFieldDetection(workflowData);
     }
+  },
+
+  /**
+   * Extract text fields from GUI format node using schema
+   */
+  extractTextFieldsFromGUINode(node, schema) {
+    const textFields = [];
+    
+    if (!node.widgets_values || !schema.input_schema) return textFields;
+
+    // Get schema definition for this node type
+    const nodeSchema = this.getNodeSchemaDefinition(node.type, schema);
+    if (!nodeSchema) return textFields;
+
+    // Check each widget value against schema
+    node.widgets_values.forEach((value, index) => {
+      if (typeof value === 'string' && value.length > 0) {
+        const inputName = this.getInputNameForWidgetIndex(node.type, index, nodeSchema);
+        if (inputName && this.isTextInput(inputName, nodeSchema)) {
+          textFields.push({
+            nodeId: node.id,
+            nodeType: node.type,
+            fieldName: inputName,
+            currentValue: value,
+            isPrompt: this.isPromptInput(inputName),
+            source: 'gui',
+            detectionMethod: 'schema'
+          });
+        }
+      }
+    });
+
+    return textFields;
+  },
+
+  /**
+   * Extract text fields from API format node using schema
+   */
+  extractTextFieldsFromAPINode(nodeId, node, schema) {
+    const textFields = [];
+    
+    if (!node.inputs || !schema.input_schema) return textFields;
+
+    // Get schema definition for this node type
+    const nodeSchema = this.getNodeSchemaDefinition(node.class_type, schema);
+    if (!nodeSchema) return textFields;
+
+    // Check each input against schema
+    for (const [inputName, value] of Object.entries(node.inputs)) {
+      if (typeof value === 'string' && value.length > 0 && this.isTextInput(inputName, nodeSchema)) {
+        textFields.push({
+          nodeId: nodeId,
+          nodeType: node.class_type,
+          fieldName: inputName,
+          currentValue: value,
+          isPrompt: this.isPromptInput(inputName),
+          source: 'api',
+          detectionMethod: 'schema'
+        });
+      }
+    }
+
+    return textFields;
+  },
+
+  /**
+   * Get schema definition for a specific node type
+   */
+  getNodeSchemaDefinition(nodeType, schema) {
+    if (schema.source === 'comfyui_object_info') {
+      // Schema converted from ComfyUI object_info
+      return schema.input_schema.properties[nodeType] || null;
+    }
+    // TODO: Handle BentoML schema format
+    return null;
+  },
+
+  /**
+   * Get input name for widget index (simplified - would need ComfyUI node info)
+   */
+  getInputNameForWidgetIndex(nodeType, widgetIndex, nodeSchema) {
+    // For now, return generic name - would need actual widget mapping
+    return `input_${widgetIndex}`;
+  },
+
+  /**
+   * Check if input is text-related using schema
+   */
+  isTextInput(inputName, nodeSchema) {
+    const textNames = ['text', 'prompt', 'positive', 'negative', 'string', 'description'];
+    return textNames.some(name => inputName.toLowerCase().includes(name));
+  },
+
+  /**
+   * Check if input is prompt-related
+   */
+  isPromptInput(inputName) {
+    const promptNames = ['prompt', 'positive', 'negative', 'conditioning'];
+    return promptNames.some(name => inputName.toLowerCase().includes(name));
   },
 
   /**

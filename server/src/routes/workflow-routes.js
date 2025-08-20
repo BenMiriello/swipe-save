@@ -558,21 +558,75 @@ router.post('/api/comfyui-queue/cancel', async (req, res) => {
   }
 });
 
-// Extract workflow from image
+// Extract workflow from image - Search across all enabled directories
 router.get('/api/workflow/:filename', async (req, res) => {
   try {
     const filename = decodeURIComponent(req.params.filename);
-    const filePath = path.join(config.OUTPUT_DIR, filename);
+    
+    // Get enabled directories from multi-directory configuration
+    const DirectoryConfigService = require('../services/directory-config-service');
+    const directoryConfigService = new DirectoryConfigService();
+    const config = directoryConfigService.loadConfig();
+    const enabledDirs = directoryConfigService.getEnabledDirectories(config);
+    
+    let filePath = null;
+    let foundDir = null;
+    
+    // Search for file across all enabled directories
+    for (const dir of enabledDirs) {
+      const testPath = path.join(dir.path, filename);
+      if (fs.existsSync(testPath) && fs.statSync(testPath).isFile()) {
+        filePath = testPath;
+        foundDir = dir;
+        break;
+      }
+      
+      // Also search subdirectories recursively for the filename
+      const findFileRecursively = (dirPath, targetFilename) => {
+        try {
+          const items = fs.readdirSync(dirPath, { withFileTypes: true });
+          
+          for (const item of items) {
+            const fullPath = path.join(dirPath, item.name);
+            
+            if (item.isFile() && item.name === targetFilename) {
+              return fullPath;
+            } else if (item.isDirectory()) {
+              const found = findFileRecursively(fullPath, targetFilename);
+              if (found) return found;
+            }
+          }
+        } catch (err) {
+          // Skip inaccessible directories
+        }
+        return null;
+      };
+      
+      const foundPath = findFileRecursively(dir.path, filename);
+      if (foundPath) {
+        filePath = foundPath;
+        foundDir = dir;
+        break;
+      }
+    }
+    
+    // Fallback to old method if not found in enabled directories
+    if (!filePath) {
+      const fallbackPath = path.join(config.OUTPUT_DIR, filename);
+      if (fs.existsSync(fallbackPath)) {
+        filePath = fallbackPath;
+      }
+    }
 
-
-    if (!fs.existsSync(filePath)) {
-      return res.status(404).json({ error: 'File not found' });
+    if (!filePath || !fs.existsSync(filePath)) {
+      return res.status(404).json({ error: 'File not found in any enabled directory' });
     }
 
     if (fs.statSync(filePath).isDirectory()) {
       return res.status(400).json({ error: 'Path is a directory, not a file' });
     }
 
+    console.log(`Found workflow file: ${filePath} in directory: ${foundDir ? foundDir.name : 'fallback'}`);
     const metadata = await fileOps.extractComfyMetadata(filePath, filename);
 
     if (metadata.workflow) {
@@ -591,8 +645,9 @@ router.get('/api/workflow/:filename', async (req, res) => {
       res.status(404).json({ error: 'No workflow found in image metadata' });
     }
   } catch (error) {
-    console.error('Error extracting workflow:', error);
-    res.status(500).json({ error: 'Failed to extract workflow from image' });
+    console.error('Error extracting workflow:', error.message);
+    console.error('Stack trace:', error.stack);
+    res.status(500).json({ error: 'Failed to extract workflow from image', details: error.message });
   }
 });
 

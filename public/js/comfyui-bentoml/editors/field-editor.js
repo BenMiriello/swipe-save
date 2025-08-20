@@ -30,9 +30,18 @@ window.comfyUIBentoML.fieldEditor = {
       // Initialize
       init() {
         console.log('Field editor component initialized');
+        console.log('Available stores:', this.$store);
+        console.log('comfyWorkflow store:', this.$store.comfyWorkflow);
+        
+        // Load current file immediately if available
+        if (this.$store.comfyWorkflow?.currentFile) {
+          console.log('Loading current file on init:', this.$store.comfyWorkflow.currentFile);
+          this.loadFields(this.$store.comfyWorkflow.currentFile);
+        }
         
         // Watch for workflow changes
         this.$watch('$store.comfyWorkflow.currentFile', (file) => {
+          console.log('Workflow file changed:', file);
           if (file) {
             this.loadFields(file);
           } else {
@@ -45,9 +54,17 @@ window.comfyUIBentoML.fieldEditor = {
        * Load and extract fields from workflow
        */
       async loadFields(file) {
-        if (!file) return;
+        if (!file || this.isLoading) return;
+        
+        // Prevent duplicate requests
+        if (this.currentFile === file.name) {
+          console.log('File already loaded, skipping:', file.name);
+          return;
+        }
         
         this.isLoading = true;
+        this.currentFile = file.name;
+        console.log('Loading fields for file:', file.name);
         
         try {
           // Get workflow data
@@ -62,10 +79,19 @@ window.comfyUIBentoML.fieldEditor = {
           this.fields = await window.comfyUIBentoML.fieldExtractor.extractFields(workflowData);
           this.summary = window.comfyUIBentoML.fieldExtractor.summarizeFields(this.fields);
           
+          console.log('Field extraction complete:', {
+            summary: this.summary,
+            textFields: this.fields.textFields,
+            textFieldsLength: this.fields.textFields ? this.fields.textFields.length : 0
+          });
+          
           // Apply initial filtering
           this.applyFieldFilter();
           
-          console.log('Extracted fields:', this.summary);
+          console.log('After filtering applied:', {
+            filteredTextFields: this.filteredTextFields,
+            getFilteredTextFields: this.getFilteredTextFields()
+          });
           
         } catch (error) {
           console.error('Error loading fields:', error);
@@ -132,8 +158,23 @@ window.comfyUIBentoML.fieldEditor = {
        * Get filtered text fields
        */
       getFilteredTextFields() {
-        if (this.showSeedsOnly) return [];
-        if (!this.fieldFilter && !this.showTextFieldsOnly) return this.fields.textFields || [];
+        console.log('getFilteredTextFields called:', {
+          showSeedsOnly: this.showSeedsOnly,
+          fieldFilter: this.fieldFilter,
+          showTextFieldsOnly: this.showTextFieldsOnly,
+          textFieldsCount: (this.fields.textFields || []).length,
+          filteredTextFieldsCount: this.filteredTextFields.length
+        });
+        
+        if (this.showSeedsOnly) {
+          console.log('Returning empty array because showSeedsOnly is true');
+          return [];
+        }
+        if (!this.fieldFilter && !this.showTextFieldsOnly) {
+          console.log('Returning raw text fields:', this.fields.textFields || []);
+          return this.fields.textFields || [];
+        }
+        console.log('Returning filtered text fields:', this.filteredTextFields);
         return this.filteredTextFields;
       },
 

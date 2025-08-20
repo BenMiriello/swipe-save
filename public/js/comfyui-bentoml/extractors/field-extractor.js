@@ -7,15 +7,17 @@ window.comfyUIBentoML = window.comfyUIBentoML || {};
 
 window.comfyUIBentoML.fieldExtractor = {
   /**
-   * Extract all editable fields from a workflow
+   * Extract all editable fields from a workflow using improved pattern detection
    */
   async extractFields(workflowData) {
     if (!workflowData) return { seeds: [], textFields: [], parameters: [] };
 
-    // Use focused extractors
+    // Use improved pattern-based extractors that understand workflow structure
     const seeds = window.comfyUIBentoML.extractors.seedExtractor.extractSeeds(workflowData);
     const textFields = window.comfyUIBentoML.extractors.textExtractor.extractTextFields(workflowData);
     const parameters = window.comfyUIBentoML.extractors.parameterExtractor.extractParameters(workflowData);
+
+    console.log(`Field extractor found: ${seeds.length} seeds, ${textFields.length} text fields, ${parameters.length} parameters`);
 
     return {
       seeds,
