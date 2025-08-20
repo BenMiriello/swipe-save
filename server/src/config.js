@@ -58,7 +58,18 @@ const defaultConfig = {
     path.resolve(process.env.HOME, 'swipe-save')
   ], process.env.HOME || '/'),
   
-  useDatestampFolders: true // Default to current behavior (using datestamp folders)
+  useDatestampFolders: true, // Default to current behavior (using datestamp folders)
+  
+  // File Loading Configuration
+  fileLimit: 2500, // Default number of files to load at once
+  
+  // Pagination Configuration
+  itemsPerPage: 100, // Default items per page in list view
+  maxCachedPages: 5, // Maximum pages to keep in memory
+  maxCachedFiles: 10, // Maximum full files to cache
+  memoryLimitMB: 100, // Memory limit for caches in MB
+  preloadPages: 1, // Number of adjacent pages to preload
+  fileEvictionTimeoutMinutes: 5 // Minutes before evicting unused files
 };
 
 // Load saved config or use defaults
@@ -136,6 +147,11 @@ const config = {
   // Logging Configuration
   get ENABLE_LOGGING() {
     return currentConfig.enableLogging !== false; // Default to true
+  },
+
+  // File Loading Configuration
+  get FILE_LIMIT() {
+    return currentConfig.fileLimit || 2500;
   },
 
   // Config management

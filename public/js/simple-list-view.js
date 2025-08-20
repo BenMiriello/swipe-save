@@ -7,6 +7,10 @@ window.simpleListView = {
   container: null,
   showPreviews: false, // Off by default
   fileListOpen: JSON.parse(localStorage.getItem('fileListOpen') || 'false'),
+  currentPage: 1,
+  totalPages: 1,
+  itemsPerPage: 100,
+  allFiles: [],
 
   /**
    * Initialize and show the list view
@@ -137,6 +141,11 @@ window.simpleListView = {
             </button>
           </div>
         </div>
+        <div class="pagination-controls" style="display: none;">
+          <button id="prevPage" class="page-btn">← Previous</button>
+          <span id="pageInfo">Page 1 of 1</span>
+          <button id="nextPage" class="page-btn">Next →</button>
+        </div>
         <div class="loading">Loading files...</div>
       </div>
     `;
@@ -166,6 +175,17 @@ window.simpleListView = {
     if (previewBtn) {
       previewBtn.addEventListener('click', () => this.togglePreviews());
       this.updatePreviewButton(); // Set initial state
+    }
+
+    // Set up pagination buttons
+    const prevBtn = document.getElementById('prevPage');
+    if (prevBtn) {
+      prevBtn.addEventListener('click', () => this.previousPage());
+    }
+
+    const nextBtn = document.getElementById('nextPage');
+    if (nextBtn) {
+      nextBtn.addEventListener('click', () => this.nextPage());
     }
 
     this.isActive = true;
@@ -242,11 +262,15 @@ window.simpleListView = {
    */
   async loadFiles() {
     try {
-      const response = await fetch('/api/files');
-      const files = await response.json();
+      const response = await fetch('/api/media');
+      const data = await response.json();
+      const files = data.items || [];
       
       if (Array.isArray(files) && files.length > 0) {
-        this.displayFiles(files);
+        this.allFiles = files;
+        this.totalPages = Math.ceil(files.length / this.itemsPerPage);
+        this.currentPage = 1;
+        this.displayCurrentPage();
       } else if (Array.isArray(files) && files.length === 0) {
         this.showError('No files found in directory');
       } else {
@@ -259,9 +283,21 @@ window.simpleListView = {
   },
 
   /**
+   * Display current page of files
+   */
+  displayCurrentPage() {
+    const startIndex = (this.currentPage - 1) * this.itemsPerPage;
+    const endIndex = startIndex + this.itemsPerPage;
+    const pageFiles = this.allFiles.slice(startIndex, endIndex);
+    
+    this.displayFiles(pageFiles, startIndex);
+    this.updatePaginationControls();
+  },
+
+  /**
    * Display files in grid
    */
-  displayFiles(files) {
+  displayFiles(files, startIndex = 0) {
     const fileGrid = document.getElementById('fileGrid');
     if (!fileGrid) return;
 
@@ -270,26 +306,37 @@ window.simpleListView = {
       return;
     }
 
-    const gridHtml = files.map((file, index) => `
-      <div class="file-item" onclick="window.simpleListView.openFile(${index})" data-index="${index}">
-        <div class="file-preview" style="display: ${this.showPreviews ? 'flex' : 'none'};">
-          ${this.getFilePreview(file)}
+    const gridHtml = files.map((file, pageIndex) => {
+      const absoluteIndex = startIndex + pageIndex;
+      return `
+        <div class="file-item" onclick="window.simpleListView.openFile(${absoluteIndex})" data-index="${absoluteIndex}">
+          <div class="file-preview" style="display: ${this.showPreviews ? 'flex' : 'none'};">
+            ${this.getFilePreview(file)}
+          </div>
+          <div class="file-info">
+            <div class="file-name">${file.name}</div>
+            <div class="file-size">${this.formatFileSize(file.size)}</div>
+          </div>
         </div>
-        <div class="file-info">
-          <div class="file-name">${file.name}</div>
-          <div class="file-size">${this.formatFileSize(file.size)}</div>
-        </div>
-      </div>
-    `).join('');
+      `;
+    }).join('');
 
+    // Remove existing content after header
     const fileGridHeader = document.querySelector('.file-grid-header');
-    if (fileGridHeader && fileGridHeader.nextElementSibling) {
-      fileGridHeader.nextElementSibling.remove();
+    const paginationControls = document.querySelector('.pagination-controls');
+    let nextElement = paginationControls ? paginationControls.nextElementSibling : fileGridHeader.nextElementSibling;
+    
+    while (nextElement) {
+      const toRemove = nextElement;
+      nextElement = nextElement.nextElementSibling;
+      if (!toRemove.classList.contains('pagination-controls')) {
+        toRemove.remove();
+      }
     }
     
     const newContent = document.createElement('div');
     newContent.innerHTML = `
-      <div class="file-count">${files.length} files total</div>
+      <div class="file-count">${this.allFiles.length} files total (showing ${files.length} on page ${this.currentPage})</div>
       <div class="grid-container">
         ${gridHtml}
       </div>
@@ -297,9 +344,6 @@ window.simpleListView = {
     
     fileGrid.appendChild(newContent);
 
-    // Store files for later use
-    this.files = files;
-    
     // Set up lazy loading for media
     this.setupLazyLoading();
   },
@@ -360,14 +404,53 @@ window.simpleListView = {
   },
 
   /**
+   * Update pagination controls
+   */
+  updatePaginationControls() {
+    const paginationControls = document.querySelector('.pagination-controls');
+    const prevBtn = document.getElementById('prevPage');
+    const nextBtn = document.getElementById('nextPage');
+    const pageInfo = document.getElementById('pageInfo');
+    
+    if (this.totalPages > 1) {
+      paginationControls.style.display = 'flex';
+      prevBtn.disabled = this.currentPage === 1;
+      nextBtn.disabled = this.currentPage === this.totalPages;
+      pageInfo.textContent = `Page ${this.currentPage} of ${this.totalPages}`;
+    } else {
+      paginationControls.style.display = 'none';
+    }
+  },
+
+  /**
+   * Go to previous page
+   */
+  previousPage() {
+    if (this.currentPage > 1) {
+      this.currentPage--;
+      this.displayCurrentPage();
+    }
+  },
+
+  /**
+   * Go to next page
+   */
+  nextPage() {
+    if (this.currentPage < this.totalPages) {
+      this.currentPage++;
+      this.displayCurrentPage();
+    }
+  },
+
+  /**
    * Open file in single view
    */
   openFile(index) {
-    if (!this.files || !this.files[index]) return;
+    if (!this.allFiles || !this.allFiles[index]) return;
     
-    // Make sure state manager has all the files
-    if (window.stateManager && this.files) {
-      window.stateManager.setFiles(this.files);
+    // Make sure state manager has all the files (unlimited for single view)
+    if (window.stateManager && this.allFiles) {
+      window.stateManager.setFiles(this.allFiles);
       window.stateManager.setCurrentIndex(index);
     }
     
@@ -690,6 +773,42 @@ style.textContent = `
 
 .error {
   color: #d32f2f;
+}
+
+.pagination-controls {
+  display: flex !important;
+  flex-direction: row !important;
+  justify-content: center;
+  align-items: center;
+  gap: 15px;
+  margin: 20px 0;
+  padding: 15px;
+  background: #f8f9fa;
+  border-radius: 8px;
+}
+
+.page-btn {
+  background: #007bff;
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.page-btn:hover:not(:disabled) {
+  background: #0056b3;
+}
+
+.page-btn:disabled {
+  background: #6c757d;
+  cursor: not-allowed;
+}
+
+#pageInfo {
+  font-weight: bold;
+  color: #495057;
 }
 `;
 document.head.appendChild(style);

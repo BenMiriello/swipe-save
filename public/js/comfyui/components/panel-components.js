@@ -69,7 +69,7 @@ window.comfyUIComponents.panelComponents = {
           parts.push(`${settings.quantity}x`);
         }
         
-        if (settings.modifySeeds) {
+        if (settings.seedMode === 'randomize') {
           parts.push('new seed');
         }
         

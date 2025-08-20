@@ -187,13 +187,24 @@ class BentoMLService {
   /**
    * Modify seeds in workflow using schema-driven approach
    */
-  modifyWorkflowSeeds(workflowData, schema = null) {
+  modifyWorkflowSeeds(workflowData, seedMode = 'randomize', baseSeed = null, schema = null) {
     if (!workflowData || typeof workflowData !== 'object') {
+      return workflowData;
+    }
+    
+    if (seedMode === 'original') {
+      // Don't modify seeds at all
       return workflowData;
     }
 
     let seedCount = 0;
     const generateRandomSeed = () => Math.floor(Math.random() * 2147483647) + 1;
+    const incrementSeed = (currentSeed) => {
+      if (baseSeed !== null) {
+        return baseSeed + seedCount + 1; // Start from baseSeed + 1 for first execution
+      }
+      return currentSeed + 1; // Increment existing seed
+    };
 
     // Schema-driven approach (Phase 2 enhancement)
     if (schema && schema.seed_parameters) {
@@ -201,7 +212,8 @@ class BentoMLService {
       for (const seedPath of schema.seed_parameters) {
         const value = this.getNestedValue(workflowData, seedPath);
         if (typeof value === 'number') {
-          this.setNestedValue(workflowData, seedPath, generateRandomSeed());
+          const newSeed = seedMode === 'randomize' ? generateRandomSeed() : incrementSeed(value);
+          this.setNestedValue(workflowData, seedPath, newSeed);
           seedCount++;
         }
       }
@@ -212,7 +224,7 @@ class BentoMLService {
 
         for (const key in obj) {
           if (key === 'seed' && typeof obj[key] === 'number') {
-            obj[key] = generateRandomSeed();
+            obj[key] = seedMode === 'randomize' ? generateRandomSeed() : incrementSeed(obj[key]);
             seedCount++;
           } else if (typeof obj[key] === 'object') {
             modifySeeds(obj[key]);
@@ -223,7 +235,7 @@ class BentoMLService {
     }
 
     if (seedCount > 0) {
-      console.log(`Modified ${seedCount} seed values using ${schema ? 'schema-driven' : 'fallback'} approach`);
+      console.log(`Modified ${seedCount} seed values (${seedMode} mode) using ${schema ? 'schema-driven' : 'fallback'} approach`);
     }
 
     return workflowData;

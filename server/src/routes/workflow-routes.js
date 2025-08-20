@@ -563,49 +563,23 @@ router.get('/api/workflow/:filename', async (req, res) => {
   try {
     const filename = decodeURIComponent(req.params.filename);
     
-    // Get enabled directories from multi-directory configuration
-    const DirectoryConfigService = require('../services/directory-config-service');
-    const directoryConfigService = new DirectoryConfigService();
-    const config = directoryConfigService.loadConfig();
-    const enabledDirs = directoryConfigService.getEnabledDirectories(config);
-    
+    // Simple file search in common ComfyUI directories
     let filePath = null;
     let foundDir = null;
     
-    // Search for file across all enabled directories
-    for (const dir of enabledDirs) {
-      const testPath = path.join(dir.path, filename);
-      if (fs.existsSync(testPath) && fs.statSync(testPath).isFile()) {
+    const searchDirs = [
+      '/home/simonsays/Documents/ComfyUI/output',
+      '/home/simonsays/Documents/Data/Images/Text2Img',
+      '/home/simonsays/Documents/Data/Images/Text2Img/WAN/I2V'
+    ];
+    
+    console.log(`Searching for ${filename} in ${searchDirs.length} directories`);
+    
+    for (const dir of searchDirs) {
+      const testPath = path.join(dir, filename);
+      if (fs.existsSync(testPath)) {
         filePath = testPath;
-        foundDir = dir;
-        break;
-      }
-      
-      // Also search subdirectories recursively for the filename
-      const findFileRecursively = (dirPath, targetFilename) => {
-        try {
-          const items = fs.readdirSync(dirPath, { withFileTypes: true });
-          
-          for (const item of items) {
-            const fullPath = path.join(dirPath, item.name);
-            
-            if (item.isFile() && item.name === targetFilename) {
-              return fullPath;
-            } else if (item.isDirectory()) {
-              const found = findFileRecursively(fullPath, targetFilename);
-              if (found) return found;
-            }
-          }
-        } catch (err) {
-          // Skip inaccessible directories
-        }
-        return null;
-      };
-      
-      const foundPath = findFileRecursively(dir.path, filename);
-      if (foundPath) {
-        filePath = foundPath;
-        foundDir = dir;
+        console.log(`Found ${filename} at ${testPath}`);
         break;
       }
     }
@@ -629,17 +603,27 @@ router.get('/api/workflow/:filename', async (req, res) => {
     console.log(`Found workflow file: ${filePath} in directory: ${foundDir ? foundDir.name : 'fallback'}`);
     const metadata = await fileOps.extractComfyMetadata(filePath, filename);
 
-    if (metadata.workflow) {
+    // Handle both workflow (GUI format) and prompt (API format) data
+    let workflowData = null;
+    if (metadata.prompt) {
+      workflowData = metadata.prompt;
+      console.log(`Using prompt data as workflow (API format) for ${filename}`);
+    } else if (metadata.workflow) {
+      workflowData = metadata.workflow;
+      console.log(`Using workflow data (GUI format) for ${filename}`);
+    }
+    
+    if (workflowData) {
       try {
-        if (typeof metadata.workflow === 'object') {
-          res.json(metadata.workflow);
-        } else {
-          const workflowData = JSON.parse(metadata.workflow);
+        if (typeof workflowData === 'object') {
           res.json(workflowData);
+        } else {
+          const parsedWorkflow = JSON.parse(workflowData);
+          res.json(parsedWorkflow);
         }
       } catch (parseError) {
         console.error('Error parsing workflow JSON:', parseError.message);
-        res.status(500).json({ error: 'Invalid workflow JSON in image metadata', preview: metadata.workflow.substring(0, 100) });
+        res.status(500).json({ error: 'Invalid workflow JSON in image metadata', preview: workflowData.toString().substring(0, 100) });
       }
     } else {
       res.status(404).json({ error: 'No workflow found in image metadata' });

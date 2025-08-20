@@ -64,6 +64,12 @@ Alpine.data('settingsPanel', () => ({
     if (this.$store.comfyWorkflow) {
       this.$store.comfyWorkflow.settings.controlAfterGenerate = value;
     }
+  },
+
+  updateSeedMode(value) {
+    if (this.$store.comfyWorkflow) {
+      this.$store.comfyWorkflow.settings.seedMode = value;
+    }
   }
 }));
 

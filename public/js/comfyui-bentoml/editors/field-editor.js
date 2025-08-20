@@ -190,13 +190,25 @@ window.comfyUIBentoML.fieldEditor = {
        * Store field edit for later application to workflow
        */
       storeFieldEdit(field) {
-        // Use existing workflow editor store if available
-        if (window.Alpine && Alpine.store('workflowEditor')) {
-          Alpine.store('workflowEditor').updateFieldEdit(
-            field.nodeId.toString(),
-            field.fieldName,
-            field.currentValue
-          );
+        // Store edits in the comfyWorkflow store so the modal can access them
+        if (window.Alpine && Alpine.store('comfyWorkflow')) {
+          const store = Alpine.store('comfyWorkflow');
+          
+          // Initialize fieldEdits object if it doesn't exist
+          if (!store.fieldEdits) {
+            store.fieldEdits = {};
+          }
+          
+          // Store the edit using nodeId-fieldName as key
+          const editKey = `${field.nodeId}-${field.fieldName}`;
+          store.fieldEdits[editKey] = {
+            nodeId: field.nodeId.toString(),
+            fieldName: field.fieldName,
+            value: field.currentValue,
+            nodeType: field.nodeType
+          };
+          
+          console.log('Stored field edit:', editKey, field.currentValue);
         }
       },
 

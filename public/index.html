@@ -14,6 +14,8 @@
   <link rel="stylesheet" href="css/directory-manager.css">
   <!-- ComfyUI Section Components Styles -->
   <link rel="stylesheet" href="css/comfyui-sections.css">
+  <!-- Pagination Styles -->
+  <link rel="stylesheet" href="css/pagination.css">
 
   <!-- Early error handler initialization -->
   <script>
@@ -117,6 +119,36 @@
                     </select>
                   </div>
                 </div>
+              </li>
+              
+              <!-- Pagination Settings Section -->
+              <li class="separator"></li>
+              <li class="section-header">
+                <span class="section-title">📄 Pagination</span>
+              </li>
+              <li class="sort-option-row">
+                <label class="sort-label">Items per page:</label>
+                <select id="globalItemsPerPage" class="sort-select">
+                  <option value="50">50</option>
+                  <option value="100" selected>100</option>
+                  <option value="200">200</option>
+                  <option value="500">500</option>
+                </select>
+              </li>
+              <li class="sort-option-row">
+                <label class="sort-label">Memory limit:</label>
+                <select id="memoryLimit" class="sort-select">
+                  <option value="50">50 MB</option>
+                  <option value="100" selected>100 MB</option>
+                  <option value="200">200 MB</option>
+                  <option value="500">500 MB</option>
+                </select>
+              </li>
+              <li class="toggle-option">
+                <label class="toggle-label">
+                  <input type="checkbox" id="showPreviews" checked>
+                  <span class="toggle-text">Show Previews in List</span>
+                </label>
               </li>
               <li class="separator"></li>
               <li id="customName">Custom Name</li>
@@ -325,13 +357,17 @@
             </div>
           </div>
 
-          <!-- New Seed -->
+          <!-- Seed Control -->
           <div class="comfy-setting-row">
             <div class="comfy-setting-container">
-              <span class="comfy-setting-label">New Seed</span>
-              <label class="comfy-toggle">
-                <input type="checkbox"  x-model="$store.comfyWorkflow.settings.modifySeeds">
-              </label>
+              <span class="comfy-setting-label">Seed Mode</span>
+              <select class="comfy-select" 
+                      x-model="$store.comfyWorkflow.settings.seedMode"
+                      @change="updateSeedMode($event.target.value)">
+                <option value="original">Use Original Seeds</option>
+                <option value="randomize">Randomize Every Execution</option>
+                <option value="increment">Increment Every Execution</option>
+              </select>
             </div>
           </div>
 
@@ -669,6 +705,10 @@
   <!-- Application scripts (using regular scripts instead of modules) -->
   <script src="js/error-handler.js"></script>
   <script src="js/config.js"></script>
+  
+  <!-- Pagination System -->
+  <script src="js/pagination/pagination-state.js"></script>
+  <script src="js/components/list-pagination.js"></script>
 
   <!-- API modules (load before main api-service coordinator) -->
   <script src="js/api/file-api.js"></script>
@@ -722,6 +762,7 @@
 
   <!-- Views -->
   <script src="js/views/file-list-viewer.js"></script>
+  <script src="js/views/paginated-list-viewer.js"></script>
   <script src="js/simple-list-view.js"></script>
 
   <!-- UI modules (load before main ui-manager coordinator) -->

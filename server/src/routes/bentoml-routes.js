@@ -26,7 +26,7 @@ const FEATURE_FLAGS = {
  */
 router.post('/api/bentoml/queue-workflow', async (req, res) => {
   try {
-    const { filename, modifySeeds, controlAfterGenerate, quantity } = req.body;
+    const { filename, modifySeeds, seedMode, controlAfterGenerate, quantity } = req.body;
 
     if (!filename) {
       return res.status(400).json({ error: 'Filename is required' });
@@ -66,18 +66,20 @@ router.post('/api/bentoml/queue-workflow', async (req, res) => {
       return res.status(404).json({ error: 'No workflow found in image metadata' });
     }
 
-    // Phase 2: Schema-driven seed modification
-    if (modifySeeds && FEATURE_FLAGS.USE_BENTOML_SEEDS) {
+    // Phase 2: Schema-driven seed modification with mode support
+    const actualSeedMode = seedMode || (modifySeeds ? 'randomize' : 'original');
+    
+    if (actualSeedMode !== 'original' && FEATURE_FLAGS.USE_BENTOML_SEEDS) {
       try {
         const schema = await bentomlService.getServiceSchema();
-        workflowData = bentomlService.modifyWorkflowSeeds(workflowData, schema);
+        workflowData = bentomlService.modifyWorkflowSeeds(workflowData, actualSeedMode, null, schema);
       } catch (schemaError) {
         console.warn('Schema-based seed modification failed, using fallback:', schemaError.message);
-        workflowData = bentomlService.modifyWorkflowSeeds(workflowData);
+        workflowData = bentomlService.modifyWorkflowSeeds(workflowData, actualSeedMode);
       }
-    } else if (modifySeeds) {
+    } else if (actualSeedMode !== 'original') {
       // Fallback seed modification
-      workflowData = bentomlService.modifyWorkflowSeeds(workflowData);
+      workflowData = bentomlService.modifyWorkflowSeeds(workflowData, actualSeedMode);
     }
 
     // Check workflow format and convert if needed

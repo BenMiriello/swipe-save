@@ -84,14 +84,14 @@ window.comfyUIBentoML.uiAdapter = {
                 console.log('Attempting BentoML submission...');
                 
                 const result = await bentomlClient.queueWorkflow(file, {
-                  modifySeeds: settings.modifySeeds,
+                  seedMode: settings.seedMode,
                   controlAfterGenerate: settings.controlAfterGenerate,
                   quantity: settings.quantity
                 });
 
                 results.push(result);
                 this.setButtonState('queue', 'success');
-                this.addResultLog(settings.quantity, settings.modifySeeds, settings.controlAfterGenerate, false, 'BentoML');
+                this.addResultLog(settings.quantity, settings.seedMode !== 'original', settings.controlAfterGenerate, false, 'BentoML');
 
               } catch (bentomlError) {
                 console.warn('BentoML submission failed, falling back to legacy:', bentomlError.message);
@@ -100,21 +100,21 @@ window.comfyUIBentoML.uiAdapter = {
                 const legacyResult = await this.handleLegacyQueue(file, settings);
                 results.push(legacyResult);
                 this.setButtonState('queue', 'success');
-                this.addResultLog(settings.quantity, settings.modifySeeds, settings.controlAfterGenerate, false, 'Legacy (fallback)');
+                this.addResultLog(settings.quantity, settings.seedMode !== 'original', settings.controlAfterGenerate, false, 'Legacy (fallback)');
               }
             } else {
               // Use legacy method
               const legacyResult = await this.handleLegacyQueue(file, settings);
               results.push(legacyResult);
               this.setButtonState('queue', 'success');
-              this.addResultLog(settings.quantity, settings.modifySeeds, settings.controlAfterGenerate, false, 'Legacy');
+              this.addResultLog(settings.quantity, settings.seedMode !== 'original', settings.controlAfterGenerate, false, 'Legacy');
             }
 
           } catch (error) {
             console.error('All queue methods failed:', error);
             this.setButtonState('queue', 'error');
             this.error = error.message || 'Failed to queue workflow';
-            this.addResultLog(settings.quantity, settings.modifySeeds, settings.controlAfterGenerate, true, 'Error', error.message);
+            this.addResultLog(settings.quantity, settings.seedMode !== 'original', settings.controlAfterGenerate, true, 'Error', error.message);
           }
         },
 
@@ -126,7 +126,7 @@ window.comfyUIBentoML.uiAdapter = {
             await window.comfyUIServices.apiClient.queueWorkflowWithEdits(
               file,
               modifiedWorkflow,
-              settings.modifySeeds,
+              settings.seedMode !== 'original', // Convert seedMode to boolean for backward compatibility
               settings.controlAfterGenerate,
               Alpine.store('comfyDestinations').selectedDestination
             );

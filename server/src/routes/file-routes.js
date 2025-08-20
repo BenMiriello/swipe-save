@@ -4,6 +4,10 @@ const fs = require('fs-extra');
 const router = express.Router();
 const fileOps = require('../fileOperations');
 const config = require('../config');
+const PreviewService = require('../services/preview-service');
+
+// Initialize preview service
+const previewService = new PreviewService();
 
 // Action history for undo functionality
 const actionHistory = [];
@@ -82,7 +86,7 @@ function createBackupCopy(sourcePath, filename, fileDate, actionType, saveCopies
 }
 
 // Flat directory scanning - no recursion for performance
-function scanDirectoryFlat(dirPath, limit = 500) {
+function scanDirectoryFlat(dirPath, limit = config.FILE_LIMIT) {
   const mediaFiles = [];
   
   try {
@@ -179,12 +183,14 @@ function scanDirectoryRecursive(dirPath, relativePath = '') {
   return mediaFiles;
 }
 
-// Get list of media files using multi-directory system
-router.get('/api/files', (req, res) => {
+// Get list of media files using multi-directory system with pagination
+router.get('/api/media', async (req, res) => {
   try {
-    const limit = parseInt(req.query.limit) || 500;
+    const limit = parseInt(req.query.limit) || config.FILE_LIMIT;
+    const offset = parseInt(req.query.offset) || 0;
     const sortBy = req.query.sortBy || 'date';
     const order = req.query.order || 'desc';
+    const includePreviews = req.query.includePreviews === 'true';
     const sources = req.query.sources; // 'enabled', 'all', or specific IDs
     const directories = req.query.directories; // Specific directory IDs
     const groups = req.query.groups; // Specific group IDs
@@ -195,38 +201,147 @@ router.get('/api/files', (req, res) => {
     
     const dirService = new DirectoryConfigService();
     const scanner = new MultiDirectoryScanner();
-    const config = dirService.loadConfig();
+    const dirConfig = dirService.loadConfig();
     
-    let mediaFiles = [];
+    let allFiles = [];
     
     if (groups) {
       // Get files from specific groups
       const groupIds = groups.split(',');
-      mediaFiles = scanner.getFilesFromGroups(
-        config.sources.directories, 
-        config.sources.groups, 
+      allFiles = scanner.getFilesFromGroups(
+        dirConfig.sources.directories, 
+        dirConfig.sources.groups, 
         groupIds, 
-        { limit, sortBy, order }
+        { limit: 99999, sortBy, order } // Get all files first
       );
     } else if (directories) {
       // Get files from specific directories
       const directoryIds = directories.split(',');
-      mediaFiles = scanner.getFilesFromDirectories(
-        config.sources.directories, 
+      allFiles = scanner.getFilesFromDirectories(
+        dirConfig.sources.directories, 
         directoryIds, 
-        { limit, sortBy, order }
+        { limit: 99999, sortBy, order } // Get all files first
       );
     } else {
       // Default: get files from all enabled directories
-      const enabledDirectories = dirService.getEnabledDirectories(config);
-      mediaFiles = scanner.scanEnabledDirectories(enabledDirectories, { limit, sortBy, order });
+      const enabledDirectories = dirService.getEnabledDirectories(dirConfig);
+      console.log(`Found ${enabledDirectories.length} enabled directories:`, enabledDirectories.map(d => d.path));
+      allFiles = scanner.scanEnabledDirectories(enabledDirectories, { limit: 99999, sortBy, order });
     }
     
-    console.log(`Returning ${mediaFiles.length} files from multi-directory scan`);
-    res.json(mediaFiles);
+    // Apply pagination
+    const totalItems = allFiles.length;
+    const totalPages = Math.ceil(totalItems / limit);
+    const currentPage = Math.floor(offset / limit) + 1;
+    const mediaFiles = allFiles.slice(offset, offset + limit);
+    
+    // Generate previews if requested
+    let processedFiles = mediaFiles;
+    if (includePreviews) {
+      console.log(`Generating previews for ${mediaFiles.length} files...`);
+      processedFiles = await previewService.generatePreviews(mediaFiles);
+    }
+    
+    const response = {
+      items: processedFiles,
+      pagination: {
+        currentPage,
+        totalPages,
+        itemsPerPage: limit,
+        totalItems,
+        offset,
+        hasNext: offset + limit < totalItems,
+        hasPrev: offset > 0
+      }
+    };
+    
+    console.log(`Returning ${processedFiles.length} files (page ${currentPage}/${totalPages}) from multi-directory scan`);
+    res.json(response);
   } catch (error) {
     console.error('Error scanning media files:', error);
     res.status(500).json({ error: 'Failed to scan directories: ' + error.message });
+  }
+});
+
+// Legacy API endpoint for backward compatibility
+router.get('/api/files', async (req, res) => {
+  try {
+    const limit = parseInt(req.query.limit) || config.FILE_LIMIT;
+    const offset = parseInt(req.query.offset) || 0;
+    const sortBy = req.query.sortBy || 'date';
+    const order = req.query.order || 'desc';
+    const sources = req.query.sources;
+    const directories = req.query.directories;
+    const groups = req.query.groups;
+    
+    // Load directory configuration
+    const DirectoryConfigService = require('../services/directory-config-service');
+    const MultiDirectoryScanner = require('../services/multi-directory-scanner');
+    
+    const dirService = new DirectoryConfigService();
+    const scanner = new MultiDirectoryScanner();
+    const dirConfig = dirService.loadConfig();
+    
+    let allFiles = [];
+    
+    if (groups) {
+      const groupIds = groups.split(',');
+      allFiles = scanner.getFilesFromGroups(
+        dirConfig.sources.directories, 
+        dirConfig.sources.groups, 
+        groupIds, 
+        { limit: 99999, sortBy, order }
+      );
+    } else if (directories) {
+      const directoryIds = directories.split(',');
+      allFiles = scanner.getFilesFromDirectories(
+        dirConfig.sources.directories, 
+        directoryIds, 
+        { limit: 99999, sortBy, order }
+      );
+    } else {
+      const enabledDirectories = dirService.getEnabledDirectories(dirConfig);
+      allFiles = scanner.scanEnabledDirectories(enabledDirectories, { limit: null, sortBy, order });
+    }
+    
+    // Apply pagination if requested
+    const startIndex = offset;
+    const endIndex = offset + limit;
+    const paginatedFiles = allFiles.slice(startIndex, endIndex);
+    
+    console.log(`Legacy API: Returning ${paginatedFiles.length} files (${startIndex}-${endIndex} of ${allFiles.length})`);
+    res.json(paginatedFiles);
+  } catch (error) {
+    console.error('Error in legacy files API:', error);
+    res.status(500).json({ error: 'Failed to load files: ' + error.message });
+  }
+});
+
+// Preview serving endpoints
+router.get('/api/preview/image/:filename', (req, res) => {
+  previewService.servePreview('images', req.params.filename, res);
+});
+
+router.get('/api/preview/video/:filename', (req, res) => {
+  previewService.servePreview('videos', req.params.filename, res);
+});
+
+// Preview cache management
+router.get('/api/preview/stats', async (req, res) => {
+  try {
+    const stats = await previewService.getCacheStats();
+    res.json(stats);
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to get cache stats' });
+  }
+});
+
+router.delete('/api/preview/cache', async (req, res) => {
+  try {
+    await previewService.clearCache();
+    res.json({ success: true, message: 'Preview cache cleared' });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to clear cache' });
   }
 });
 

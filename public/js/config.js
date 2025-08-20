@@ -5,6 +5,28 @@ const config = {
   // API endpoint handling
   getApiUrl: () => `${window.location.protocol}//${window.location.host}`,
 
+  // Server config cache
+  _serverConfig: null,
+
+  // Get server configuration
+  async getServerConfig() {
+    if (!this._serverConfig) {
+      try {
+        this._serverConfig = await window.configApi.getConfig();
+      } catch (error) {
+        console.error('Failed to load server config, using defaults:', error);
+        this._serverConfig = { fileLimit: 2500 }; // fallback
+      }
+    }
+    return this._serverConfig;
+  },
+
+  // Get file limit from server config
+  async getFileLimit() {
+    const serverConfig = await this.getServerConfig();
+    return serverConfig.fileLimit || 2500;
+  },
+
   // Action types
   actions: {
     ARCHIVE: 'archive',

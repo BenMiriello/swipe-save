@@ -42,9 +42,16 @@ window.comfyUIServices.storage = {
   loadWorkflowSettings() {
     try {
       const settings = JSON.parse(localStorage.getItem('comfyui-workflow-settings') || '{}');
+      
+      // Migrate old modifySeeds setting to new seedMode
+      if (settings.modifySeeds !== undefined && settings.seedMode === undefined) {
+        settings.seedMode = settings.modifySeeds ? 'randomize' : 'original';
+        delete settings.modifySeeds;
+      }
+      
       return {
         quantity: 1,
-        modifySeeds: true,
+        seedMode: 'randomize',
         controlAfterGenerate: 'increment',
         ...settings
       };
@@ -52,7 +59,7 @@ window.comfyUIServices.storage = {
       console.error('Error loading workflow settings:', error);
       return {
         quantity: 1,
-        modifySeeds: true,
+        seedMode: 'randomize',
         controlAfterGenerate: 'increment'
       };
     }

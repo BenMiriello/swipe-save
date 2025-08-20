@@ -50,10 +50,14 @@ window.comfyUIBentoML.client = {
    */
   async queueWorkflow(file, options = {}) {
     const {
-      modifySeeds = false,
+      seedMode = 'original',
+      modifySeeds = false, // Keep for backward compatibility
       controlAfterGenerate = 'increment',
       quantity = 1
     } = options;
+    
+    // Handle backward compatibility: convert modifySeeds to seedMode
+    const actualSeedMode = seedMode !== 'original' ? seedMode : (modifySeeds ? 'randomize' : 'original');
 
     if (!this.featureFlags.USE_BENTOML_SUBMISSION) {
       throw new Error('BentoML submission not enabled. Use legacy client instead.');
@@ -68,7 +72,8 @@ window.comfyUIBentoML.client = {
         },
         body: JSON.stringify({
           filename: file.name,
-          modifySeeds,
+          seedMode: actualSeedMode,
+          modifySeeds: actualSeedMode !== 'original', // For backward compatibility
           controlAfterGenerate,
           quantity
         })
@@ -88,7 +93,7 @@ window.comfyUIBentoML.client = {
       const result = await response.json();
       
       // Success logging
-      const message = `BentoML: Queued workflow ${quantity > 1 ? `${quantity} times` : ''} with ${modifySeeds ? 'new seeds' : 'original seeds'}, control: ${controlAfterGenerate}`;
+      const message = `BentoML: Queued workflow ${quantity > 1 ? `${quantity} times` : ''} with ${actualSeedMode} seeds, control: ${controlAfterGenerate}`;
       console.log(message);
       
       return {

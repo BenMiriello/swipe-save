@@ -1,5 +1,6 @@
 const fs = require('fs-extra');
 const path = require('path');
+const config = require('../config');
 
 /**
  * Multi-Directory Scanner Service
@@ -20,7 +21,7 @@ class MultiDirectoryScanner {
   /**
    * Scan single directory (flat, no recursion)
    */
-  scanSingleDirectory(dirPath, sourceInfo, limit = 500) {
+  scanSingleDirectory(dirPath, sourceInfo, limit = config.FILE_LIMIT) {
     const files = [];
     
     try {
@@ -67,7 +68,7 @@ class MultiDirectoryScanner {
    * Scan multiple directories from configuration
    */
   scanEnabledDirectories(directories, options = {}) {
-    const { limit = 500, sortBy = 'date', order = 'desc' } = options;
+    const { limit = config.FILE_LIMIT, sortBy = 'date', order = 'desc' } = options;
     const allFiles = [];
     
     console.log(`Scanning ${directories.length} enabled directories with limit ${limit}`);
@@ -85,7 +86,7 @@ class MultiDirectoryScanner {
       };
       
       // Scan ALL files in directory (no limit), then sort and limit globally
-      const files = this.scanSingleDirectory(directory.path, sourceInfo, Number.MAX_SAFE_INTEGER);
+      const files = this.scanSingleDirectory(directory.path, sourceInfo, 99999);
       allFiles.push(...files);
     }
     

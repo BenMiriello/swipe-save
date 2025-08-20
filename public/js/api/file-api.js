@@ -10,10 +10,12 @@ const fileApi = {
     try {
       // Get sort parameters from sort manager
       const sortParams = window.sortManager ? window.sortManager.getSortParams() : { sortBy: 'date', order: 'desc' };
+      // Get file limit from config
+      const fileLimit = await window.appConfig.getFileLimit();
       const queryParams = new URLSearchParams({
         sortBy: sortParams.sortBy,
         order: sortParams.order,
-        limit: '500' // Default limit
+        limit: fileLimit.toString()
       });
 
       const response = await fetch(`${window.appConfig.getApiUrl()}/api/files?${queryParams.toString()}`, {

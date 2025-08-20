@@ -12,7 +12,16 @@ router.get('/api/config', (req, res) => {
       sourceDir: currentConfig.sourceDir,
       destinationDir: currentConfig.destinationDir,
       useDatestampFolders: currentConfig.useDatestampFolders,
-      enableLogging: currentConfig.enableLogging !== false
+      enableLogging: currentConfig.enableLogging !== false,
+      fileLimit: currentConfig.fileLimit || 2500,
+      pagination: {
+        itemsPerPage: currentConfig.itemsPerPage || 100,
+        maxCachedPages: currentConfig.maxCachedPages || 5,
+        maxCachedFiles: currentConfig.maxCachedFiles || 10,
+        memoryLimitMB: currentConfig.memoryLimitMB || 100,
+        preloadPages: currentConfig.preloadPages || 1,
+        fileEvictionTimeoutMinutes: currentConfig.fileEvictionTimeoutMinutes || 5
+      }
     });
   } catch (error) {
     console.error('Error getting config:', error);
@@ -23,9 +32,9 @@ router.get('/api/config', (req, res) => {
 // Update configuration
 router.post('/api/config', (req, res) => {
   try {
-    const { sourceDir, destinationDir, useDatestampFolders, enableLogging } = req.body;
+    const { sourceDir, destinationDir, useDatestampFolders, enableLogging, fileLimit, pagination } = req.body;
 
-    if (!sourceDir && !destinationDir && useDatestampFolders === undefined && enableLogging === undefined) {
+    if (!sourceDir && !destinationDir && useDatestampFolders === undefined && enableLogging === undefined && fileLimit === undefined && !pagination) {
       return res.status(400).json({ error: 'No configuration provided' });
     }
 
@@ -34,6 +43,17 @@ router.post('/api/config', (req, res) => {
     if (destinationDir) updateData.destinationDir = path.resolve(destinationDir);
     if (useDatestampFolders !== undefined) updateData.useDatestampFolders = Boolean(useDatestampFolders);
     if (enableLogging !== undefined) updateData.enableLogging = Boolean(enableLogging);
+    if (fileLimit !== undefined) updateData.fileLimit = parseInt(fileLimit) || 2500;
+    
+    // Handle pagination settings
+    if (pagination) {
+      if (pagination.itemsPerPage !== undefined) updateData.itemsPerPage = parseInt(pagination.itemsPerPage) || 100;
+      if (pagination.maxCachedPages !== undefined) updateData.maxCachedPages = parseInt(pagination.maxCachedPages) || 5;
+      if (pagination.maxCachedFiles !== undefined) updateData.maxCachedFiles = parseInt(pagination.maxCachedFiles) || 10;
+      if (pagination.memoryLimitMB !== undefined) updateData.memoryLimitMB = parseInt(pagination.memoryLimitMB) || 100;
+      if (pagination.preloadPages !== undefined) updateData.preloadPages = parseInt(pagination.preloadPages) || 1;
+      if (pagination.fileEvictionTimeoutMinutes !== undefined) updateData.fileEvictionTimeoutMinutes = parseInt(pagination.fileEvictionTimeoutMinutes) || 5;
+    }
 
     const success = config.updateConfig(updateData);
 

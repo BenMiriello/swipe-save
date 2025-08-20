@@ -11,7 +11,7 @@ window.comfyUIStores.workflowStore = {
   isModalOpen: false,
   settings: {
     quantity: 1,
-    modifySeeds: true,
+    seedMode: 'randomize', // 'original', 'randomize', 'increment'
     controlAfterGenerate: 'increment',
     comfyUrl: 'http://localhost:8188'
   },

@@ -57,20 +57,38 @@ window.comfyUIComponents.modalComponents = {
         this.setButtonState('queue', 'processing');
         this.error = null;
         
+        // Check if seeds should be randomized based on seedMode setting
+        const shouldRandomizeSeeds = settings.seedMode === 'randomize';
+        
+        // Check if there are field edits that need to be applied
+        const workflowStore = Alpine.store('comfyWorkflow');
+        const hasFieldEdits = workflowStore.fieldEdits && Object.keys(workflowStore.fieldEdits).length > 0;
+        
         try {
           if (settings.quantity > 1) {
             console.log(`ComfyUI: Starting batch of ${settings.quantity} workflows`);
           }
           
-          // Use current file workflow (field edits will be handled by BentoML system)
-          
           for (let i = 0; i < settings.quantity; i++) {
-            await window.comfyUIServices.apiClient.queueWorkflow(
-              file,
-              settings.modifySeeds,
-              settings.controlAfterGenerate,
-              Alpine.store('comfyDestinations').selectedDestination
-            );
+            if (hasFieldEdits) {
+              // Get the original workflow and apply field edits
+              const modifiedWorkflow = await this.getModifiedWorkflow(file, workflowStore.fieldEdits);
+              
+              await window.comfyUIServices.apiClient.queueWorkflowWithEdits(
+                file,
+                modifiedWorkflow,
+                shouldRandomizeSeeds,
+                settings.controlAfterGenerate,
+                Alpine.store('comfyDestinations').selectedDestination
+              );
+            } else {
+              await window.comfyUIServices.apiClient.queueWorkflow(
+                file,
+                shouldRandomizeSeeds,
+                settings.controlAfterGenerate,
+                Alpine.store('comfyDestinations').selectedDestination
+              );
+            }
           }
           
           if (settings.quantity > 1) {
@@ -78,13 +96,13 @@ window.comfyUIComponents.modalComponents = {
           }
           
           this.setButtonState('queue', 'success');
-          this.addResultLog(settings.quantity, settings.modifySeeds, settings.controlAfterGenerate, false);
+          this.addResultLog(settings.quantity, shouldRandomizeSeeds, settings.controlAfterGenerate, false);
           
         } catch (error) {
           console.error('Queue error:', error);
           this.setButtonState('queue', 'error');
           this.error = error.message || 'Failed to queue workflow';
-          this.addResultLog(settings.quantity, settings.modifySeeds, settings.controlAfterGenerate, true, error.message);
+          this.addResultLog(settings.quantity, shouldRandomizeSeeds, settings.controlAfterGenerate, true, error.message);
         }
       },
       
@@ -173,6 +191,38 @@ window.comfyUIComponents.modalComponents = {
           case 'success': return `${baseClasses} comfy-btn-success-state`;
           case 'error': return `${baseClasses} comfy-btn-error`;
           default: return baseClasses;
+        }
+      },
+      
+      /**
+       * Get workflow with field edits applied
+       */
+      async getModifiedWorkflow(file, fieldEdits) {
+        try {
+          // Get the original workflow from the file
+          const response = await fetch(`${window.appConfig.getApiUrl()}/api/workflow/${encodeURIComponent(file.name)}`);
+          if (!response.ok) {
+            throw new Error('Failed to get original workflow');
+          }
+          
+          const originalWorkflow = await response.json();
+          
+          // Apply field edits to the workflow
+          for (const editKey in fieldEdits) {
+            const edit = fieldEdits[editKey];
+            const nodeId = edit.nodeId;
+            
+            if (originalWorkflow[nodeId] && originalWorkflow[nodeId].inputs) {
+              // Apply the edit to the appropriate field
+              originalWorkflow[nodeId].inputs[edit.fieldName] = edit.value;
+              console.log(`Applied edit to node ${nodeId}.${edit.fieldName}:`, edit.value);
+            }
+          }
+          
+          return originalWorkflow;
+        } catch (error) {
+          console.error('Error getting modified workflow:', error);
+          throw error;
         }
       },
       

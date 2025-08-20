@@ -204,8 +204,10 @@ const directoryApi = {
    */
   async getFiles(options = {}) {
     try {
+      // Get file limit from config if not provided
+      const defaultLimit = await window.appConfig.getFileLimit();
       const {
-        limit = 500,
+        limit = defaultLimit,
         sortBy = 'date',
         order = 'desc',
         directories = null,
