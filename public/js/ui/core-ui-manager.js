@@ -108,11 +108,15 @@ const coreUIManager = {
     });
 
     window.addEventListener('click', (event) => {
-      // Don't close dropdown if clicking on toggle elements
+      // Don't close dropdown if clicking on toggle elements or sort section
       const isToggleClick = event.target.closest('.toggle-option') || 
+                           event.target.closest('.sort-options-container') ||
+                           event.target.closest('.sort-section-toggle') ||
                            event.target.id === 'useDatestampFolders' ||
                            event.target.id === 'enableLogging' ||
-                           event.target.id === 'saveCopiesWhenSorting';
+                           event.target.id === 'saveCopiesWhenSorting' ||
+                           event.target.id === 'sortField' ||
+                           event.target.id === 'sortOrder';
       
       if (!isToggleClick && 
           !this.elements.optionsButton.contains(event.target) && 

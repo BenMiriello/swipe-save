@@ -10,6 +10,10 @@
   <link rel="stylesheet" href="js/comfyui/styles/components.css">
   <!-- File List Viewer Styles -->
   <link rel="stylesheet" href="css/file-list-viewer.css">
+  <!-- Directory Manager Styles -->
+  <link rel="stylesheet" href="css/directory-manager.css">
+  <!-- ComfyUI Section Components Styles -->
+  <link rel="stylesheet" href="css/comfyui-sections.css">
 
   <!-- Early error handler initialization -->
   <script>
@@ -36,19 +40,37 @@
           <button class="btn btn-options">Options</button>
           <div class="options-dropdown">
             <ul>
-              <li class="directory-row">
-                <div class="dir-info">
-                  <span class="dir-label">From:</span>
-                  <span class="dir-path-clickable" id="sourcePathClickable" title="Click to browse">Loading...</span>
+              <!-- Source Directories Section -->
+              <li class="section-header">
+                <span class="section-title">📁 Source Folders</span>
+              </li>
+              <li class="directory-management">
+                <div id="sourceDirectoriesContainer">
+                  <div class="loading-state">Loading directories...</div>
+                </div>
+                <div class="directory-actions">
+                  <button id="addDirectoryBtn" class="btn btn-small">+ Add Folder</button>
+                  <button id="addGroupBtn" class="btn btn-small">+ Create Group</button>
                 </div>
               </li>
-              <li class="directory-row">
-                <div class="dir-info">
-                  <span class="dir-label">To:</span>
-                  <span class="dir-path-clickable" id="destPathClickable" title="Click to browse">Loading...</span>
-                </div>
-              </li>
+              
+              <!-- Destination Section -->
               <li class="separator"></li>
+              <li class="section-header">
+                <span class="section-title">📁 Destination</span>
+              </li>
+              <li class="directory-row">
+                <div class="dir-info">
+                  <span id="currentDestinationPath">Loading...</span>
+                  <button id="changeDestinationBtn" class="btn btn-small">Change</button>
+                </div>
+              </li>
+              
+              <!-- Settings Section -->
+              <li class="separator"></li>
+              <li class="section-header">
+                <span class="section-title">⚙️ Settings</span>
+              </li>
               <li class="toggle-option">
                 <label class="toggle-label">
                   <input type="checkbox" id="useDatestampFolders" checked>
@@ -66,6 +88,35 @@
                   <input type="checkbox" id="saveCopiesWhenSorting" checked>
                   <span class="toggle-text">Save copies when sorting</span>
                 </label>
+              </li>
+              
+              <!-- Sort Options Section -->
+              <li class="separator"></li>
+              <li class="section-header">
+                <span class="section-title sort-section-toggle" onclick="toggleSortSection()">
+                  <span id="sortSectionCaret" class="sort-caret">▶</span>
+                  📊 Sort Options
+                </span>
+              </li>
+              <li id="sortOptionsContainer" class="sort-options-container" style="display: none;">
+                <div class="sort-options">
+                  <div class="sort-option-row">
+                    <label class="sort-label">Sort by:</label>
+                    <select id="sortField" class="sort-select">
+                      <option value="date">Date Modified</option>
+                      <option value="name">Name</option>
+                      <option value="size">File Size</option>
+                      <option value="created">Date Created</option>
+                    </select>
+                  </div>
+                  <div class="sort-option-row">
+                    <label class="sort-label">Order:</label>
+                    <select id="sortOrder" class="sort-select">
+                      <option value="desc">Newest First</option>
+                      <option value="asc">Oldest First</option>
+                    </select>
+                  </div>
+                </div>
               </li>
               <li class="separator"></li>
               <li id="customName">Custom Name</li>
@@ -389,6 +440,45 @@
             </div>
           </template>
 
+          <!-- Text Fields Section -->
+          <template x-if="getFilteredTextFields().length > 0">
+            <div class="comfyui-field-group">
+              <h4 class="comfyui-field-group-title">Text Fields (<span x-text="getFilteredTextFields().length"></span>)</h4>
+              <div class="comfyui-field-list">
+                <template x-for="textField in getFilteredTextFields()" :key="`${textField.nodeId}-${textField.fieldName}`">
+                  <div class="comfyui-field-item" :class="getFieldClasses(textField)">
+                    <div class="comfyui-field-header">
+                      <span class="comfyui-field-label" x-text="getDisplayName(textField)"></span>
+                      <span class="comfyui-field-node" x-text="`Node ${textField.nodeId} (${textField.nodeType})`"></span>
+                    </div>
+                    <div class="comfyui-field-value">
+                      <template x-if="isEditing(textField)">
+                        <div class="comfyui-field-edit">
+                          <textarea class="comfy-input comfyui-field-textarea"
+                                   x-model="tempValue"
+                                   @keyup.enter.ctrl="saveEdit(textField)"
+                                   @keyup.escape="cancelEditing()"
+                                   rows="6"></textarea>
+                          <div class="comfyui-field-actions">
+                            <button class="comfy-btn comfy-btn-success comfy-btn-xs" @click="saveEdit(textField)">Save</button>
+                            <button class="comfy-btn comfy-btn-secondary comfy-btn-xs" @click="cancelEditing()">Cancel</button>
+                          </div>
+                        </div>
+                      </template>
+                      <template x-if="!isEditing(textField)">
+                        <div class="comfyui-field-display">
+                          <span class="comfyui-field-text" x-text="getDisplayValue(textField)"></span>
+                          <div class="comfyui-field-actions">
+                            <button class="comfy-btn comfy-btn-primary comfy-btn-xs" @click="startEditing(textField)">Edit</button>
+                          </div>
+                        </div>
+                      </template>
+                    </div>
+                  </div>
+                </template>
+              </div>
+            </div>
+          </template>
 
           <!-- Parameters Section -->
           <template x-if="fields.parameters && fields.parameters.length > 0">
@@ -433,108 +523,6 @@
       </div>
 
 
-      <!-- Workflow Editor Section -->
-      <div class="comfyui-section">
-        <!-- Header with toggle -->
-        <div class="comfyui-section-header" @click="toggleEditorSection()">
-          <span class="comfyui-section-caret" :class="{ 'expanded': isEditorExpanded }">▶</span>
-          <h3 class="comfyui-section-title">
-            Text Fields
-            <span x-show="hasUnsavedChanges" class="comfyui-edit-indicator">(edited)</span>
-            <span x-show="!isEditorExpanded" class="comfyui-status-summary">
-              <span x-text="(filteredNodes || []).length"></span> 
-              <span x-text="showPromptsOnly ? 'prompt' : 'text'"></span> nodes
-              <span x-show="hasUnsavedChanges">, unsaved edits</span>
-            </span>
-          </h3>
-        </div>
-
-        <!-- Editor content -->
-        <div x-show="isEditorExpanded" class="comfyui-section-content" x-transition>
-
-          <!-- Controls -->
-          <div class="comfyui-editor-controls">
-            <label class="comfyui-checkbox-label">
-              <input type="checkbox" 
-                     x-model="showPromptsOnly" 
-                     @change="togglePromptsOnly()">
-              Show prompt nodes only
-            </label>
-
-            <button type="button" 
-                    class="comfy-btn comfy-btn-secondary comfy-btn-small" 
-                    @click="(filteredNodes || []).forEach(node => toggleNode(node.id))">
-              Collapse All
-            </button>
-          </div>
-
-          <!-- No nodes message -->
-          <div x-show="(filteredNodes || []).length === 0" class="comfyui-empty-state">
-            <p x-show="showPromptsOnly">No prompt fields found in this workflow.</p>
-            <p x-show="!showPromptsOnly">No text fields found in this workflow.</p>
-          </div>
-
-          <!-- Node list -->
-          <div x-show="(filteredNodes || []).length > 0" class="comfyui-node-list">
-            <template x-for="node in filteredNodes" :key="node.id">
-              <div class="comfyui-node">
-
-                <!-- Node header -->
-                <div class="comfyui-node-header" @click="toggleNode(node.id)">
-                  <span class="comfyui-node-toggle" x-text="isNodeCollapsed(node.id) ? '▶' : '▼'"></span>
-                  <span class="comfyui-node-title">
-                    <span x-text="node.type"></span>
-                    <span class="comfyui-node-id">#<span x-text="node.id"></span></span>
-                  </span>
-                  <span x-show="isNodeCollapsed(node.id)" class="comfyui-node-summary">
-                    <span x-text="node.fields.length"></span> field<span x-show="node.fields.length !== 1">s</span>
-                  </span>
-                </div>
-
-                <!-- Node fields -->
-                <div x-show="!isNodeCollapsed(node.id)" class="comfyui-node-fields">
-                  <template x-for="(field, index) in (node.fields || [])" :key="`${node.id}-${field.fieldName || index}`">
-                    <div class="comfyui-field" x-show="field && field.fieldName">
-
-                      <!-- Field header -->
-                      <div class="comfyui-field-header">
-                        <label class="comfyui-field-label">
-                          <span x-text="field.fieldName || 'Unknown Field'"></span>
-                          <span x-show="field.isPromptLike" class="comfyui-field-badge">prompt</span>
-                          <span x-show="hasFieldEdit(node.id, field.fieldName)" class="comfyui-field-badge comfyui-field-edited">edited</span>
-                        </label>
-                      </div>
-
-                      <!-- Field content -->
-                      <div class="comfyui-field-content">
-
-                        <!-- Text area for editing -->
-                        <textarea 
-                          class="comfyui-field-textarea"
-                          :placeholder="field.currentValue || 'Enter text...'"
-                          :value="getFieldValue(node.id, field.fieldName)"
-                          @input="updateFieldEdit(node.id, field.fieldName, $event.target.value)"
-                          rows="3"
-                          :class="{ 'comfyui-field-edited': hasFieldEdit(node.id, field.fieldName) }">
-                        </textarea>
-
-                        <!-- Field actions -->
-                        <div x-show="hasFieldEdit(node.id, field.fieldName)" class="comfyui-field-actions">
-                          <button type="button" 
-                                  class="comfy-btn comfy-btn-secondary comfy-btn-small"
-                                  @click="updateFieldEdit(node.id, field.fieldName, field.currentValue || '')">
-                            Reset
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  </template>
-                </div>
-              </div>
-            </template>
-          </div>
-        </div>
-      </div>
 
       </div> <!-- End scrollable content area -->
 
@@ -701,6 +689,7 @@
   <script src="js/comfyui/stores/queue-store.js"></script>
 
   <!-- UI components -->
+  <script src="js/comfyui/components/section-components.js"></script>
   <script src="js/comfyui/components/modal-components.js"></script>
   <script src="js/comfyui/components/panel-components.js"></script>
 
@@ -722,6 +711,10 @@
 
   <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.1/dist/cdn.min.js" defer></script>
 
+  <!-- Directory Management API and UI -->
+  <script src="js/api/directory-api.js"></script>
+  <script src="js/ui/directory-manager.js"></script>
+
   <!-- Shared Components -->
   <script src="js/shared/toolbar.js"></script>
   <script src="js/shared/navigation.js"></script>
@@ -736,6 +729,7 @@
   <script src="js/ui/element-factory.js"></script>
   <script src="js/ui/modal-manager.js"></script>
   <script src="js/ui/directory-browser.js"></script>
+  <script src="js/ui/sort-manager.js"></script>
   <script src="js/ui-manager.js"></script>
 
   <!-- Controller modules -->

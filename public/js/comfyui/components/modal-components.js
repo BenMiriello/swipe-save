@@ -14,6 +14,12 @@ window.comfyUIComponents.modalComponents = {
       buttonStates: { queue: 'idle' },
       allowClickAway: false,
       
+      // Missing variables that are referenced in HTML
+      showPromptsOnly: false,
+      filteredNodes: [],
+      isEditorExpanded: false,
+      hasUnsavedChanges: false,
+      
       init() {
         if (window.location.hostname === 'localhost') {
           console.log('Workflow modal component initialized');
@@ -121,6 +127,29 @@ window.comfyUIComponents.modalComponents = {
         if (url) {
           window.open(url, '_blank', 'noopener,noreferrer');
         }
+      },
+      
+      // Missing methods referenced in HTML
+      togglePromptsOnly() {
+        this.showPromptsOnly = !this.showPromptsOnly;
+        // Filter nodes based on the toggle
+        this.updateFilteredNodes();
+      },
+      
+      updateFilteredNodes() {
+        // This would normally filter the workflow nodes
+        // For now, just return empty array to prevent errors
+        this.filteredNodes = [];
+      },
+      
+      toggleNode(nodeId) {
+        // This would normally expand/collapse a node
+        console.log('Toggle node:', nodeId);
+      },
+      
+      isNodeCollapsed(nodeId) {
+        // This would normally check if a node is collapsed
+        return false;
       },
       
       getButtonText(action) {

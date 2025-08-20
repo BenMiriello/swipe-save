@@ -1,0 +1,225 @@
+/**
+ * ComfyUI Modal Section Styles
+ * Extracted styles for modular section components
+ */
+
+/* Compact input for seed/number fields */
+.comfyui-field-input {
+  width: 100%;
+  height: 36px; /* Single line height */
+  padding: 6px 8px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 0.9rem;
+  background: white;
+  transition: border-color 0.2s ease;
+}
+
+/* Keep number inputs compact */
+.comfyui-field-input[type="number"],
+.comfyui-field-input.comfyui-seed-field,
+.comfyui-field-input.comfyui-param-field {
+  height: 36px;
+  min-height: auto;
+}
+
+/* Field Group Enhancements */
+.comfyui-field-group {
+  margin-bottom: 20px;
+}
+
+.comfyui-field-group-title {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #374151;
+  margin: 0 0 12px 0;
+  padding-bottom: 4px;
+  border-bottom: 1px solid #e5e7eb;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.comfyui-field-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.comfyui-field-item {
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  padding: 12px;
+  background: #fafafa;
+  transition: all 0.2s ease;
+}
+
+.comfyui-field-item:hover {
+  background: #f3f4f6;
+  border-color: #d1d5db;
+}
+
+.comfyui-field-item.comfyui-field-modified {
+  border-color: #10b981;
+  background: #f0fdf4;
+}
+
+.comfyui-field-item.comfyui-field-editing {
+  border-color: #4f46e5;
+  background: #fefbff;
+  box-shadow: 0 0 0 2px rgba(79, 70, 229, 0.1);
+}
+
+/* Field Header Styles */
+.comfyui-field-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.comfyui-field-label {
+  font-weight: 500;
+  color: #374151;
+  font-size: 0.9rem;
+}
+
+.comfyui-field-node {
+  font-size: 0.8rem;
+  color: #6b7280;
+  font-family: monospace;
+}
+
+/* Field Value Styles */
+.comfyui-field-value {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.comfyui-field-display {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.comfyui-field-text {
+  flex: 1;
+  color: #374151;
+  font-size: 0.9rem;
+  line-height: 1.4;
+  word-break: break-word;
+  padding: 4px 0;
+}
+
+.comfyui-field-edit {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* Field Actions */
+.comfyui-field-actions {
+  display: flex;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+/* Field Input Focus States */
+.comfyui-field-input:focus {
+  outline: none;
+  border-color: #4f46e5;
+  box-shadow: 0 0 0 2px rgba(79, 70, 229, 0.1);
+}
+
+/* Filter Styles */
+.comfyui-field-filters {
+  margin-bottom: 16px;
+  padding: 12px;
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+}
+
+.comfyui-filter-input {
+  width: 100%;
+  margin-bottom: 8px;
+}
+
+.comfyui-filter-options {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.comfyui-filter-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.9rem;
+  color: #374151;
+  cursor: pointer;
+}
+
+.comfyui-filter-checkbox input[type="checkbox"] {
+  margin: 0;
+}
+
+/* Loading and Empty States */
+.comfyui-field-loading,
+.comfyui-field-empty {
+  text-align: center;
+  color: #6b7280;
+  font-style: italic;
+  padding: 24px;
+}
+
+/* FINAL OVERRIDE: Force BentoML textarea sizing with maximum specificity */
+div.comfyui-field-edit textarea.comfy-input.comfyui-field-textarea {
+  min-height: 120px !important;
+  max-height: 300px !important;
+  height: auto !important;
+  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace !important;
+  line-height: 1.5 !important;
+}
+
+/* Keep seeds and number inputs compact */
+input[type="number"].comfy-input,
+.comfy-number-input {
+  height: 36px;
+  min-height: 36px;
+}
+
+/* Keep seed and numeric fields compact */
+.comfyui-field[data-field-type="seed"] input,
+.comfyui-field[data-field-type="number"] input,
+input[type="number"] {
+  height: 36px;
+  min-height: auto;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .comfyui-field-display {
+    flex-direction: column;
+    gap: 8px;
+  }
+  
+  .comfyui-field-actions {
+    justify-content: flex-end;
+  }
+  
+  .comfyui-filter-options {
+    flex-direction: column;
+    gap: 8px;
+  }
+  
+  /* Slightly smaller text fields on mobile */
+  .comfyui-field[data-field-type="text"] textarea,
+  .comfyui-field[data-field-type="prompt"] textarea,
+  textarea[placeholder*="prompt"],
+  textarea[placeholder*="text"] {
+    min-height: 100px;
+  }
+}
