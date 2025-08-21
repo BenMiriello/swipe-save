@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Minimal Route Test</title>
+    <style>
+        body { font-family: monospace; margin: 20px; }
+        .hidden { display: none !important; }
+        .bottom-controls { 
+            position: fixed; 
+            bottom: 20px; 
+            left: 20px; 
+            right: 20px;
+            background: #f0f0f0; 
+            padding: 10px; 
+            border: 1px solid #ccc; 
+        }
+        .list-view { 
+            background: #e8f5e8; 
+            padding: 20px; 
+            margin: 20px 0; 
+            border: 2px solid #4CAF50; 
+        }
+        .log { 
+            background: #f9f9f9; 
+            border: 1px solid #ddd; 
+            padding: 10px; 
+            margin: 10px 0; 
+        }
+    </style>
+</head>
+<body>
+    <h1>Minimal Route Test</h1>
+    <div id="log" class="log">Starting...</div>
+    
+    <!-- This simulates the bottom controls -->
+    <div class="bottom-controls" id="bottom-controls">
+        <button>Undo</button>
+        <button>Previous</button>
+        <button>Next</button>
+        <span>No images</span>
+    </div>
+    
+    <!-- This simulates the list view -->
+    <div class="list-view hidden" id="list-view">
+        <h2>🎉 List View Successfully Loaded!</h2>
+        <p>This proves the routing system can work.</p>
+        <ul>
+            <li>File 1.png</li>
+            <li>File 2.png</li>
+            <li>File 3.png</li>
+        </ul>
+    </div>
+    
+    <button onclick="testShowList()">Manually Show List View</button>
+    <button onclick="testRouting()">Test Simple Routing</button>
+    
+    <script>
+        const log = document.getElementById('log');
+        
+        function logMessage(msg) {
+            console.log(msg);
+            log.innerHTML += '<br>' + new Date().toTimeString().substr(0,8) + ': ' + msg;
+        }
+        
+        function testShowList() {
+            logMessage('Manually showing list view...');
+            
+            // Hide bottom controls
+            document.getElementById('bottom-controls').classList.add('hidden');
+            
+            // Show list view
+            document.getElementById('list-view').classList.remove('hidden');
+            
+            logMessage('✓ List view shown, bottom controls hidden');
+        }
+        
+        // Simple router class
+        class MinimalRouter {
+            constructor() {
+                this.routes = new Map();
+                logMessage('MinimalRouter created');
+            }
+            
+            register(path, handler) {
+                this.routes.set(path, handler);
+                logMessage('Route registered: ' + path);
+            }
+            
+            navigate(path) {
+                logMessage('Navigating to: ' + path);
+                const handler = this.routes.get(path);
+                if (handler) {
+                    handler();
+                    logMessage('✓ Route handler executed');
+                } else {
+                    logMessage('❌ No handler for: ' + path);
+                }
+            }
+        }
+        
+        function testRouting() {
+            logMessage('Testing routing system...');
+            
+            // Create router
+            const router = new MinimalRouter();
+            
+            // Register list route
+            router.register('/list', () => {
+                logMessage('List route handler executing...');
+                
+                // Hide bottom controls
+                document.getElementById('bottom-controls').classList.add('hidden');
+                
+                // Show list view  
+                document.getElementById('list-view').classList.remove('hidden');
+                
+                logMessage('✓ List route completed successfully');
+            });
+            
+            // Test navigation
+            router.navigate('/list');
+        }
+        
+        logMessage('Page loaded, ready for testing');
+        
+        // Auto-test routing after 2 seconds
+        setTimeout(() => {
+            logMessage('Auto-testing routing in 2 seconds...');
+            testRouting();
+        }, 2000);
+    </script>
+</body>
+</html>

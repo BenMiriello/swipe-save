@@ -13,9 +13,10 @@ window.simpleListView = {
     
     this.isActive = true;
     
-    // Initialize Alpine.js list view component
     if (window.alpineListView) {
       window.alpineListView.init();
+    } else {
+      console.error('window.alpineListView not found!');
     }
   },
   

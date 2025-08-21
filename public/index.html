@@ -16,9 +16,22 @@
   <link rel="stylesheet" href="css/comfyui-sections.css">
   <!-- Pagination Styles -->
   <link rel="stylesheet" href="css/pagination.css">
+  <!-- Alpine List View Styles -->
+  <link rel="stylesheet" href="css/alpine-list-view.css">
 
   <!-- Early error handler initialization -->
   <script>
+    // Initialize list view for direct URL access, but coordinate with navigation controller
+    if (window.location.pathname === '/list' || window.location.pathname === '/') {
+      document.addEventListener('DOMContentLoaded', () => {
+        setTimeout(() => {
+          if (window.simpleListView && !window.simpleListView.isActive) {
+            window.simpleListView.init();
+          }
+        }, 1000);
+      });
+    }
+    
     // Basic error logging before the full error handler loads
     window.addEventListener('error', function(e) {
       console.error('Early error:', e.message, e.filename, e.lineno);
@@ -156,14 +169,37 @@
             </ul>
           </div>
         </div>
-        <button id="listViewButton" class="icon-button list-view-icon" title="Return to List View" style="display: none;">
+        <button id="listViewButton" class="icon-button back-to-list-icon" title="Back to List View" style="display: none;">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <line x1="3" y1="6" x2="21" y2="6"></line>
-            <line x1="3" y1="12" x2="21" y2="12"></line>
-            <line x1="3" y1="18" x2="21" y2="18"></line>
+            <polyline points="15 18 9 12 15 6"></polyline>
           </svg>
         </button>
       </div>
+      
+      <!-- Unified Navigation Component -->
+      <div class="nav-shortcuts" id="navShortcuts" style="display: flex; align-items: center; gap: 8px; margin-left: 16px;">
+        <!-- List View Button (shown in single view) -->
+        <button class="icon-button nav-list-btn" id="navListBtn" title="File List" style="display: none;" onclick="goToListView()">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="8" y1="6" x2="21" y2="6"></line>
+            <line x1="8" y1="12" x2="21" y2="12"></line>
+            <line x1="8" y1="18" x2="21" y2="18"></line>
+            <line x1="3" y1="6" x2="3.01" y2="6"></line>
+            <line x1="3" y1="12" x2="3.01" y2="12"></line>
+            <line x1="3" y1="18" x2="3.01" y2="18"></line>
+          </svg>
+        </button>
+        
+        <!-- Single View Button (shown in list view) -->
+        <button class="icon-button nav-single-btn" id="navSingleBtn" title="Current Image" style="display: none;" onclick="goToSingleView()">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+            <circle cx="8.5" cy="8.5" r="1.5"></circle>
+            <polyline points="21,15 16,10 5,21"></polyline>
+          </svg>
+        </button>
+      </div>
+      
       <h1 id="appTitle">Swipe-Save</h1>
       <div class="header-icons">
         <button class="icon-button reload-icon" title="Reload Media">
@@ -810,6 +846,10 @@
   <script src="js/comfyui/stores/workflow-store.js"></script>
   <script src="js/comfyui/stores/destination-store.js"></script>
   <script src="js/comfyui/stores/queue-store.js"></script>
+  
+  <!-- App State Stores -->
+  <script src="js/stores/app-state-store.js"></script>
+  <script src="js/stores/list-view-store.js"></script>
 
   <!-- UI components -->
   <script src="js/comfyui/components/section-components.js"></script>
@@ -843,11 +883,7 @@
   <script src="js/shared/navigation.js"></script>
   <script src="js/shared/queue-viewer.js"></script>
 
-  <!-- Views -->
-  <script src="js/views/file-list-viewer.js"></script>
-  <script src="js/views/paginated-list-viewer.js"></script>
-  <script src="js/simple-list-view.js"></script>
-
+  <!-- Core controllers need to load before routing system -->
   <!-- UI modules (load before main ui-manager coordinator) -->
   <script src="js/ui/core-ui-manager.js"></script>
   <script src="js/ui/element-factory.js"></script>
@@ -863,12 +899,90 @@
 
   <script src="js/interaction-handler.js"></script>
   <script src="js/app-controller.js"></script>
+
+  <!-- Alpine.js List View Components -->
+  <script src="js/simple-list-view.js"></script>
+  <script src="js/alpine-list-view.js"></script>
+  
   <script>
     // Initialize error handler first
     if (window.errorHandler) {
       window.errorHandler.init();
     }
+    
+    // Global state for current file tracking
+    window.globalState = {
+      currentFileIndex: 0,
+      currentFilePath: null,
+      totalFiles: 0
+    };
+    
+    // Navigation functions
+    function goToListView() {
+      window.location.href = '/list';
+    }
+    
+    function goToSingleView() {
+      if (window.globalState.currentFilePath) {
+        const encodedPath = encodeURIComponent(window.globalState.currentFilePath);
+        window.location.href = `/view?file=${encodedPath}`;
+      } else {
+        // Fallback to first file
+        window.location.href = `/view?index=0`;
+      }
+    }
+    
+    // Update navigation buttons based on current view
+    function updateNavButtons() {
+      const currentPath = window.location.pathname;
+      const listBtn = document.getElementById('navListBtn');
+      const singleBtn = document.getElementById('navSingleBtn');
+      
+      if (currentPath === '/' || currentPath === '/list') {
+        // List view - show single view button
+        if (listBtn) listBtn.style.display = 'none';
+        if (singleBtn) singleBtn.style.display = 'block';
+      } else {
+        // Single view - show list view button  
+        if (listBtn) listBtn.style.display = 'block';
+        if (singleBtn) singleBtn.style.display = 'none';
+      }
+    }
+
+
+    // Single view initialization (only for non-list paths)
+    if (window.location.pathname !== '/' && window.location.pathname !== '/list') {
+      document.addEventListener('DOMContentLoaded', () => {
+        const app = new window.AppController();
+        window.app = app;
+        
+        const urlParams = new URLSearchParams(window.location.search);
+        const filePath = urlParams.get('file');
+        const index = urlParams.get('index');
+        
+        if (filePath) {
+          window.globalState.currentFilePath = filePath;
+          app.init();
+          setTimeout(() => {
+            if (window.app && window.app.state && window.app.state.allFiles) {
+              const fileIndex = window.app.state.allFiles.findIndex(f => f.path === filePath);
+              if (fileIndex >= 0 && window.app.goToIndex) {
+                window.app.goToIndex(fileIndex);
+              }
+            }
+          }, 1500);
+        } else if (index !== null) {
+          app.init();
+          setTimeout(() => {
+            if (window.app && window.app.goToIndex) {
+              window.app.goToIndex(parseInt(index));
+            }
+          }, 1000);
+        } else {
+          app.initWithoutAutoLoad();
+        }
+      });
+    }
   </script>
-  <script src="app.js"></script>
 </body>
 </html>

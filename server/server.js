@@ -75,6 +75,27 @@ app.get('/', (req, res) => {
 
 app.use(router);
 
+// SPA catch-all route - serve index.html for any route that doesn't match API or static files
+app.get('*', (req, res) => {
+  // Skip API routes and static files
+  if (req.path.startsWith('/api') || req.path.startsWith('/media')) {
+    return res.status(404).send('Not found');
+  }
+  
+  // Serve index.html for SPA routing
+  if (process.env.NODE_ENV !== 'production') {
+    const fs = require('fs');
+    const indexPath = path.join(__dirname, '..', 'public', 'index.html');
+    let html = fs.readFileSync(indexPath, 'utf8');
+    html = html.replace('</body>', 
+      '<script src="http://localhost:35729/livereload.js?snipver=1"></script></body>');
+    res.send(html);
+  } else {
+    const indexPath = path.join(__dirname, '..', 'public', 'index.html');
+    res.sendFile(indexPath);
+  }
+});
+
 app.listen(config.PORT, () => {
   console.log(`Server running on http://localhost:${config.PORT}`);
 });

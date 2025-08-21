@@ -117,6 +117,16 @@ window.sharedComponents.toolbar = {
           }
         }
       },
+      backToList: {
+        type: 'back-to-list',
+        title: 'Back to List',
+        icon: '←',
+        onClick: () => {
+          if (window.navigationController && window.navigationController.showListView) {
+            window.navigationController.showListView();
+          }
+        }
+      },
       singleView: {
         type: 'single-view', 
         title: 'Single View',

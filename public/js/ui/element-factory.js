@@ -91,10 +91,10 @@ const elementFactory = {
   createVideoElement(file, apiUrl) {
     const video = document.createElement('video');
     video.src = `${apiUrl}${file.path}`;
-    video.controls = true;
-    video.autoplay = false;
+    video.controls = false; // no controls means it'll play without overlay. Let it loop. User can click into it for more controls.
+    video.autoplay = true;
     video.muted = true;  // Mute to allow autoplay for preview
-    video.loop = false;
+    video.loop = true;
     video.playsInline = true;
     video.preload = 'auto';  // Restore auto preload for preview frames
     video.className = 'media-content';
@@ -113,14 +113,14 @@ const elementFactory = {
     video.addEventListener('loadedmetadata', function() {
       // Try to play muted for preview, then pause after a brief moment
       this.play().then(() => {
-        setTimeout(() => {
-          this.pause();
-          this.muted = false; // Unmute for when user actually plays
-          this.currentTime = 0; // Reset to beginning
-        }, 100);
+        // setTimeout(() => {
+          // this.pause();
+          // this.muted = false; // Unmute for when user actually plays
+          // this.currentTime = 0; // Reset to beginning
+        // }, 100);
       }).catch(e => {
         console.log('Auto-preview prevented:', e);
-        this.muted = false; // Ensure unmuted even if preview fails
+        // this.muted = false; // Ensure unmuted even if preview fails
       });
     });
 

@@ -79,10 +79,9 @@ const navigationController = {
   showListView() {
     this.currentView = 'list';
     
-    // Initialize and show file list viewer
-    if (window.views?.fileListViewer) {
-      window.views.fileListViewer.init();
-      window.views.fileListViewer.show();
+    // Use Alpine list view instead of old file list viewer
+    if (window.simpleListView) {
+      window.simpleListView.init();
     }
   },
 
@@ -92,9 +91,9 @@ const navigationController = {
   showSingleView() {
     this.currentView = 'single';
     
-    // Hide file list viewer
-    if (window.views?.fileListViewer) {
-      window.views.fileListViewer.hide();
+    // Hide Alpine list view
+    if (window.simpleListView) {
+      window.simpleListView.exit();
     }
     
     // Display current image
