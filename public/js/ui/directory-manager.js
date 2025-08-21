@@ -21,13 +21,9 @@ const directoryManager = {
       
       await DirectoryUIUpdater.refreshOptionsUI();
       
-      const hasDirectories = this.config.sources.directories.length > 0;
-      const hasDestination = this.config.destination.current;
-      
-      if (this.config.preferences.isFirstRun && (!hasDirectories || !hasDestination)) {
+      // Check for first run using simple localStorage
+      if (DirectoryFirstRun.isFirstRun()) {
         DirectoryFirstRun.showFirstRunExperience();
-      } else {
-        this.config.preferences.isFirstRun = false;
       }
     } catch (error) {
       console.error('Error initializing directory manager:', error);
@@ -131,7 +127,7 @@ const directoryManager = {
     document.body.appendChild(overlay);
 
     // Mark first run as complete
-    this.markFirstRunComplete();
+    DirectoryFirstRun.markComplete();
   },
 
   /**
@@ -142,7 +138,7 @@ const directoryManager = {
     if (popup) {
       popup.remove();
     }
-    this.markFirstRunComplete();
+    DirectoryFirstRun.markComplete();
     
     // Prevent any event bubbling that might close the options menu
     if (event) {
@@ -151,30 +147,6 @@ const directoryManager = {
     }
   },
 
-  /**
-   * Mark first run as complete
-   */
-  async markFirstRunComplete() {
-    try {
-      this.config.preferences.isFirstRun = false;
-      // Save preferences to server
-      const response = await fetch(`${(window.appConfig && window.appConfig.getApiUrl) ? window.appConfig.getApiUrl() : ''}/api/user/preferences`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          preferences: this.config.preferences 
-        })
-      });
-      
-      if (!response.ok) {
-        console.error('Failed to save first run completion');
-      }
-      
-      console.log('First run marked as complete');
-    } catch (error) {
-      console.error('Error marking first run complete:', error);
-    }
-  },
 
 
   /**

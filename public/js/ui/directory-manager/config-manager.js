@@ -15,7 +15,12 @@ const DirectoryConfigManager = {
       // Ensure config has all required sections
       if (!this.config.sources) this.config.sources = { directories: [], groups: [] };
       if (!this.config.destination) this.config.destination = { current: null };
-      if (!this.config.preferences) this.config.preferences = { isFirstRun: true };
+      if (!this.config.preferences) {
+        this.config.preferences = { isFirstRun: true };
+      } else if (this.config.preferences.isFirstRun === undefined) {
+        // Only set isFirstRun if it's not already defined
+        this.config.preferences.isFirstRun = true;
+      }
       
     } catch (error) {
       console.error('Failed to load directory config:', error);

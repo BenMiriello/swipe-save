@@ -4,6 +4,20 @@
  */
 const DirectoryFirstRun = {
   /**
+   * Check if this is the first run
+   */
+  isFirstRun() {
+    return !localStorage.getItem('swipe-save-setup-complete');
+  },
+
+  /**
+   * Mark first run as complete
+   */
+  markComplete() {
+    localStorage.setItem('swipe-save-setup-complete', 'true');
+  },
+
+  /**
    * Show first run experience - just open options menu
    */
   async showFirstRunExperience() {
@@ -20,6 +34,9 @@ const DirectoryFirstRun = {
         sourcePathEl.title = 'Click here to configure your first source directory';
       }
     }, 1000);
+
+    // Mark as complete immediately (they've seen the first-run experience)
+    this.markComplete();
   }
 };
 
