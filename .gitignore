@@ -140,3 +140,22 @@ dist
 notes/
 
 .app-config.json
+
+# Cache directories and generated files
+server/cache/
+**/cache/
+*.webp
+*.mp4
+*.mov
+*.avi
+*.mkv
+*.jpg
+*.jpeg
+*.png
+*.gif
+
+# User data and uploads
+uploads/
+media/
+images/
+videos/

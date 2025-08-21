@@ -100,3 +100,17 @@ npm run dev         # Development with nodemon hot reload
 
 - Use "panel" cli command to manage service swipe-save - as in "panel info" "panel status swipe-save" "panel restart swipe-save"
 - use "mv" to move things into notes/trash instead of using rm
+
+## CRITICAL: Never Commit User Data or Media Files
+
+**NEVER UNDER ANY CIRCUMSTANCES commit user-generated content, media files, or cache files to git.**
+
+Forbidden:
+- Any file with extensions: .webp, .jpg, .jpeg, .png, .gif, .mp4, .mov, .avi, .mkv
+- Cache directories: server/cache/, **/cache/
+- User uploads: uploads/, media/, images/, videos/
+- Generated content or previews
+
+**ALWAYS check .gitignore covers these patterns BEFORE any git operations.**
+
+If you accidentally commit media files, IMMEDIATELY stop and alert the user.
