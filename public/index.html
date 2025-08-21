@@ -106,9 +106,85 @@
   <!-- External libraries -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/hammer.js/2.0.8/hammer.min.js"></script>
 
-  <!-- Application Module Loader -->
-  <script src="js/core/module-loader.js"></script>
-
+  <!-- Core Application -->
+  <script src="js/error-handler.js"></script>
+  <script src="js/config.js"></script>
+  
+  <!-- API Layer -->
+  <script src="js/api/file-api.js"></script>
+  <script src="js/api/config-api.js"></script>
+  <script src="js/api/copy-api.js"></script>
+  <script src="js/api-service.js"></script>
+  <script src="js/api/directory-api.js"></script>
+  
+  <!-- Pagination System -->
+  <script src="js/pagination/pagination-state.js"></script>
+  <script src="js/components/list-pagination.js"></script>
+  
+  <!-- ComfyUI Services -->
+  <script src="js/comfyui/services/api-client.js"></script>
+  <script src="js/comfyui/services/storage-service.js"></script>
+  
+  <!-- State Stores -->
+  <script src="js/comfyui/stores/workflow-store.js"></script>
+  <script src="js/comfyui/stores/destination-store.js"></script>
+  <script src="js/comfyui/stores/queue-store.js"></script>
+  <script src="js/stores/app-state-store.js"></script>
+  <script src="js/stores/list-view-store.js"></script>
+  
+  <!-- ComfyUI Components -->
+  <script src="js/comfyui/components/section-components.js"></script>
+  <script src="js/comfyui/components/modal-components.js"></script>
+  <script src="js/comfyui/components/panel-components.js"></script>
+  <script src="js/comfyui/index.js"></script>
+  <script src="js/comfyui/test.js"></script>
+  
+  <!-- BentoML Integration -->
+  <script src="js/comfyui-bentoml/services/bentoml-client.js"></script>
+  <script src="js/comfyui-bentoml/services/schema-service.js"></script>
+  <script src="js/comfyui-bentoml/adapters/ui-adapter.js"></script>
+  <script src="js/comfyui-bentoml/extractors/seed-extractor.js"></script>
+  <script src="js/comfyui-bentoml/extractors/text-extractor.js"></script>
+  <script src="js/comfyui-bentoml/extractors/parameter-extractor.js"></script>
+  <script src="js/comfyui-bentoml/extractors/field-extractor.js"></script>
+  <script src="js/comfyui-bentoml/editors/field-editor.js"></script>
+  <script src="js/comfyui-bentoml/index.js"></script>
+  <script src="js/comfyui-bentoml/test-only.js"></script>
+  
   <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.1/dist/cdn.min.js" defer></script>
+  
+  <!-- Shared Components -->
+  <script src="js/shared/toolbar.js"></script>
+  <script src="js/shared/navigation.js"></script>
+  <script src="js/shared/queue-viewer.js"></script>
+  
+  <!-- UI Management -->
+  <script src="js/ui/core-ui-manager.js"></script>
+  <script src="js/ui/element-factory.js"></script>
+  <script src="js/ui/modal-manager.js"></script>
+  <script src="js/ui/directory-browser.js"></script>
+  <script src="js/ui/sort-manager.js"></script>
+  <script src="js/ui-manager.js"></script>
+  <script src="js/ui/directory-manager.js"></script>
+  
+  <!-- Controllers -->
+  <script src="js/controllers/state-manager.js"></script>
+  <script src="js/controllers/action-controller.js"></script>
+  <script src="js/controllers/navigation-controller.js"></script>
+  
+  <!-- Main Application -->
+  <script src="js/interaction-handler.js"></script>
+  <script src="js/app-controller.js"></script>
+  
+  <!-- Views -->
+  <script src="js/simple-list-view.js"></script>
+  <script src="js/alpine-list-view.js"></script>
+  
+  <!-- Navigation -->
+  <script src="js/navigation/navigation-functions.js"></script>
+  <script src="js/navigation/view-router.js"></script>
+  
+  <!-- UI Components -->
+  <script src="js/components/ui/collapsible-section.js"></script>
 </body>
 </html>
