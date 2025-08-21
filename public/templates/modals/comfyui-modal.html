@@ -1,0 +1,582 @@
+  <!-- Modal for ComfyUI (Alpine.js) -->
+  <div id="comfyuiModal" 
+       class="comfyui-modal" 
+       x-data="workflowModal()"
+       x-show="$store.comfyWorkflow.isModalOpen"
+       x-transition.opacity
+       style="display: none;">
+
+    <div class="comfyui-modal-content" @click.away="allowClickAway && $store.queueViewer && !$store.queueViewer.showItemDetails && !$store.queueViewer.showCancelAllModal && !$store.queueViewer.showCancelItemModal ? closeModal() : null">
+      <!-- Sticky Modal Header -->
+      <div class="comfyui-modal-header comfyui-modal-header-sticky">
+        <h2 class="comfyui-modal-title">Run Workflow</h2>
+        <button class="comfyui-modal-close" @click="closeModal()">&times;</button>
+      </div>
+
+      <!-- Scrollable Content Area -->
+      <div class="comfyui-modal-body">
+
+      <!-- Destination Section -->
+      <div class="comfyui-section" x-data="destinationSection()">
+        <div class="comfyui-section-header" @click="isExpanded = !isExpanded">
+          <span class="comfyui-section-caret" :class="{ 'expanded': isExpanded }">▶</span>
+          <h3 class="comfyui-section-title">Forward to <span x-show="!isExpanded" class="comfyui-status-summary" x-text="$store.comfyDestinations.selectedDestination"></span></h3>
+          <button class="comfy-btn comfy-btn-primary comfy-btn-small" @click.stop="openComfyUI()">
+            Open >
+          </button>
+        </div>
+
+        <div class="comfyui-section-content" x-show="isExpanded" x-transition>
+
+        <div class="comfy-destination-input-group">
+          <input type="text" 
+                 class="comfy-input monospace"
+                 x-model="$store.comfyDestinations.selectedDestination"
+                 placeholder="Enter ComfyUI URL">
+          <button class="comfy-btn comfy-btn-success comfy-btn-small" 
+                  @click="$store.comfyDestinations ? $store.comfyDestinations.addDestination($store.comfyDestinations.selectedDestination) : null"
+                  x-show="$store.comfyDestinations && $store.comfyDestinations.selectedDestination && $store.comfyDestinations.selectedDestination.trim() && !$store.comfyDestinations.destinations.includes($store.comfyDestinations.selectedDestination)"
+            Save
+          </button>
+        </div>
+
+        <!-- More Options -->
+        <template x-if="$store.comfyDestinations && $store.comfyDestinations.destinations && $store.comfyDestinations.destinations.filter(url => url !== $store.comfyDestinations.selectedDestination).length > 0">
+          <div>
+            <button class="comfy-more-options-toggle" 
+                    @click="$store.comfyDestinations ? $store.comfyDestinations.toggleMoreOptions() : null"
+                    :aria-expanded="$store.comfyDestinations ? $store.comfyDestinations.showMoreOptions : false">
+              More options
+              <span class="comfy-more-options-caret">▶</span>
+            </button>
+
+            <div x-show="$store.comfyDestinations ? $store.comfyDestinations.showMoreOptions : false" x-transition>
+              <div class="comfy-destination-list">
+                <template x-for="destination in ($store.comfyDestinations ? $store.comfyDestinations.destinations.filter(url => url !== $store.comfyDestinations.selectedDestination) : [])">
+                  <div class="comfy-destination-item" @click="$store.comfyDestinations ? $store.comfyDestinations.selectDestination(destination) : null">
+                    <span class="comfy-destination-text" x-text="destination"></span>
+                    <button class="comfy-destination-delete" 
+                            @click.stop="$store.comfyDestinations ? $store.comfyDestinations.removeDestination(destination) : null">
+                      Delete
+                    </button>
+                  </div>
+                </template>
+              </div>
+            </div>
+          </div>
+        </template>
+
+        </div>
+      </div>
+
+      <!-- Active Queue Section -->
+      <div class="comfyui-section" x-data="queueViewer()">
+        <div class="comfyui-section-header" @click="toggleQueueSection()">
+          <span class="comfyui-section-caret" :class="{ 'expanded': isQueueExpanded }">▶</span>
+          <h3 class="comfyui-section-title">
+            Active Queue
+            <span x-show="!isQueueExpanded && queueItems.length === 0" class="comfyui-status-summary">empty</span>
+            <span x-show="!isQueueExpanded && queueItems.length > 0" class="comfyui-queue-indicators">
+              <!-- Show active dot for running item -->
+              <span class="comfyui-header-dot active"></span>
+
+              <!-- Show grey dots: max 3 for pending items -->
+              <template x-for="index in Math.min(3, queueItems.length - 1)" :key="index">
+                <span class="comfyui-header-dot"></span>
+              </template>
+
+              <!-- Show status text -->
+              <span class="comfyui-queue-overflow"
+                    x-text="(() => {
+                      const running = 1;
+                      const queued = queueItems.length - 1;
+                      const hasOverflow = queued > 3;
+                      const prefix = hasOverflow ? '... ' : '';
+
+                      if (queued === 0) {
+                        return `${prefix}${running} running`;
+                      } else {
+                        return `${prefix}${running} running and ${queued} queued`;
+                      }
+                    })()">
+              </span>
+            </span>
+          </h3>
+          <button class="comfy-btn comfy-btn-warning comfy-btn-small" 
+                  @click.stop="$store.queueViewer.showCancelAllModal = true"
+                  x-show="queueItems.length > 0 && isQueueExpanded">
+            Clear Queue
+          </button>
+        </div>
+
+        <div class="comfyui-section-content" x-show="isQueueExpanded" x-transition>
+          <template x-if="queueItems.length === 0">
+            <div class="comfyui-queue-empty">No items in queue</div>
+          </template>
+
+          <template x-if="queueItems.length > 0">
+            <div class="comfyui-queue-list">
+              <template x-for="(item, index) in queueItems" :key="item[0]">
+                <div class="comfyui-queue-item" 
+                     :class="{ 'active': index === 0 }"
+                     @click="openItemDetails(item)">
+                  <div class="comfyui-queue-item-indicator"></div>
+                  <div class="comfyui-queue-item-id" x-text="item[0]"></div>
+                </div>
+              </template>
+            </div>
+          </template>
+        </div>
+      </div>
+
+      <!-- Global Settings Section -->
+      <div class="comfyui-section" x-data="settingsPanel()">
+        <div class="comfyui-section-header" @click="toggleSettingsSection()">
+          <span class="comfyui-section-caret" :class="{ 'expanded': isSettingsExpanded }">▶</span>
+          <h3 class="comfyui-section-title">
+            Global Settings
+            <span x-show="!isSettingsExpanded" class="comfyui-status-summary" x-text="getSettingsSummary()"></span>
+          </h3>
+        </div>
+
+        <div class="comfyui-section-content" x-show="isSettingsExpanded" x-transition>
+          <!-- Quantity -->
+          <div class="comfy-setting-row">
+            <div class="comfy-setting-container">
+              <span class="comfy-setting-label">Quantity</span>
+              <div class="comfy-number-picker">
+                <button class="comfy-number-btn" @click="decrementQuantity()">‹</button>
+                <input type="number" 
+                       class="comfy-number-input"
+                       x-model.number="$store.comfyWorkflow.settings.quantity"
+                       @blur="validateQuantity()"
+                       min="1" max="99">
+                <button class="comfy-number-btn" @click="incrementQuantity()">›</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Seed Control -->
+          <div class="comfy-setting-row">
+            <div class="comfy-setting-container">
+              <span class="comfy-setting-label">Seed Mode</span>
+              <select class="comfy-select" 
+                      x-model="$store.comfyWorkflow.settings.seedMode"
+                      @change="updateSeedMode($event.target.value)">
+                <option value="original">Use Original Seeds</option>
+                <option value="randomize">Randomize Every Execution</option>
+                <option value="increment">Increment Every Execution</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Control After Generate -->
+          <div class="comfy-setting-row">
+            <div class="comfy-setting-container">
+              <span class="comfy-setting-label">Control After Generate</span>
+              <select class="comfy-select" 
+                      x-model="$store.comfyWorkflow.settings.controlAfterGenerate"
+                      @change="updateControlAfterGenerate($event.target.value)">
+                <option value="increment">Increment</option>
+                <option value="randomize">Randomize</option>
+                <option value="decrement">Decrement</option>
+                <option value="fixed">Fixed</option>
+              </select>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Field Editor Section -->
+      <div class="comfyui-section" x-data="window.comfyUIBentoML.fieldEditor.createComponent()">
+        <div class="comfyui-section-header" @click="toggleExpanded()">
+          <span class="comfyui-section-caret" :class="{ 'expanded': isExpanded }">▶</span>
+          <h3 class="comfyui-section-title">
+            Field Editor
+            <span x-show="!isExpanded && summary" class="comfyui-status-summary" x-text="getSummaryText()"></span>
+          </h3>
+          <button class="comfy-btn comfy-btn-primary comfy-btn-small" 
+                  @click.stop="randomizeAllSeeds()"
+                  x-show="fields.seeds && fields.seeds.length > 0 && isExpanded">
+            Randomize Seeds
+          </button>
+        </div>
+
+        <div class="comfyui-section-content" x-show="isExpanded" x-transition>
+          <!-- Loading State -->
+          <template x-if="isLoading">
+            <div class="comfyui-field-loading">Loading fields...</div>
+          </template>
+
+          <!-- No Fields State -->
+          <template x-if="!isLoading && !hasFields()">
+            <div class="comfyui-field-empty">No editable fields found</div>
+          </template>
+
+          <!-- Field Filters -->
+          <template x-if="hasFields()">
+            <div class="comfyui-field-filters">
+              <div class="comfyui-search-input-container">
+                <input type="text" 
+                       class="comfy-input comfyui-filter-input" 
+                       placeholder="Filter fields by name, node type, or value..."
+                       x-model="fieldFilter"
+                       @input="applyFieldFilter()">
+                <button class="comfyui-search-clear" 
+                        x-show="fieldFilter"
+                        @click="fieldFilter = ''; applyFieldFilter()"
+                        title="Clear filter">×</button>
+              </div>
+              <div class="comfyui-filter-options">
+                <label class="comfyui-filter-checkbox">
+                  <input type="checkbox" x-model="showSeedsOnly" @change="applyFieldFilter()">
+                  Seeds only
+                </label>
+                <label class="comfyui-filter-checkbox">
+                  <input type="checkbox" x-model="showTextFieldsOnly" @change="applyFieldFilter()">
+                  Text/Prompts only
+                </label>
+              </div>
+            </div>
+          </template>
+
+          <!-- Seeds Section -->
+          <template x-if="getFilteredSeeds().length > 0">
+            <div class="comfyui-field-group">
+              <h4 class="comfyui-field-group-title">Seeds (<span x-text="getFilteredSeeds().length"></span>)</h4>
+              <div class="comfyui-field-list">
+                <template x-for="seedField in getFilteredSeeds()" :key="`${seedField.nodeId}-${seedField.fieldName}`">
+                  <div class="comfyui-field-item" :class="getFieldClasses(seedField)">
+                    <div class="comfyui-field-header">
+                      <span class="comfyui-field-label" x-text="getDisplayName(seedField)"></span>
+                      <span class="comfyui-field-node" x-text="`Node ${seedField.nodeId} (${seedField.nodeType})`"></span>
+                    </div>
+                    <div class="comfyui-field-value">
+                      <template x-if="isEditing(seedField)">
+                        <div class="comfyui-field-edit">
+                          <input type="number" 
+                                 class="comfy-input comfyui-field-input"
+                                 x-model="tempValue"
+                                 @keyup.enter="saveEdit(seedField)"
+                                 @keyup.escape="cancelEditing()">
+                          <div class="comfyui-field-actions">
+                            <button class="comfy-btn comfy-btn-success comfy-btn-xs" @click="saveEdit(seedField)">Save</button>
+                            <button class="comfy-btn comfy-btn-secondary comfy-btn-xs" @click="cancelEditing()">Cancel</button>
+                          </div>
+                        </div>
+                      </template>
+                      <template x-if="!isEditing(seedField)">
+                        <div class="comfyui-field-display">
+                          <span class="comfyui-field-text" x-text="seedField.currentValue"></span>
+                          <div class="comfyui-field-actions">
+                            <button class="comfy-btn comfy-btn-primary comfy-btn-xs" @click="startEditing(seedField)">Edit</button>
+                            <button class="comfy-btn comfy-btn-primary comfy-btn-xs" @click="randomizeSeed(seedField)">Random</button>
+                          </div>
+                        </div>
+                      </template>
+                    </div>
+                  </div>
+                </template>
+              </div>
+            </div>
+          </template>
+
+          <!-- Text Fields Section -->
+          <template x-if="getFilteredTextFields().length > 0">
+            <div class="comfyui-field-group">
+              <h4 class="comfyui-field-group-title">Text Fields (<span x-text="getFilteredTextFields().length"></span>)</h4>
+              <div class="comfyui-field-list">
+                <template x-for="textField in getFilteredTextFields()" :key="`${textField.nodeId}-${textField.fieldName}`">
+                  <div class="comfyui-field-item" :class="getFieldClasses(textField)">
+                    <div class="comfyui-field-header">
+                      <span class="comfyui-field-label" x-text="getDisplayName(textField)"></span>
+                      <span class="comfyui-field-node" x-text="`Node ${textField.nodeId} (${textField.nodeType})`"></span>
+                    </div>
+                    <div class="comfyui-field-value">
+                      <template x-if="isEditing(textField)">
+                        <div class="comfyui-field-edit">
+                          <textarea class="comfy-input comfyui-field-textarea"
+                                   x-model="tempValue"
+                                   @keyup.enter.ctrl="saveEdit(textField)"
+                                   @keyup.escape="cancelEditing()"
+                                   rows="6"></textarea>
+                          <div class="comfyui-field-actions">
+                            <button class="comfy-btn comfy-btn-success comfy-btn-xs" @click="saveEdit(textField)">Save</button>
+                            <button class="comfy-btn comfy-btn-secondary comfy-btn-xs" @click="cancelEditing()">Cancel</button>
+                          </div>
+                        </div>
+                      </template>
+                      <template x-if="!isEditing(textField)">
+                        <div class="comfyui-field-display">
+                          <span class="comfyui-field-text" x-text="getDisplayValue(textField)"></span>
+                          <div class="comfyui-field-actions">
+                            <button class="comfy-btn comfy-btn-primary comfy-btn-xs" @click="startEditing(textField)">Edit</button>
+                          </div>
+                        </div>
+                      </template>
+                    </div>
+                  </div>
+                </template>
+              </div>
+            </div>
+          </template>
+
+          <!-- Parameters Section -->
+          <template x-if="getFilteredParameters().length > 0">
+            <div class="comfyui-field-group">
+              <h4 class="comfyui-field-group-title">Parameters (<span x-text="getFilteredParameters().length"></span>)</h4>
+              <div class="comfyui-field-list">
+                <template x-for="paramField in getFilteredParameters()" :key="`${paramField.nodeId}-${paramField.fieldName}`">
+                  <div class="comfyui-field-item" :class="getFieldClasses(paramField)" 
+                       :data-field-type="isDropdownField(paramField) ? 'dropdown' : 'text'">
+                    <div class="comfyui-field-header">
+                      <span class="comfyui-field-label" x-text="getDisplayName(paramField)"></span>
+                      <span class="comfyui-field-node" x-text="`Node ${paramField.nodeId} (${paramField.nodeType})`"></span>
+                    </div>
+                    <div class="comfyui-field-value">
+                      <template x-if="isEditing(paramField)">
+                        <div class="comfyui-field-edit">
+                          <!-- Dropdown for dropdown fields that should be shown -->
+                          <template x-if="shouldShowDropdown(paramField)">
+                            <div class="comfyui-searchable-dropdown">
+                              <!-- Search input for dropdowns with many options -->
+                              <template x-if="getFieldOptions(paramField).length > 10">
+                                <div class="comfyui-dropdown-search-container">
+                                  <input type="text" 
+                                         class="comfy-input comfyui-dropdown-search" 
+                                         :placeholder="`Search ${getFieldOptions(paramField).length} options...`"
+                                         :x-model="dropdownSearchTerms[getFieldId(paramField)]"
+                                         @input="onDropdownSearchInput(paramField, $event.target.value)">
+                                  <button class="comfyui-dropdown-search-clear" 
+                                          x-show="dropdownSearchTerms[getFieldId(paramField)]"
+                                          @click="clearDropdownSearch(paramField)"
+                                          title="Clear search">×</button>
+                                </div>
+                              </template>
+                              
+                              <!-- Dropdown select -->
+                              <select class="comfy-input comfyui-field-dropdown" 
+                                      x-model="tempValue"
+                                      @change="handleDropdownChange(paramField, $event)">
+                                <option value="">Select option...</option>
+                                <template x-for="option in getFilteredDropdownOptions(paramField)" :key="option">
+                                  <option :value="option" x-text="option" :selected="option == tempValue"></option>
+                                </template>
+                              </select>
+                              
+                              <!-- Show filtered count when searching -->
+                              <template x-if="dropdownSearchTerms[getFieldId(paramField)] && getFilteredDropdownOptions(paramField).length !== getFieldOptions(paramField).length">
+                                <div class="comfyui-dropdown-filter-info">
+                                  Showing <span x-text="getFilteredDropdownOptions(paramField).length"></span> of <span x-text="getFieldOptions(paramField).length"></span> options
+                                </div>
+                              </template>
+                            </div>
+                          </template>
+                          
+                          <!-- Text input for non-dropdown fields or dropdowns without loaded options -->
+                          <template x-if="!shouldShowDropdown(paramField)">
+                            <input type="text" 
+                                   class="comfy-input comfyui-field-input"
+                                   x-model="tempValue"
+                                   @keyup.enter="saveEdit(paramField)"
+                                   @keyup.escape="cancelEditing()">
+                          </template>
+                          
+                          <div class="comfyui-field-actions">
+                            <button class="comfy-btn comfy-btn-success comfy-btn-xs" @click="saveEdit(paramField)">Save</button>
+                            <button class="comfy-btn comfy-btn-secondary comfy-btn-xs" @click="cancelEditing()">Cancel</button>
+                          </div>
+                        </div>
+                      </template>
+                      <template x-if="!isEditing(paramField)">
+                        <div class="comfyui-field-display">
+                          <span class="comfyui-field-text" x-text="paramField.currentValue"></span>
+                          <div class="comfyui-field-actions">
+                            <button class="comfy-btn comfy-btn-primary comfy-btn-xs" @click="startEditing(paramField)">Edit</button>
+                          </div>
+                        </div>
+                      </template>
+                    </div>
+                  </div>
+                </template>
+              </div>
+            </div>
+          </template>
+        </div>
+      </div>
+
+      <!-- Save to Inputs Section -->
+      <div class="comfyui-section" x-data="saveToInputsSection()">
+        <div class="comfyui-section-header" @click="isExpanded = !isExpanded">
+          <span class="comfyui-section-caret" :class="{ 'expanded': isExpanded }">▶</span>
+          <h3 class="comfyui-section-title">Save to Inputs</h3>
+        </div>
+
+        <div class="comfyui-section-content" x-show="isExpanded" x-transition>
+          <div class="comfy-save-inputs-group">
+            <label class="comfy-label">Save Path:</label>
+            <div class="comfy-destination-input-group">
+              <input type="text" 
+                     class="comfy-input monospace"
+                     x-model="savePath"
+                     placeholder="Enter save path">
+              <button class="comfy-btn comfy-btn-secondary comfy-btn-small" 
+                      @click="resetToDefault()">
+                Reset
+              </button>
+            </div>
+            <div class="comfyui-path-info">
+              <small>Default: /home/simonsays/Documents/Data/Packages/ComfyUI/input/</small>
+            </div>
+          </div>
+
+          <div class="comfy-save-inputs-actions">
+            <button class="comfy-btn comfy-btn-success"
+                    @click="saveToInputs()"
+                    :disabled="!mediaAvailable">
+              Save Copy to Inputs
+            </button>
+          </div>
+
+          <div x-show="saveStatus" class="comfyui-save-status" x-text="saveStatus"></div>
+        </div>
+      </div>
+
+      </div> <!-- End scrollable content area -->
+
+      <!-- Sticky Footer Section -->
+      <div class="comfyui-modal-footer" x-data="{ showRunLog: false }">
+        <!-- Error Display -->
+        <div x-show="error" class="comfyui-error" x-text="error"></div>
+
+        <!-- Action Buttons and Run Log Toggle -->
+        <div class="comfy-actions-section">
+          <div class="comfy-run-log-toggle" @click="showRunLog = !showRunLog">
+            <span class="comfy-run-log-caret" :class="{ 'expanded': showRunLog }">▶</span>
+            <span class="comfy-run-log-label">Run Log</span>
+          </div>
+          <button class="comfy-btn comfy-btn-primary"
+                  :class="getButtonClasses('queue')"
+                  @click="handleQueue()"
+                  :disabled="isProcessing"
+                  x-text="getButtonText('queue')">
+          </button>
+        </div>
+
+        <!-- Collapsible Results Log -->
+        <div x-show="showRunLog" x-transition class="comfyui-results-container">
+          <div class="comfyui-results" x-show="$store.comfyWorkflow ? $store.comfyWorkflow.results.length > 0 : false">
+            <template x-for="result in ($store.comfyWorkflow ? $store.comfyWorkflow.results : [])" :key="result.timestamp">
+              <div class="comfyui-result-item" :class="{ 'error': result.isError }">
+                <span x-text="result.message"></span>
+                <span class="comfyui-result-timestamp" x-text="result.timestamp"></span>
+              </div>
+            </template>
+          </div>
+          <div x-show="!$store.comfyWorkflow || !$store.comfyWorkflow.results.length" class="comfyui-results-empty">
+            No workflow runs yet
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Queue Detail Modals (using global store) -->
+  <!-- Queue Item Details Modal -->
+  <div x-show="$store.queueViewer?.showItemDetails === true" 
+       class="comfyui-modal comfyui-details-modal"
+       x-transition.opacity
+       @click.self="$store.queueViewer.showItemDetails = false"
+       x-init="$store.queueViewer && ($store.queueViewer.showItemDetails = false)"
+       style="display: none;"
+       x-cloak>
+    <div class="comfyui-modal-content comfyui-details-content" @click.stop>
+      <div class="comfyui-modal-header">
+        <h3>Queue Item Details</h3>
+        <!-- <button class="comfyui-modal-close" @click="$store.queueViewer.showItemDetails = false">&times;</button> -->
+      </div>
+
+      <div class="comfyui-details-body">
+        <pre class="comfyui-json-display" x-text="$store.queueViewer?.selectedItemJson"></pre>
+        <div class="comfyui-queue-limitation-note">
+          <p><em>Note: Individual item cancellation is not yet supported by ComfyUI.</em></p>
+        </div>
+      </div>
+
+      <div class="comfyui-details-actions">
+        <!-- Waiting on https://github.com/comfyanonymous/ComfyUI/issues/7513 or similar feature to be implemented in ComfyUI API before we can cancel individual items in the queue -->
+        <!--
+        <button class="comfy-btn comfy-btn-warning" 
+                @click.stop="console.log('Cancel Item clicked'); $store.queueViewer.showCancelItemModal = true">
+          Cancel Item
+        </button>
+        -->
+        <button class="comfy-btn comfy-btn-secondary" 
+                @click.stop="$store.queueViewer.showItemDetails = false">
+          Close
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Cancel All Confirmation Modal -->
+  <div x-show="$store.queueViewer?.showCancelAllModal === true" 
+       class="comfyui-modal comfyui-confirm-modal"
+       x-transition.opacity
+       @click.self="$store.queueViewer.showCancelAllModal = false"
+       x-init="$store.queueViewer && ($store.queueViewer.showCancelAllModal = false)"
+       style="display: none;"
+       x-cloak>
+    <div class="comfyui-modal-content comfyui-confirm-content">
+      <div class="comfyui-modal-header">
+        <h3>Clear Queue?</h3>
+      </div>
+      <div class="comfyui-confirm-body">
+        <p>This will clear all items in the queue. The item currently running will not be affected.</p>
+      </div>
+      <div class="comfyui-confirm-actions">
+        <button class="comfy-btn comfy-btn-warning" 
+                @click="$store.queueViewer.cancelAllItems()">
+          Clear Queue
+        </button>
+        <button class="comfy-btn comfy-btn-secondary" 
+                @click="$store.queueViewer.showCancelAllModal = false">
+          Keep Queue
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Cancel Item Confirmation Modal -->
+  <div x-show="$store.queueViewer?.showCancelItemModal === true" 
+       class="comfyui-modal comfyui-confirm-modal"
+       x-transition.opacity
+       @click.self="$store.queueViewer.showCancelItemModal = false"
+       x-init="$store.queueViewer && ($store.queueViewer.showCancelItemModal = false)"
+       style="display: none;"
+       x-cloak
+       x-data="{ 
+         async cancelItem() { 
+           console.log('cancelItem() wrapper called'); 
+           await $store.queueViewer.cancelSelectedItem(); 
+         } 
+       }">
+    <div class="comfyui-modal-content comfyui-confirm-content">
+      <div class="comfyui-modal-header">
+        <h3>Cancel Queue Item?</h3>
+      </div>
+      <div class="comfyui-confirm-body">
+        <p><strong>Note:</strong> ComfyUI doesn't support cancelling individual items. This will clear <strong>ALL pending queue items</strong>. The currently running item will continue. This action cannot be undone.</p>
+      </div>
+      <div class="comfyui-confirm-actions">
+        <button class="comfy-btn comfy-btn-warning" 
+                @click.stop="console.log('Confirming cancel item'); cancelItem()">
+          Clear All Pending
+        </button>
+        <button class="comfy-btn comfy-btn-secondary" 
+                @click.stop="console.log('Keeping item'); $store.queueViewer.showCancelItemModal = false">
+          Keep Item
+        </button>
+      </div>
+    </div>
+  </div>
