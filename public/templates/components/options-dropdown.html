@@ -1,0 +1,118 @@
+        <div class="options-container">
+          <button class="btn btn-options">Options</button>
+          <div class="options-dropdown">
+            <ul>
+              <!-- Source Directories Section -->
+              <li class="section-header">
+                <span class="section-title">📁 Source Folders</span>
+              </li>
+              <li class="directory-management">
+                <div id="sourceDirectoriesContainer">
+                  <div class="loading-state">Loading directories...</div>
+                </div>
+                <div class="directory-actions">
+                  <button id="addDirectoryBtn" class="btn btn-small">+ Add Folder</button>
+                  <button id="addGroupBtn" class="btn btn-small">+ Create Group</button>
+                </div>
+              </li>
+              
+              <!-- Destination Section -->
+              <li class="separator"></li>
+              <li class="section-header">
+                <span class="section-title">📁 Destination</span>
+              </li>
+              <li class="directory-row">
+                <div class="dir-info">
+                  <span id="currentDestinationPath">Loading...</span>
+                  <button id="changeDestinationBtn" class="btn btn-small">Change</button>
+                </div>
+              </li>
+              
+              <!-- Settings Section -->
+              <li class="separator"></li>
+              <li class="section-header">
+                <span class="section-title">⚙️ Settings</span>
+              </li>
+              <li class="toggle-option">
+                <label class="toggle-label">
+                  <input type="checkbox" id="useDatestampFolders" checked>
+                  <span class="toggle-text">Use Datestamp Folders</span>
+                </label>
+              </li>
+              <li class="toggle-option">
+                <label class="toggle-label">
+                  <input type="checkbox" id="enableLogging">
+                  <span class="toggle-text">Enable Logging</span>
+                </label>
+              </li>
+              <li class="toggle-option">
+                <label class="toggle-label">
+                  <input type="checkbox" id="saveCopiesWhenSorting" checked>
+                  <span class="toggle-text">Save copies when sorting</span>
+                </label>
+              </li>
+              
+              <!-- Sort Options Section -->
+              <li class="separator"></li>
+              <li class="section-header">
+                <span class="section-title sort-section-toggle" onclick="toggleSortSection()">
+                  <span id="sortSectionCaret" class="sort-caret">▶</span>
+                  📊 Sort Options
+                </span>
+              </li>
+              <li id="sortOptionsContainer" class="sort-options-container" style="display: none;">
+                <div class="sort-options">
+                  <div class="sort-option-row">
+                    <label class="sort-label">Sort by:</label>
+                    <select id="sortField" class="sort-select">
+                      <option value="date">Date Modified</option>
+                      <option value="name">Name</option>
+                      <option value="size">File Size</option>
+                      <option value="created">Date Created</option>
+                    </select>
+                  </div>
+                  <div class="sort-option-row">
+                    <label class="sort-label">Order:</label>
+                    <select id="sortOrder" class="sort-select">
+                      <option value="desc">Newest First</option>
+                      <option value="asc">Oldest First</option>
+                    </select>
+                  </div>
+                </div>
+              </li>
+              
+              <!-- Pagination Settings Section -->
+              <li class="separator"></li>
+              <li class="section-header">
+                <span class="section-title">📄 Pagination</span>
+              </li>
+              <li class="sort-option-row">
+                <label class="sort-label">Items per page:</label>
+                <select id="globalItemsPerPage" class="sort-select">
+                  <option value="50">50</option>
+                  <option value="100" selected>100</option>
+                  <option value="200">200</option>
+                  <option value="500">500</option>
+                </select>
+              </li>
+              <li class="sort-option-row">
+                <label class="sort-label">Memory limit:</label>
+                <select id="memoryLimit" class="sort-select">
+                  <option value="50">50 MB</option>
+                  <option value="100" selected>100 MB</option>
+                  <option value="200">200 MB</option>
+                  <option value="500">500 MB</option>
+                </select>
+              </li>
+              <li class="toggle-option">
+                <label class="toggle-label">
+                  <input type="checkbox" id="showPreviews" checked>
+                  <span class="toggle-text">Show Previews in List</span>
+                </label>
+              </li>
+              <li class="separator"></li>
+              <li id="customName">Custom Name</li>
+              <li id="showInfo">Show Instructions</li>
+            </ul>
+          </div>
+        </div>

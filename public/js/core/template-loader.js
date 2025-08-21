@@ -49,10 +49,18 @@ const TemplateLoader = {
    */
   async loadComfyUIModal() {
     return this.loadTemplate('templates/modals/comfyui-modal.html', 'comfyui-modal-container');
+  },
+
+  /**
+   * Load options dropdown component template
+   */
+  async loadOptionsDropdown() {
+    return this.loadTemplate('templates/components/options-dropdown.html', 'options-dropdown-container');
   }
 };
 
-// Auto-load ComfyUI modal when DOM is ready to maintain existing functionality
+// Auto-load templates when DOM is ready to maintain existing functionality
 document.addEventListener('DOMContentLoaded', async () => {
   await TemplateLoader.loadComfyUIModal();
+  await TemplateLoader.loadOptionsDropdown();
 });
