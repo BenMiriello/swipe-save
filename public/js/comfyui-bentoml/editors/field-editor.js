@@ -25,7 +25,7 @@ window.comfyUIBentoML.fieldEditor = {
       showSeedsOnly: false,
       showTextFieldsOnly: false,
       showParametersOnly: false,
-      showAllFields: false,
+      showAllFields: true,
       filteredSeeds: [],
       filteredTextFields: [],
       filteredParameters: [],
@@ -48,6 +48,11 @@ window.comfyUIBentoML.fieldEditor = {
           } else {
             this.resetFields();
           }
+        });
+        
+        // Watch for filter changes
+        this.$watch('fieldFilter', () => {
+          this.applyFieldFilter();
         });
       },
 
@@ -104,6 +109,37 @@ window.comfyUIBentoML.fieldEditor = {
         this.fieldFilter = '';
       },
       
+      /**
+       * Set filter mode (mutually exclusive toggles)
+       */
+      setFilterMode(mode) {
+        // Reset all toggles first
+        this.showSeedsOnly = false;
+        this.showTextFieldsOnly = false;
+        this.showParametersOnly = false;
+        this.showAllFields = false;
+        
+        // Set the selected mode
+        switch(mode) {
+          case 'seeds':
+            this.showSeedsOnly = true;
+            break;
+          case 'text':
+            this.showTextFieldsOnly = true;
+            break;
+          case 'parameters':
+            this.showParametersOnly = true;
+            break;
+          case 'all':
+          default:
+            this.showAllFields = true;
+            break;
+        }
+        
+        // Apply the new filter
+        this.applyFieldFilter();
+      },
+
       /**
        * Apply field filtering
        */

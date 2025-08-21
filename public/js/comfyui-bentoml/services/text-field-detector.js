@@ -7,36 +7,10 @@ const TextFieldDetector = {
    * Identify text fields using BentoML schema
    */
   async identifyTextFields(workflowData) {
-    const textFields = [];
+    if (!workflowData) return [];
     
-    try {
-      const schema = await window.comfyUIBentoML.SchemaCache.getSchema();
-      
-      if (!schema || !workflowData) {
-        console.warn('Schema or workflow data not available for text field detection');
-        return this.fallbackTextFieldDetection(workflowData);
-      }
-
-      // Process based on workflow format
-      if (workflowData.nodes && Array.isArray(workflowData.nodes)) {
-        // GUI format workflow
-        for (const node of workflowData.nodes) {
-          textFields.push(...this.extractTextFieldsFromGUINode(node, schema));
-        }
-      } else {
-        // API format workflow
-        for (const [nodeId, node] of Object.entries(workflowData)) {
-          if (node && typeof node === 'object' && node.class_type) {
-            textFields.push(...this.extractTextFieldsFromAPINode(nodeId, node, schema));
-          }
-        }
-      }
-      
-      return textFields;
-    } catch (error) {
-      console.error('Error in text field detection:', error);
-      return this.fallbackTextFieldDetection(workflowData);
-    }
+    // Use direct workflow parsing (no BentoML dependency)
+    return this.fallbackTextFieldDetection(workflowData);
   },
 
   /**
@@ -131,10 +105,15 @@ const TextFieldDetector = {
         if (typeof value === 'string' && value.length > 2) {
           // Skip configuration values
           if (!window.comfyUIBentoML.SchemaUtils.isConfigurationValue(key, value)) {
+            const isPrompt = window.comfyUIBentoML.SchemaUtils.isPromptLikeName(key) || 
+                            value.length > 50 || // Long text likely to be prompt
+                            value.includes('\n'); // Multi-line text
             textFields.push({
               path: fullPath,
               value: value,
-              inputName: key
+              inputName: key,
+              isPrompt: isPrompt,
+              fieldType: isPrompt ? 'textarea' : 'text'
             });
           }
         } else if (typeof value === 'object') {

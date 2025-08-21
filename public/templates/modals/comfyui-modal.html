@@ -229,12 +229,20 @@
               </div>
               <div class="comfyui-filter-options">
                 <label class="comfyui-filter-checkbox">
-                  <input type="checkbox" x-model="showSeedsOnly" @change="applyFieldFilter()">
+                  <input type="radio" name="fieldTypeFilter" :checked="showAllFields" @change="setFilterMode('all')">
+                  All Fields
+                </label>
+                <label class="comfyui-filter-checkbox">
+                  <input type="radio" name="fieldTypeFilter" :checked="showSeedsOnly" @change="setFilterMode('seeds')">
                   Seeds only
                 </label>
                 <label class="comfyui-filter-checkbox">
-                  <input type="checkbox" x-model="showTextFieldsOnly" @change="applyFieldFilter()">
+                  <input type="radio" name="fieldTypeFilter" :checked="showTextFieldsOnly" @change="setFilterMode('text')">
                   Text/Prompts only
+                </label>
+                <label class="comfyui-filter-checkbox">
+                  <input type="radio" name="fieldTypeFilter" :checked="showParametersOnly" @change="setFilterMode('parameters')">
+                  Parameters only
                 </label>
               </div>
             </div>

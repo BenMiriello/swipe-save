@@ -12,52 +12,20 @@ window.comfyUIBentoML.fieldExtractor = {
   async extractFields(workflowData) {
     if (!workflowData) return { seeds: [], textFields: [], parameters: [] };
 
-    // Load ComfyUI object_info to get real dropdown options
-    try {
-      await window.comfyUIBentoML.schemaService.getComfyUIObjectInfo();
-      console.log('Loaded ComfyUI object_info for field type detection');
-    } catch (error) {
-      console.warn('Failed to load ComfyUI object_info:', error);
-      // Continue without it - will fall back to other detection methods
-    }
-
-    // Use improved pattern-based extractors that understand workflow structure
-    const seeds = window.comfyUIBentoML.extractors.seedExtractor.extractSeeds(workflowData);
-    const textFields = window.comfyUIBentoML.extractors.textExtractor.extractTextFields(workflowData);
+    // Use BentoML schema service for field detection
+    const seeds = await window.comfyUIBentoML.schemaService.identifySeedFields(workflowData);
+    const textFields = await window.comfyUIBentoML.schemaService.identifyTextFields(workflowData);
+    
+    // Extract parameters using pattern extractor (no schema needed for basic parameter detection)
     const parameters = window.comfyUIBentoML.extractors.parameterExtractor.extractParameters(workflowData);
 
-    // Enhance all fields with type detection
-    const enhancedSeeds = await this.enhanceFieldsWithTypes(seeds);
-    const enhancedTextFields = await this.enhanceFieldsWithTypes(textFields);  
-    const enhancedParameters = await this.enhanceFieldsWithTypes(parameters);
-
     return {
-      seeds: enhancedSeeds,
-      textFields: enhancedTextFields,
-      parameters: enhancedParameters
+      seeds: seeds,
+      textFields: textFields,
+      parameters: parameters
     };
   },
 
-  /**
-   * Enhance fields with type detection for UI rendering
-   */
-  async enhanceFieldsWithTypes(fields) {
-    if (!fields || !Array.isArray(fields)) return fields;
-    
-    return fields.map(field => {
-      // Use schema service to detect field type
-      const fieldType = window.comfyUIBentoML.schemaService.inferTypeFromComfyInput(
-        null, // inputDef - not available here
-        field.fieldName,
-        field.nodeType
-      );
-      
-      return {
-        ...field,
-        fieldType: fieldType
-      };
-    });
-  },
 
   /**
    * Generate summary of extracted fields
