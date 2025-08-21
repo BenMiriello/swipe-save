@@ -61,10 +61,22 @@ const TemplateLoader = {
 
 // Auto-load templates when DOM is ready to maintain existing functionality
 document.addEventListener('DOMContentLoaded', async () => {
-  await TemplateLoader.loadComfyUIModal();
-  await TemplateLoader.loadOptionsDropdown();
+  console.log('DOM Content Loaded - starting template loading');
   
-  // Dispatch event to signal templates are loaded
-  document.dispatchEvent(new CustomEvent('templatesLoaded'));
-  console.log('Templates loaded and ready');
+  // Add a small delay to ensure DOM is fully ready
+  setTimeout(async () => {
+    try {
+      const comfyResult = await TemplateLoader.loadComfyUIModal();
+      console.log('ComfyUI modal loaded:', comfyResult);
+      
+      const optionsResult = await TemplateLoader.loadOptionsDropdown();
+      console.log('Options dropdown loaded:', optionsResult);
+      
+      // Dispatch event to signal templates are loaded
+      document.dispatchEvent(new CustomEvent('templatesLoaded'));
+      console.log('Templates loaded and ready');
+    } catch (error) {
+      console.error('Template loading failed:', error);
+    }
+  }, 100);
 });

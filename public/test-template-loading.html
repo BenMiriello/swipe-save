@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Template Loading Test</title>
+</head>
+<body>
+    <h1>Template Loading Test</h1>
+    <div id="options-dropdown-container"></div>
+    
+    <script>
+        async function testTemplateLoading() {
+            try {
+                const response = await fetch('templates/components/options-dropdown.html');
+                const html = await response.text();
+                document.getElementById('options-dropdown-container').innerHTML = html;
+                console.log('Template loaded successfully');
+                console.log('Content:', html.substring(0, 100));
+            } catch (error) {
+                console.error('Template loading failed:', error);
+            }
+        }
+        
+        document.addEventListener('DOMContentLoaded', testTemplateLoading);
+    </script>
+</body>
+</html>
