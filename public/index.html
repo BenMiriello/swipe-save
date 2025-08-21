@@ -106,95 +106,9 @@
   <!-- External libraries -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/hammer.js/2.0.8/hammer.min.js"></script>
 
-  <!-- Application scripts (using regular scripts instead of modules) -->
-  <script src="js/error-handler.js"></script>
-  <script src="js/config.js"></script>
-  
-  <!-- Pagination System -->
-  <script src="js/pagination/pagination-state.js"></script>
-  <script src="js/components/list-pagination.js"></script>
-
-  <!-- API modules (load before main api-service coordinator) -->
-  <script src="js/api/file-api.js"></script>
-  <script src="js/api/config-api.js"></script>
-  <script src="js/api/copy-api.js"></script>
-  <script src="js/api-service.js"></script>
-  
-
-  <!-- ComfyUI Module (Alpine.js) - Load in dependency order -->
-  <!-- Services layer -->
-  <script src="js/comfyui/services/api-client.js"></script>
-  <script src="js/comfyui/services/storage-service.js"></script>
-
-  <!-- Utils layer - removed missing files causing 404 errors -->
-
-  <!-- State stores -->
-  <script src="js/comfyui/stores/workflow-store.js"></script>
-  <script src="js/comfyui/stores/destination-store.js"></script>
-  <script src="js/comfyui/stores/queue-store.js"></script>
-  
-  <!-- App State Stores -->
-  <script src="js/stores/app-state-store.js"></script>
-  <script src="js/stores/list-view-store.js"></script>
-
-  <!-- UI components -->
-  <script src="js/comfyui/components/section-components.js"></script>
-  <script src="js/comfyui/components/modal-components.js"></script>
-  <script src="js/comfyui/components/panel-components.js"></script>
-
-  <!-- Main initialization (load last before Alpine.js) -->
-  <script src="js/comfyui/index.js"></script>
-  <script src="js/comfyui/test.js"></script>
-
-  <!-- BentoML Integration (load after comfyui, before Alpine.js) -->
-  <script src="js/comfyui-bentoml/services/bentoml-client.js"></script>
-  <script src="js/comfyui-bentoml/services/schema-service.js"></script>
-  <script src="js/comfyui-bentoml/adapters/ui-adapter.js"></script>
-  <script src="js/comfyui-bentoml/extractors/seed-extractor.js"></script>
-  <script src="js/comfyui-bentoml/extractors/text-extractor.js"></script>
-  <script src="js/comfyui-bentoml/extractors/parameter-extractor.js"></script>
-  <script src="js/comfyui-bentoml/extractors/field-extractor.js"></script>
-  <script src="js/comfyui-bentoml/editors/field-editor.js"></script>
-  <script src="js/comfyui-bentoml/index.js"></script>
-  <script src="js/comfyui-bentoml/test-only.js"></script>
+  <!-- Application Module Loader -->
+  <script src="js/core/module-loader.js"></script>
 
   <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.1/dist/cdn.min.js" defer></script>
-
-  <!-- Directory Management API and UI -->
-  <script src="js/api/directory-api.js"></script>
-  <script src="js/ui/directory-manager.js"></script>
-
-  <!-- Shared Components -->
-  <script src="js/shared/toolbar.js"></script>
-  <script src="js/shared/navigation.js"></script>
-  <script src="js/shared/queue-viewer.js"></script>
-
-  <!-- Core controllers need to load before routing system -->
-  <!-- UI modules (load before main ui-manager coordinator) -->
-  <script src="js/ui/core-ui-manager.js"></script>
-  <script src="js/ui/element-factory.js"></script>
-  <script src="js/ui/modal-manager.js"></script>
-  <script src="js/ui/directory-browser.js"></script>
-  <script src="js/ui/sort-manager.js"></script>
-  <script src="js/ui-manager.js"></script>
-
-  <!-- Controller modules -->
-  <script src="js/controllers/state-manager.js"></script>
-  <script src="js/controllers/action-controller.js"></script>
-  <script src="js/controllers/navigation-controller.js"></script>
-
-  <script src="js/interaction-handler.js"></script>
-  <script src="js/app-controller.js"></script>
-
-  <!-- Alpine.js List View Components -->
-  <script src="js/simple-list-view.js"></script>
-  <script src="js/alpine-list-view.js"></script>
-  
-  <!-- Navigation and View Routing -->
-  <script src="js/navigation/navigation-functions.js"></script>
-  <script src="js/navigation/view-router.js"></script>
-  
-  <!-- UI Components -->
-  <script src="js/components/ui/collapsible-section.js"></script>
 </body>
 </html>
