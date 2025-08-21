@@ -330,6 +330,7 @@
   margin-bottom: 20px;
 }
 
+
 /* Ensure bottom controls are hidden when list view is active */
 .alpine-list-view ~ .bottom-controls,
 body:has(.alpine-list-view) .bottom-controls {

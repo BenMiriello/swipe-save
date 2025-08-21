@@ -45,6 +45,16 @@ h1 {
   margin-right:10px;
 }
 
+.nav-buttons-container {
+  position: absolute;
+  right: -80px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  gap: 8px;
+  z-index: 10;
+}
+
 .icon-button {
   font-size: 1.5rem;
   background: none;
