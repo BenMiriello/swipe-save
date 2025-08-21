@@ -52,13 +52,8 @@ const AppInit = {
         }
       };
 
-      // Wait for templates to be loaded before initializing
-      document.addEventListener('templatesLoaded', initializeListView);
-      
-      // Fallback
-      document.addEventListener('DOMContentLoaded', () => {
-        setTimeout(initializeListView, 1500);
-      });
+      // Initialize list view after DOM is ready
+      document.addEventListener('DOMContentLoaded', initializeListView);
     } else {
       // Single view mode
       const initializeSingleView = () => {
@@ -68,13 +63,8 @@ const AppInit = {
         }
       };
 
-      // Wait for templates to be loaded before initializing
-      document.addEventListener('templatesLoaded', initializeSingleView);
-      
-      // Fallback
-      document.addEventListener('DOMContentLoaded', () => {
-        setTimeout(initializeSingleView, 1500);
-      });
+      // Initialize single view after DOM is ready
+      document.addEventListener('DOMContentLoaded', initializeSingleView);
     }
   },
 

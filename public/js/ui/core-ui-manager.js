@@ -36,13 +36,8 @@ const coreUIManager = {
       this.elements.optionsContainer = optionsContainer;
       this.elements.optionsButton = optionsContainer.querySelector('.btn-options');
       this.elements.optionsDropdown = optionsContainer.querySelector('.options-dropdown');
-      console.log('Options menu initialized successfully');
     } else {
-      console.log('Options container not found, will retry after templates load');
-      // Wait for templates to load and retry
-      document.addEventListener('templatesLoaded', () => {
-        this.initializeOptionsMenu();
-      });
+      console.error('Options container not found - this should not happen with inline options');
     }
   },
 
@@ -107,10 +102,7 @@ const coreUIManager = {
    */
   setupEventHandlers(handlers) {
     if (!this.elements.optionsButton) {
-      console.log('Options button not ready, will retry after templates load');
-      document.addEventListener('templatesLoaded', () => {
-        this.setupEventHandlers(handlers);
-      });
+      console.error('Options button not found - initialization failed');
       return;
     }
 

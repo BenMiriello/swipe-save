@@ -27,18 +27,8 @@ const ViewRouter = {
         }
       };
 
-      // Wait for templates to be loaded before initializing app
-      document.addEventListener('templatesLoaded', initializeApp);
-      
-      // Fallback in case templates are already loaded
-      document.addEventListener('DOMContentLoaded', () => {
-        setTimeout(() => {
-          if (!window.app) {
-            console.log('Templates may already be loaded, initializing app');
-            initializeApp();
-          }
-        }, 100);
-      });
+      // Initialize app after DOM is ready
+      document.addEventListener('DOMContentLoaded', initializeApp);
     }
   },
 
