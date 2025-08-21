@@ -14,11 +14,14 @@ const fileApi = {
       const fileLimit = await window.appConfig.getFileLimit();
       const queryParams = new URLSearchParams({
         sortBy: sortParams.sortBy,
-        order: sortParams.order,
-        limit: fileLimit.toString()
+        order: sortParams.order
       });
+      
+      if (fileLimit !== null && fileLimit !== undefined) {
+        queryParams.set('limit', fileLimit.toString());
+      }
 
-      const response = await fetch(`${window.appConfig.getApiUrl()}/api/files?${queryParams.toString()}`, {
+      const response = await fetch(`${window.appConfig.getApiUrl()}/api/media?${queryParams.toString()}`, {
         headers: {
           'Cache-Control': 'no-cache',
           'Pragma': 'no-cache'
@@ -29,7 +32,8 @@ const fileApi = {
         throw new Error(`Failed to fetch media files: ${response.status}`);
       }
 
-      const data = await response.json();
+      const response_data = await response.json();
+      const data = response_data.items;
 
       // Add original filesystem path (not just browser URL) to each file
       // This is for display purposes in the UI

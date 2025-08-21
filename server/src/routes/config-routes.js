@@ -13,7 +13,7 @@ router.get('/api/config', (req, res) => {
       destinationDir: currentConfig.destinationDir,
       useDatestampFolders: currentConfig.useDatestampFolders,
       enableLogging: currentConfig.enableLogging !== false,
-      fileLimit: currentConfig.fileLimit || 2500,
+      fileLimit: currentConfig.fileLimit || null,
       pagination: {
         itemsPerPage: currentConfig.itemsPerPage || 100,
         maxCachedPages: currentConfig.maxCachedPages || 5,
@@ -43,7 +43,7 @@ router.post('/api/config', (req, res) => {
     if (destinationDir) updateData.destinationDir = path.resolve(destinationDir);
     if (useDatestampFolders !== undefined) updateData.useDatestampFolders = Boolean(useDatestampFolders);
     if (enableLogging !== undefined) updateData.enableLogging = Boolean(enableLogging);
-    if (fileLimit !== undefined) updateData.fileLimit = parseInt(fileLimit) || 2500;
+    if (fileLimit !== undefined) updateData.fileLimit = fileLimit ? parseInt(fileLimit) : null;
     
     // Handle pagination settings
     if (pagination) {

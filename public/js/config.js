@@ -15,7 +15,7 @@ const config = {
         this._serverConfig = await window.configApi.getConfig();
       } catch (error) {
         console.error('Failed to load server config, using defaults:', error);
-        this._serverConfig = { fileLimit: 2500 }; // fallback
+        this._serverConfig = { fileLimit: null }; // fallback
       }
     }
     return this._serverConfig;
@@ -24,7 +24,7 @@ const config = {
   // Get file limit from server config
   async getFileLimit() {
     const serverConfig = await this.getServerConfig();
-    return serverConfig.fileLimit || 2500;
+    return serverConfig.fileLimit;
   },
 
   // Action types

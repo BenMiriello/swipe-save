@@ -21,7 +21,7 @@ class MultiDirectoryScanner {
   /**
    * Scan single directory (flat, no recursion)
    */
-  scanSingleDirectory(dirPath, sourceInfo, limit = config.FILE_LIMIT) {
+  scanSingleDirectory(dirPath, sourceInfo, limit = config.FILE_LIMIT || Number.MAX_SAFE_INTEGER) {
     const files = [];
     
     try {

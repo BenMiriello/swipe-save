@@ -56,7 +56,7 @@ const defaultConfig = {
   useDatestampFolders: true, // Default to current behavior (using datestamp folders)
   
   // File Loading Configuration
-  fileLimit: 2500, // Default number of files to load at once
+  fileLimit: null, // No limit on files to load
   
   // Pagination Configuration
   itemsPerPage: 100, // Default items per page in list view
@@ -146,7 +146,7 @@ const config = {
 
   // File Loading Configuration
   get FILE_LIMIT() {
-    return currentConfig.fileLimit || 2500;
+    return currentConfig.fileLimit || null;
   },
 
   // Config management

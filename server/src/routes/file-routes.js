@@ -86,7 +86,7 @@ function createBackupCopy(sourcePath, filename, fileDate, actionType, saveCopies
 }
 
 // Flat directory scanning - no recursion for performance
-function scanDirectoryFlat(dirPath, limit = config.FILE_LIMIT) {
+function scanDirectoryFlat(dirPath, limit = config.FILE_LIMIT || Number.MAX_SAFE_INTEGER) {
   const mediaFiles = [];
   
   try {
@@ -213,7 +213,7 @@ router.get('/api/media', async (req, res) => {
         dirConfig.sources.directories, 
         dirConfig.sources.groups, 
         groupIds, 
-        { limit: 99999, sortBy, order } // Get all files first
+        { limit: Number.MAX_SAFE_INTEGER, sortBy, order } // Get all files first
       );
     } else if (directories) {
       // Get files from specific directories
@@ -221,13 +221,13 @@ router.get('/api/media', async (req, res) => {
       allFiles = scanner.getFilesFromDirectories(
         dirConfig.sources.directories, 
         directoryIds, 
-        { limit: 99999, sortBy, order } // Get all files first
+        { limit: Number.MAX_SAFE_INTEGER, sortBy, order } // Get all files first
       );
     } else {
       // Default: get files from all enabled directories
       const enabledDirectories = dirService.getEnabledDirectories(dirConfig);
       console.log(`Found ${enabledDirectories.length} enabled directories:`, enabledDirectories.map(d => d.path));
-      allFiles = scanner.scanEnabledDirectories(enabledDirectories, { limit: 99999, sortBy, order });
+      allFiles = scanner.scanEnabledDirectories(enabledDirectories, { limit: null, sortBy, order });
     }
     
     // Apply pagination
@@ -277,7 +277,7 @@ router.get('/api/media', async (req, res) => {
 // Legacy API endpoint for backward compatibility
 router.get('/api/files', async (req, res) => {
   try {
-    const limit = parseInt(req.query.limit) || config.FILE_LIMIT;
+    const limit = req.query.limit ? parseInt(req.query.limit) : (config.FILE_LIMIT || null);
     const offset = parseInt(req.query.offset) || 0;
     const sortBy = req.query.sortBy || 'date';
     const order = req.query.order || 'desc';
@@ -301,14 +301,14 @@ router.get('/api/files', async (req, res) => {
         dirConfig.sources.directories, 
         dirConfig.sources.groups, 
         groupIds, 
-        { limit: 99999, sortBy, order }
+        { limit: Number.MAX_SAFE_INTEGER, sortBy, order }
       );
     } else if (directories) {
       const directoryIds = directories.split(',');
       allFiles = scanner.getFilesFromDirectories(
         dirConfig.sources.directories, 
         directoryIds, 
-        { limit: 99999, sortBy, order }
+        { limit: Number.MAX_SAFE_INTEGER, sortBy, order }
       );
     } else {
       const enabledDirectories = dirService.getEnabledDirectories(dirConfig);

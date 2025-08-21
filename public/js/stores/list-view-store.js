@@ -21,6 +21,24 @@ document.addEventListener('alpine:init', () => {
     
     // Methods
     init() {
+      console.log('List store init called');
+      // Restore selected file index from localStorage
+      const storedIndex = localStorage.getItem('selectedFileIndex');
+      console.log('Stored selectedFileIndex:', storedIndex);
+      if (storedIndex !== null) {
+        this.selectedFileIndex = parseInt(storedIndex, 10);
+        console.log('Set selectedFileIndex to:', this.selectedFileIndex);
+      }
+      
+      // Check if we should navigate to a specific page (from back button)
+      const targetPage = localStorage.getItem('targetListPage');
+      console.log('Stored targetListPage:', targetPage);
+      if (targetPage !== null) {
+        this.currentPage = parseInt(targetPage, 10);
+        console.log('Set currentPage to:', this.currentPage);
+        localStorage.removeItem('targetListPage'); // Clear it after using
+      }
+      
       this.loadFiles();
     },
     
@@ -74,6 +92,13 @@ document.addEventListener('alpine:init', () => {
     },
     
     previousPage() {
+      // Prevent rapid double calls with simple debounce
+      const now = Date.now();
+      if (this._lastPrevPage && (now - this._lastPrevPage) < 500) {
+        return;
+      }
+      this._lastPrevPage = now;
+      
       if (this.currentPage > 1) {
         this.currentPage--;
         this.updateDisplayedFiles();
@@ -81,6 +106,13 @@ document.addEventListener('alpine:init', () => {
     },
     
     nextPage() {
+      // Prevent rapid double calls with simple debounce
+      const now = Date.now();
+      if (this._lastNextPage && (now - this._lastNextPage) < 500) {
+        return;
+      }
+      this._lastNextPage = now;
+      
       if (this.currentPage < this.totalPages) {
         this.currentPage++;
         this.updateDisplayedFiles();
@@ -126,8 +158,19 @@ document.addEventListener('alpine:init', () => {
     },
     
     selectFile(fileIndex) {
+      // Prevent rapid double calls with simple debounce
+      const now = Date.now();
+      if (this._lastSelectFile && (now - this._lastSelectFile) < 500) {
+        return;
+      }
+      this._lastSelectFile = now;
+      
       const globalIndex = (this.currentPage - 1) * this.itemsPerPage + fileIndex;
       this.selectedFileIndex = globalIndex;
+      
+      // Store in localStorage for persistence across page loads
+      localStorage.setItem('selectedFileIndex', globalIndex.toString());
+      console.log('Stored selectedFileIndex in localStorage:', globalIndex);
       
       // Get the file object
       const file = this.allFiles[globalIndex];
@@ -141,10 +184,15 @@ document.addEventListener('alpine:init', () => {
       // Exit list view and switch to existing single view  
       this.exitListView();
       
-      // Navigate using file path instead of fragile index
-      const encodedPath = encodeURIComponent(file.path);
-      window.location.href = `/view?file=${encodedPath}`;
+      // Navigate using full path for unique identification AND pass the index
+      const encodedPath = encodeURIComponent(file.fullPath);
+      if (window.router && window.router.navigate) {
+        window.router.navigate(`/view?file=${encodedPath}&index=${globalIndex}`);
+      } else {
+        window.location.href = `/view?file=${encodedPath}&index=${globalIndex}`;
+      }
     },
+
     
     exitListView() {
       this.isActive = false;

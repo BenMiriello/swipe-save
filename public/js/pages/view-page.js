@@ -30,6 +30,11 @@ class ViewPage {
     // Initialize single view functionality
     await this.initializeSingleView(filePath, index);
     
+    // Update navigation buttons for single view
+    if (window.navigationController) {
+      window.navigationController.updateNavigationButtons();
+    }
+    
     this.isInitialized = true;
   }
   
@@ -81,17 +86,28 @@ class ViewPage {
       
       // Find the file index by path if not provided
       let fileIndex = index;
-      if (index === 0 || !this.filesData[index] || this.filesData[index].path !== filePath) {
-        fileIndex = this.filesData.findIndex(file => file.path === filePath);
+      alert(`Initial: index=${index}, filePath=${filePath}`);
+      
+      if (index === 0 || !this.filesData[index] || this.filesData[index].fullPath !== filePath) {
+        alert(`Doing path lookup because: index===0? ${index === 0}, no file at index? ${!this.filesData[index]}, path mismatch? ${this.filesData[index] ? this.filesData[index].fullPath !== filePath : 'no file'}`);
+        
+        // Try to find by fullPath first, then fallback to path for backward compatibility
+        fileIndex = this.filesData.findIndex(file => file.fullPath === filePath || file.path === filePath);
+        alert(`Found fileIndex via path lookup: ${fileIndex}`);
         if (fileIndex === -1) {
           console.error('File not found:', filePath);
           window.router.navigate('/list');
           return;
         }
+      } else {
+        alert(`Using provided index: ${index}`);
       }
       
       // Navigate to the file
       window.stateManager.goToIndex(fileIndex);
+      
+      // Store the file index for cross-view navigation
+      localStorage.setItem('selectedFileIndex', fileIndex.toString());
       
       // Display the file
       if (window.navigationController) {
