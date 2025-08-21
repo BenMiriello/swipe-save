@@ -42,6 +42,12 @@ const AppInit = {
     // Initialize list view for direct URL access
     if (window.location.pathname === '/list' || window.location.pathname === '/') {
       const initializeListView = () => {
+        // Initialize UI managers for options dropdown functionality
+        if (window.uiManager) {
+          window.uiManager.initializeUI();
+          window.uiManager.setupEventHandlers({});
+        }
+        
         if (window.simpleListView && !window.simpleListView.isActive) {
           window.simpleListView.init();
         }

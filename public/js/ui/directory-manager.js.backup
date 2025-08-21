@@ -82,10 +82,9 @@ const directoryManager = {
    * Show first run popup
    */
   showFirstRunPopup() {
-    // Create overlay that can be clicked to dismiss
-    const overlay = document.createElement('div');
-    overlay.className = 'first-run-popup';
-    overlay.innerHTML = `
+    const popup = document.createElement('div');
+    popup.className = 'first-run-popup';
+    popup.innerHTML = `
       <div class="first-run-content">
         <h3>Setup Tips</h3>
         <p>You can change source and destination folders and group source folders in the Options menu below.</p>
@@ -95,40 +94,23 @@ const directoryManager = {
       </div>
     `;
 
-    // Style the overlay
-    overlay.style.cssText = `
+    // Add styles
+    popup.style.cssText = `
       position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background: rgba(0,0,0,0.4);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      z-index: 10000;
-    `;
-
-    // Style the content
-    const content = overlay.querySelector('.first-run-content');
-    content.style.cssText = `
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
       background: white;
       border: 2px solid #4f46e5;
       border-radius: 12px;
       padding: 20px;
       box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+      z-index: 10000;
       max-width: 400px;
       text-align: center;
     `;
 
-    // Allow clicking outside to dismiss
-    overlay.addEventListener('click', (e) => {
-      if (e.target === overlay) {
-        this.dismissFirstRunPopup(e);
-      }
-    });
-
-    document.body.appendChild(overlay);
+    document.body.appendChild(popup);
 
     // Mark first run as complete
     this.markFirstRunComplete();
@@ -176,6 +158,193 @@ const directoryManager = {
     }
   },
 
+  /**
+   * Create modal elements for directory management
+   */
+  createModalElements() {
+    this.createDirectoryPickerModal();
+    this.createGroupManagerModal();
+    this.createDestinationPickerModal();
+  },
+
+  /**
+   * Create directory picker modal
+   */
+  createDirectoryPickerModal() {
+    const modal = document.createElement('div');
+    modal.id = 'directoryPickerModal';
+    modal.className = 'modal-overlay';
+    modal.style.display = 'none';
+    
+    modal.innerHTML = `
+      <div class="modal-content">
+        <div class="modal-header">
+          <h2>Add Source Directory</h2>
+          <button class="modal-close" onclick="directoryManager.closeDirectoryPicker()">×</button>
+        </div>
+        
+        <div class="modal-body">
+          <div class="directory-browser">
+            <input type="text" id="sourceBrowserPath" placeholder="Directory path..." class="path-input">
+            <div id="sourceBrowserList" class="directory-list">
+              <div class="loading">Loading directories...</div>
+            </div>
+          </div>
+          
+          <div class="directory-options">
+            <label>
+              Directory Name:
+              <input type="text" id="directoryName" placeholder="Auto-generated" class="name-input">
+            </label>
+            
+            <div class="group-selection">
+              <label>
+                <input type="radio" name="groupOption" value="new" checked>
+                Create new group: <input type="text" id="newGroupName" placeholder="Group name">
+              </label>
+              <label>
+                <input type="radio" name="groupOption" value="existing">
+                Add to existing: <select id="existingGroups"></select>
+              </label>
+            </div>
+            
+            <label>
+              <input type="checkbox" id="enableImmediately" checked>
+              Enable immediately
+            </label>
+          </div>
+        </div>
+        
+        <div class="modal-footer">
+          <button class="btn btn-secondary" onclick="directoryManager.closeDirectoryPicker()">Cancel</button>
+          <button class="btn btn-primary" onclick="directoryManager.addSelectedDirectory()">Add Directory</button>
+        </div>
+      </div>
+    `;
+
+    document.body.appendChild(modal);
+    this.modalElements.directoryPicker = modal;
+  },
+
+  /**
+   * Create group manager modal
+   */
+  createGroupManagerModal() {
+    const modal = document.createElement('div');
+    modal.id = 'groupManagerModal';
+    modal.className = 'modal-overlay';
+    modal.style.display = 'none';
+    
+    modal.innerHTML = `
+      <div class="modal-content">
+        <div class="modal-header">
+          <h2>Create Directory Group</h2>
+          <button class="modal-close" onclick="directoryManager.closeGroupManager()">×</button>
+        </div>
+        
+        <div class="modal-body">
+          <label>
+            Group Name:
+            <input type="text" id="groupName" placeholder="Group name" class="name-input">
+          </label>
+          
+          <div class="color-picker">
+            <label>Color:</label>
+            <div class="color-options">
+              <button class="color-btn" data-color="#4f46e5" style="background: #4f46e5"></button>
+              <button class="color-btn" data-color="#059669" style="background: #059669"></button>
+              <button class="color-btn" data-color="#dc2626" style="background: #dc2626"></button>
+              <button class="color-btn" data-color="#d97706" style="background: #d97706"></button>
+              <button class="color-btn" data-color="#7c3aed" style="background: #7c3aed"></button>
+            </div>
+          </div>
+          
+          <div class="directory-selection">
+            <label>Select Directories:</label>
+            <div id="availableDirectories" class="directory-checkboxes">
+              <!-- Populated dynamically -->
+            </div>
+          </div>
+        </div>
+        
+        <div class="modal-footer">
+          <button class="btn btn-secondary" onclick="directoryManager.closeGroupManager()">Cancel</button>
+          <button class="btn btn-primary" onclick="directoryManager.createGroup()">Create Group</button>
+        </div>
+      </div>
+    `;
+
+    document.body.appendChild(modal);
+    this.modalElements.groupManager = modal;
+  },
+
+  /**
+   * Create destination picker modal
+   */
+  createDestinationPickerModal() {
+    const modal = document.createElement('div');
+    modal.id = 'destinationPickerModal';
+    modal.className = 'modal-overlay';
+    modal.style.display = 'none';
+    
+    modal.innerHTML = `
+      <div class="modal-content">
+        <div class="modal-header">
+          <h2>Change Destination</h2>
+          <button class="modal-close" onclick="directoryManager.closeDestinationPicker()">×</button>
+        </div>
+        
+        <div class="modal-body">
+          <div class="current-destination">
+            <strong>Current:</strong> <span id="currentDestPath"></span>
+          </div>
+          
+          <div class="recent-destinations">
+            <h4>Recent Destinations</h4>
+            <div id="recentDestList" class="destination-list">
+              <!-- Populated dynamically -->
+            </div>
+          </div>
+          
+          <div class="browse-destination">
+            <button class="btn btn-secondary" onclick="directoryManager.browseForDestination()">
+              Browse for new folder...
+            </button>
+          </div>
+        </div>
+        
+        <div class="modal-footer">
+          <button class="btn btn-secondary" onclick="directoryManager.closeDestinationPicker()">Cancel</button>
+        </div>
+      </div>
+    `;
+
+    document.body.appendChild(modal);
+    this.modalElements.destinationPicker = modal;
+  },
+
+  /**
+   * Setup event handlers
+   */
+  setupEventHandlers() {
+    // Add directory button
+    const addDirBtn = document.getElementById('addDirectoryBtn');
+    if (addDirBtn) {
+      addDirBtn.addEventListener('click', () => this.openDirectoryPicker());
+    }
+
+    // Create group button  
+    const addGroupBtn = document.getElementById('addGroupBtn');
+    if (addGroupBtn) {
+      addGroupBtn.addEventListener('click', () => this.openGroupManager());
+    }
+
+    // Change destination button
+    const changeDestBtn = document.getElementById('changeDestinationBtn');
+    if (changeDestBtn) {
+      changeDestBtn.addEventListener('click', () => this.openDestinationPicker());
+    }
+  },
 
   /**
    * Open directory picker
