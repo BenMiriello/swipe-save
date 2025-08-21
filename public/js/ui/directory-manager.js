@@ -67,6 +67,8 @@ const directoryManager = {
     const optionsDropdown = document.querySelector('.options-dropdown');
     if (optionsDropdown) {
       optionsDropdown.classList.add('show');
+    } else {
+      console.log('Options dropdown not ready for first run experience');
     }
 
     // Show one-time popup after a brief delay

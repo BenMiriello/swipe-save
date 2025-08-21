@@ -36,8 +36,13 @@ const coreUIManager = {
       this.elements.optionsContainer = optionsContainer;
       this.elements.optionsButton = optionsContainer.querySelector('.btn-options');
       this.elements.optionsDropdown = optionsContainer.querySelector('.options-dropdown');
+      console.log('Options menu initialized successfully');
     } else {
-      console.error('Options container not found in HTML');
+      console.log('Options container not found, will retry after templates load');
+      // Wait for templates to load and retry
+      document.addEventListener('templatesLoaded', () => {
+        this.initializeOptionsMenu();
+      });
     }
   },
 
@@ -101,7 +106,13 @@ const coreUIManager = {
    * @param {Object} handlers - Object containing handler functions
    */
   setupEventHandlers(handlers) {
-    if (!this.elements.optionsButton) return;
+    if (!this.elements.optionsButton) {
+      console.log('Options button not ready, will retry after templates load');
+      document.addEventListener('templatesLoaded', () => {
+        this.setupEventHandlers(handlers);
+      });
+      return;
+    }
 
     this.elements.optionsButton.addEventListener('click', () => {
       this.toggleOptionsDropdown();
