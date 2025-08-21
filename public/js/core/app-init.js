@@ -41,27 +41,39 @@ const AppInit = {
   setupViewRouting() {
     // Initialize list view for direct URL access
     if (window.location.pathname === '/list' || window.location.pathname === '/') {
+      const initializeListView = () => {
+        if (window.simpleListView && !window.simpleListView.isActive) {
+          window.simpleListView.init();
+        }
+        // Show appropriate navigation button
+        if (window.navigationController) {
+          window.navigationController.currentView = 'list';
+          window.navigationController.updateNavigationButtons();
+        }
+      };
+
+      // Wait for templates to be loaded before initializing
+      document.addEventListener('templatesLoaded', initializeListView);
+      
+      // Fallback
       document.addEventListener('DOMContentLoaded', () => {
-        setTimeout(() => {
-          if (window.simpleListView && !window.simpleListView.isActive) {
-            window.simpleListView.init();
-          }
-          // Show appropriate navigation button
-          if (window.navigationController) {
-            window.navigationController.currentView = 'list';
-            window.navigationController.updateNavigationButtons();
-          }
-        }, 1000);
+        setTimeout(initializeListView, 1500);
       });
     } else {
       // Single view mode
+      const initializeSingleView = () => {
+        if (window.navigationController) {
+          window.navigationController.currentView = 'single';
+          window.navigationController.updateNavigationButtons();
+        }
+      };
+
+      // Wait for templates to be loaded before initializing
+      document.addEventListener('templatesLoaded', initializeSingleView);
+      
+      // Fallback
       document.addEventListener('DOMContentLoaded', () => {
-        setTimeout(() => {
-          if (window.navigationController) {
-            window.navigationController.currentView = 'single';
-            window.navigationController.updateNavigationButtons();
-          }
-        }, 1000);
+        setTimeout(initializeSingleView, 1500);
       });
     }
   },

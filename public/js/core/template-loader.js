@@ -63,4 +63,8 @@ const TemplateLoader = {
 document.addEventListener('DOMContentLoaded', async () => {
   await TemplateLoader.loadComfyUIModal();
   await TemplateLoader.loadOptionsDropdown();
+  
+  // Dispatch event to signal templates are loaded
+  document.dispatchEvent(new CustomEvent('templatesLoaded'));
+  console.log('Templates loaded and ready');
 });

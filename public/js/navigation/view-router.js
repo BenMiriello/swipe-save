@@ -10,7 +10,7 @@ const ViewRouter = {
   initializeSingleView() {
     // Only initialize for single view paths
     if (window.location.pathname !== '/' && window.location.pathname !== '/list') {
-      document.addEventListener('DOMContentLoaded', () => {
+      const initializeApp = () => {
         const app = new window.AppController();
         window.app = app;
         
@@ -25,6 +25,19 @@ const ViewRouter = {
         } else {
           app.initWithoutAutoLoad();
         }
+      };
+
+      // Wait for templates to be loaded before initializing app
+      document.addEventListener('templatesLoaded', initializeApp);
+      
+      // Fallback in case templates are already loaded
+      document.addEventListener('DOMContentLoaded', () => {
+        setTimeout(() => {
+          if (!window.app) {
+            console.log('Templates may already be loaded, initializing app');
+            initializeApp();
+          }
+        }, 100);
       });
     }
   },
