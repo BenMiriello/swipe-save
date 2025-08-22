@@ -50,7 +50,8 @@ window.comfyUIBentoML.extractors.parameterExtractor = {
           nodeType: node.type,
           fieldName: fieldName,
           currentValue: node.widgets_values[idx],
-          source: 'gui'
+          source: 'gui',
+          fieldType: this.getFieldType(fieldName, node.widgets_values[idx])
         });
       }
     }
@@ -72,7 +73,8 @@ window.comfyUIBentoML.extractors.parameterExtractor = {
           nodeType: node.class_type,
           fieldName: inputName,
           currentValue: value,
-          source: 'api'
+          source: 'api',
+          fieldType: this.getFieldType(inputName, value)
         });
       }
     }
@@ -236,6 +238,53 @@ window.comfyUIBentoML.extractors.parameterExtractor = {
     };
     
     return displayNames[fieldName] || fieldName;
+  },
+
+  /**
+   * Get field type (determines input widget type)
+   */
+  getFieldType(fieldName, value) {
+    // Dropdown fields with static options
+    const dropdownFields = {
+      'sampler_name': {
+        type: 'dropdown',
+        options: ['euler', 'euler_ancestral', 'heun', 'dpm_2', 'dpm_2_ancestral', 'lms', 'dpm_fast', 'dpm_adaptive', 'dpmpp_2s_ancestral', 'dpmpp_sde', 'dpmpp_sde_gpu', 'dpmpp_2m', 'dpmpp_2m_sde', 'dpmpp_2m_sde_gpu', 'dpmpp_3m_sde', 'dpmpp_3m_sde_gpu', 'ddpm', 'lcm']
+      },
+      'scheduler': {
+        type: 'dropdown',
+        options: ['normal', 'karras', 'exponential', 'sgm_uniform', 'simple', 'ddim_uniform']
+      },
+      'format': {
+        type: 'dropdown', 
+        options: ['image/webp', 'image/jpeg', 'image/png']
+      },
+      'pix_fmt': {
+        type: 'dropdown',
+        options: ['yuv420p', 'yuv444p', 'rgb24']
+      },
+      'operation': {
+        type: 'dropdown',
+        options: ['+', '-', '*', '/', '//', '%', '**']
+      }
+    };
+
+    // Model/file fields that should be dropdowns (options loaded dynamically)
+    const fileFields = ['ckpt_name', 'vae_name', 'lora_name', 'unet_name', 'clip_name', 'model_name'];
+    
+    if (dropdownFields[fieldName]) {
+      return dropdownFields[fieldName];
+    }
+    
+    if (fileFields.includes(fieldName)) {
+      return {
+        type: 'dropdown',
+        options: [], // Will be populated dynamically
+        isFileField: true
+      };
+    }
+
+    // Default to text input
+    return { type: 'text' };
   },
 
   /**
