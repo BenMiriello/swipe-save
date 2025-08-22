@@ -111,7 +111,11 @@ const TextFieldDetector = {
           const knownParams = ['sampler_name', 'scheduler', 'format', 'pix_fmt', 'operation', 'ckpt_name', 'vae_name', 'lora_name', 'unet_name', 'clip_name', 'model_name', 'filename_prefix'];
           const isKnownParam = knownParams.includes(key);
           
-          if (!isConfig && !isKnownParam) {
+          // Skip metadata fields that shouldn't be editable
+          const metadataFields = ['title', 'class_type', '_meta'];
+          const isMetadata = metadataFields.includes(key);
+          
+          if (!isConfig && !isKnownParam && !isMetadata) {
             // Only actual prompt fields should be prompts - be very specific
             const isActualPrompt = key.toLowerCase().includes('prompt') || 
                                   key.toLowerCase().includes('positive') || 

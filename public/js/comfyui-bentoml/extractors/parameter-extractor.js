@@ -67,13 +67,14 @@ window.comfyUIBentoML.extractors.parameterExtractor = {
     if (!node.inputs) return parameters;
 
     for (const [inputName, value] of Object.entries(node.inputs)) {
-      // Debug lora nodes specifically
-      if (node.class_type && node.class_type.toLowerCase().includes('lora')) {
-        console.log('Lora node field:', {
+      // Debug lora_name specifically  
+      if (inputName === 'lora_name') {
+        console.log('Found lora_name field - tracing rejection:', {
           nodeType: node.class_type,
           inputName,
           value,
-          isParam: this.isParameterInput(inputName, value)
+          valueType: typeof value,
+          valueLength: typeof value === 'string' ? value.length : 'N/A'
         });
       }
       
@@ -195,18 +196,31 @@ window.comfyUIBentoML.extractors.parameterExtractor = {
    * Check if API input is a parameter
    */
   isParameterInput(inputName, value) {
+    // Debug lora_name rejection
+    const isLoraName = inputName === 'lora_name';
+    
     // Skip connection arrays (node connections)
-    if (Array.isArray(value)) return false;
+    if (Array.isArray(value)) {
+      if (isLoraName) console.log('lora_name rejected: array value');
+      return false;
+    }
     
     // Skip metadata fields that shouldn't be editable
     const metadataFields = ['title', 'class_type', '_meta'];
-    if (metadataFields.includes(inputName)) return false;
+    if (metadataFields.includes(inputName)) {
+      if (isLoraName) console.log('lora_name rejected: metadata field');
+      return false;
+    }
     
     // Skip seeds (handled separately)
-    if (inputName === 'seed') return false;
+    if (inputName === 'seed') {
+      if (isLoraName) console.log('lora_name rejected: seed field');
+      return false;
+    }
     
     // Skip multiline text only (single line long text is fine)
     if (typeof value === 'string' && value.includes('\n')) {
+      if (isLoraName) console.log('lora_name rejected: multiline text');
       return false;
     }
     
@@ -214,6 +228,7 @@ window.comfyUIBentoML.extractors.parameterExtractor = {
     if (typeof value === 'string') {
       const promptPatterns = ['prompt', 'text', 'description', 'positive', 'negative'];
       if (promptPatterns.some(pattern => inputName.toLowerCase().includes(pattern))) {
+        if (isLoraName) console.log('lora_name rejected: prompt pattern match');
         return false;
       }
       
@@ -226,13 +241,15 @@ window.comfyUIBentoML.extractors.parameterExtractor = {
       const looksLikeModelField = modelFieldPatterns.some(pattern => inputName.toLowerCase().includes(pattern));
       
       if (!isKnownParam && !looksLikeModelField) {
+        if (isLoraName) console.log('lora_name rejected: not known param and not model field');
         return false;
       }
     }
     
     // Include numeric/boolean config parameters and known string parameters
-    return typeof value === 'number' || typeof value === 'boolean' || 
-           (typeof value === 'string' && value.length <= 50);
+    const result = typeof value === 'number' || typeof value === 'boolean' || typeof value === 'string';
+    if (isLoraName) console.log('lora_name final result:', result, 'value type:', typeof value);
+    return result;
   },
 
   /**
