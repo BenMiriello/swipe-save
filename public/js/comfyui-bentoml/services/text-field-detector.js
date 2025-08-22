@@ -91,6 +91,20 @@ const TextFieldDetector = {
   },
 
   /**
+   * Check if value looks like an image file
+   */
+  looksLikeImageFile(value) {
+    if (typeof value !== 'string') return false;
+    
+    // Check for common image file extensions
+    const imageExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp', '.tiff', '.svg'];
+    const lowerValue = value.toLowerCase();
+    
+    // Check if the string ends with an image extension
+    return imageExtensions.some(ext => lowerValue.endsWith(ext));
+  },
+
+  /**
    * Fallback text field detection (when schema unavailable)
    */
   fallbackTextFieldDetection(workflowData) {
@@ -115,7 +129,10 @@ const TextFieldDetector = {
           const metadataFields = ['title', 'class_type', '_meta'];
           const isMetadata = metadataFields.includes(key);
           
-          if (!isConfig && !isKnownParam && !isMetadata) {
+          // Skip image files (handled as filesystem dropdowns by parameter extractor)
+          const isImageFile = this.looksLikeImageFile(value);
+          
+          if (!isConfig && !isKnownParam && !isMetadata && !isImageFile) {
             // Only actual prompt fields should be prompts - be very specific
             const isActualPrompt = key.toLowerCase().includes('prompt') || 
                                   key.toLowerCase().includes('positive') || 
