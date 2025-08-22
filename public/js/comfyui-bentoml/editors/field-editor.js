@@ -87,7 +87,6 @@ window.comfyUIBentoML.fieldEditor = {
         
         // Prevent duplicate requests
         if (this.currentFile === file.name) {
-          console.log('File already loaded, skipping:', file.name);
           return;
         }
         
