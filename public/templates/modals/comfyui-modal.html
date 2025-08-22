@@ -233,16 +233,16 @@
                   All Fields
                 </label>
                 <label class="comfyui-filter-checkbox">
-                  <input type="radio" name="fieldTypeFilter" :checked="showSeedsOnly" @change="setFilterMode('seeds')">
-                  Seeds
-                </label>
-                <label class="comfyui-filter-checkbox">
                   <input type="radio" name="fieldTypeFilter" :checked="showPromptsOnly" @change="setFilterMode('prompts')">
                   Prompts
                 </label>
                 <label class="comfyui-filter-checkbox">
                   <input type="radio" name="fieldTypeFilter" :checked="showTextFieldsOnly" @change="setFilterMode('text')">
                   Text
+                </label>
+                <label class="comfyui-filter-checkbox">
+                  <input type="radio" name="fieldTypeFilter" :checked="showSeedsOnly" @change="setFilterMode('seeds')">
+                  Seeds
                 </label>
                 <label class="comfyui-filter-checkbox">
                   <input type="radio" name="fieldTypeFilter" :checked="showModelsOnly" @change="setFilterMode('models')">
@@ -260,47 +260,6 @@
                   <input type="radio" name="fieldTypeFilter" :checked="showTogglesOnly" @change="setFilterMode('toggles')">
                   Toggles
                 </label>
-              </div>
-            </div>
-          </template>
-
-          <!-- Seeds Section -->
-          <template x-if="getFilteredSeeds().length > 0">
-            <div class="comfyui-field-group">
-              <h4 class="comfyui-field-group-title">Seeds (<span x-text="getFilteredSeeds().length"></span>)</h4>
-              <div class="comfyui-field-list">
-                <template x-for="seedField in getFilteredSeeds()" :key="`${seedField.nodeId}-${seedField.fieldName}`">
-                  <div class="comfyui-field-item" :class="getFieldClasses(seedField)">
-                    <div class="comfyui-field-header">
-                      <span class="comfyui-field-label" x-text="getDisplayName(seedField)"></span>
-                      <span class="comfyui-field-node" x-text="`Node ${seedField.nodeId} (${seedField.nodeType})`"></span>
-                    </div>
-                    <div class="comfyui-field-value">
-                      <template x-if="isEditing(seedField)">
-                        <div class="comfyui-field-edit">
-                          <input type="number" 
-                                 class="comfy-input comfyui-field-input"
-                                 x-model="tempValue"
-                                 @keyup.enter="saveEdit(seedField)"
-                                 @keyup.escape="cancelEditing()">
-                          <div class="comfyui-field-actions">
-                            <button class="comfy-btn comfy-btn-success comfy-btn-xs" @click="saveEdit(seedField)">Save</button>
-                            <button class="comfy-btn comfy-btn-secondary comfy-btn-xs" @click="cancelEditing()">Cancel</button>
-                          </div>
-                        </div>
-                      </template>
-                      <template x-if="!isEditing(seedField)">
-                        <div class="comfyui-field-display">
-                          <span class="comfyui-field-text" x-text="seedField.currentValue"></span>
-                          <div class="comfyui-field-actions">
-                            <button class="comfy-btn comfy-btn-primary comfy-btn-xs" @click="startEditing(seedField)">Edit</button>
-                            <button class="comfy-btn comfy-btn-primary comfy-btn-xs" @click="randomizeSeed(seedField)">Random</button>
-                          </div>
-                        </div>
-                      </template>
-                    </div>
-                  </div>
-                </template>
               </div>
             </div>
           </template>
@@ -375,6 +334,47 @@
                           <span class="comfyui-field-text" x-text="textField.currentValue"></span>
                           <div class="comfyui-field-actions">
                             <button class="comfy-btn comfy-btn-primary comfy-btn-xs" @click="startEditing(textField)">Edit</button>
+                          </div>
+                        </div>
+                      </template>
+                    </div>
+                  </div>
+                </template>
+              </div>
+            </div>
+          </template>
+
+          <!-- Seeds Section -->
+          <template x-if="getFilteredSeeds().length > 0">
+            <div class="comfyui-field-group">
+              <h4 class="comfyui-field-group-title">Seeds (<span x-text="getFilteredSeeds().length"></span>)</h4>
+              <div class="comfyui-field-list">
+                <template x-for="seedField in getFilteredSeeds()" :key="`${seedField.nodeId}-${seedField.fieldName}`">
+                  <div class="comfyui-field-item" :class="getFieldClasses(seedField)">
+                    <div class="comfyui-field-header">
+                      <span class="comfyui-field-label" x-text="getDisplayName(seedField)"></span>
+                      <span class="comfyui-field-node" x-text="`Node ${seedField.nodeId} (${seedField.nodeType})`"></span>
+                    </div>
+                    <div class="comfyui-field-value">
+                      <template x-if="isEditing(seedField)">
+                        <div class="comfyui-field-edit">
+                          <input type="number" 
+                                 class="comfy-input comfyui-field-input"
+                                 x-model="tempValue"
+                                 @keyup.enter="saveEdit(seedField)"
+                                 @keyup.escape="cancelEditing()">
+                          <div class="comfyui-field-actions">
+                            <button class="comfy-btn comfy-btn-success comfy-btn-xs" @click="saveEdit(seedField)">Save</button>
+                            <button class="comfy-btn comfy-btn-secondary comfy-btn-xs" @click="cancelEditing()">Cancel</button>
+                          </div>
+                        </div>
+                      </template>
+                      <template x-if="!isEditing(seedField)">
+                        <div class="comfyui-field-display">
+                          <span class="comfyui-field-text" x-text="seedField.currentValue"></span>
+                          <div class="comfyui-field-actions">
+                            <button class="comfy-btn comfy-btn-primary comfy-btn-xs" @click="startEditing(seedField)">Edit</button>
+                            <button class="comfy-btn comfy-btn-primary comfy-btn-xs" @click="randomizeSeed(seedField)">Random</button>
                           </div>
                         </div>
                       </template>

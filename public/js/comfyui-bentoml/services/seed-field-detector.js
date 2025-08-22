@@ -25,7 +25,7 @@ const SeedFieldDetector = {
       for (const [key, value] of Object.entries(obj)) {
         const fullPath = currentPath ? `${currentPath}.${key}` : key;
         
-        if (key === 'seed' && typeof value === 'number') {
+        if ((key === 'seed' || key === 'noise_seed') && typeof value === 'number') {
           // Extract nodeId from path if it follows ComfyUI format
           const pathParts = fullPath.split('.');
           const nodeId = pathParts[0] || 'unknown';
