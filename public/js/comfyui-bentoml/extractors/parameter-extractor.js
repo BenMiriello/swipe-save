@@ -188,6 +188,10 @@ window.comfyUIBentoML.extractors.parameterExtractor = {
     // Skip connection arrays (node connections)
     if (Array.isArray(value)) return false;
     
+    // Skip metadata fields that shouldn't be editable
+    const metadataFields = ['title', 'class_type', '_meta'];
+    if (metadataFields.includes(inputName)) return false;
+    
     // Skip seeds (handled separately)
     if (inputName === 'seed') return false;
     
