@@ -107,7 +107,11 @@ const TextFieldDetector = {
           const isConfig = window.comfyUIBentoML?.SchemaUtils?.isConfigurationValue ? 
                           window.comfyUIBentoML.SchemaUtils.isConfigurationValue(key, value) : false;
           
-          if (!isConfig) {
+          // Skip known parameter fields (handled by parameter extractor)
+          const knownParams = ['sampler_name', 'scheduler', 'format', 'pix_fmt', 'operation', 'ckpt_name', 'vae_name', 'lora_name', 'unet_name', 'clip_name', 'model_name', 'filename_prefix'];
+          const isKnownParam = knownParams.includes(key);
+          
+          if (!isConfig && !isKnownParam) {
             // Only actual prompt fields should be prompts - be very specific
             const isActualPrompt = key.toLowerCase().includes('prompt') || 
                                   key.toLowerCase().includes('positive') || 

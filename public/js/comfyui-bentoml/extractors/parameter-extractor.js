@@ -187,9 +187,15 @@ window.comfyUIBentoML.extractors.parameterExtractor = {
       if (promptPatterns.some(pattern => inputName.toLowerCase().includes(pattern))) {
         return false;
       }
+      
+      // Only include known parameter/config fields for strings to avoid duplicates
+      const knownParams = ['sampler_name', 'scheduler', 'format', 'pix_fmt', 'operation', 'ckpt_name', 'vae_name', 'lora_name', 'unet_name', 'clip_name', 'model_name', 'filename_prefix'];
+      if (!knownParams.includes(inputName)) {
+        return false;
+      }
     }
     
-    // Include numeric/boolean config parameters and short strings
+    // Include numeric/boolean config parameters and known string parameters
     return typeof value === 'number' || typeof value === 'boolean' || 
            (typeof value === 'string' && value.length <= 50);
   },
