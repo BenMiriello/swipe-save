@@ -234,15 +234,19 @@
                 </label>
                 <label class="comfyui-filter-checkbox">
                   <input type="radio" name="fieldTypeFilter" :checked="showSeedsOnly" @change="setFilterMode('seeds')">
-                  Seeds only
+                  Seeds
+                </label>
+                <label class="comfyui-filter-checkbox">
+                  <input type="radio" name="fieldTypeFilter" :checked="showPromptsOnly" @change="setFilterMode('prompts')">
+                  Prompts
                 </label>
                 <label class="comfyui-filter-checkbox">
                   <input type="radio" name="fieldTypeFilter" :checked="showTextFieldsOnly" @change="setFilterMode('text')">
-                  Text/Prompts only
+                  Text
                 </label>
                 <label class="comfyui-filter-checkbox">
                   <input type="radio" name="fieldTypeFilter" :checked="showParametersOnly" @change="setFilterMode('parameters')">
-                  Parameters only
+                  Parameters
                 </label>
               </div>
             </div>
@@ -280,6 +284,48 @@
                             <button class="comfy-btn comfy-btn-primary comfy-btn-xs" @click="startEditing(seedField)">Edit</button>
                             <button class="comfy-btn comfy-btn-primary comfy-btn-xs" @click="randomizeSeed(seedField)">Random</button>
                           </div>
+                        </div>
+                      </template>
+                    </div>
+                  </div>
+                </template>
+              </div>
+            </div>
+          </template>
+
+          <!-- Prompts Section -->
+          <template x-if="getFilteredPrompts().length > 0">
+            <div class="comfyui-field-group">
+              <h4 class="comfyui-field-group-title">Prompts (<span x-text="getFilteredPrompts().length"></span>)</h4>
+              <div class="comfyui-field-list">
+                <template x-for="promptField in getFilteredPrompts()" :key="`${promptField.nodeId}-${promptField.fieldName}`">
+                  <div class="comfyui-field-item comfyui-prompt-field" :class="getFieldClasses(promptField)">
+                    <div class="comfyui-field-header">
+                      <span class="comfyui-field-label" x-text="getDisplayName(promptField)"></span>
+                      <span class="comfyui-field-node" x-text="`Node ${promptField.nodeId} (${promptField.nodeType})`"></span>
+                    </div>
+                    <div class="comfyui-field-value">
+                      <template x-if="isEditing(promptField)">
+                        <div class="comfyui-field-edit">
+                          <textarea 
+                            class="comfyui-textarea"
+                            x-model="tempValue"
+                            @keydown.escape="cancelEdit()"
+                            @keydown.ctrl.enter="saveField(promptField)"
+                            @keydown.meta.enter="saveField(promptField)"
+                            rows="6"></textarea>
+                          <div class="comfyui-field-buttons">
+                            <button class="comfy-btn comfy-btn-primary comfy-btn-small" @click="saveField(promptField)">Save</button>
+                            <button class="comfy-btn comfy-btn-secondary comfy-btn-small" @click="cancelEdit()">Cancel</button>
+                          </div>
+                        </div>
+                      </template>
+                      <template x-if="!isEditing(promptField)">
+                        <div class="comfyui-field-display">
+                          <div class="comfyui-field-preview" @click="startEdit(promptField)">
+                            <div class="comfyui-field-content" x-text="formatFieldValue(promptField)"></div>
+                          </div>
+                          <button class="comfyui-field-edit-btn" @click="startEdit(promptField)" title="Edit field">✎</button>
                         </div>
                       </template>
                     </div>

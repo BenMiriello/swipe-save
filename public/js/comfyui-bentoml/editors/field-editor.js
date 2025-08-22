@@ -23,10 +23,12 @@ window.comfyUIBentoML.fieldEditor = {
       // Filtering
       fieldFilter: '',
       showSeedsOnly: false,
+      showPromptsOnly: false,
       showTextFieldsOnly: false,
       showParametersOnly: false,
       showAllFields: true,
       filteredSeeds: [],
+      filteredPrompts: [],
       filteredTextFields: [],
       filteredParameters: [],
       
@@ -115,6 +117,7 @@ window.comfyUIBentoML.fieldEditor = {
       setFilterMode(mode) {
         // Reset all toggles first
         this.showSeedsOnly = false;
+        this.showPromptsOnly = false;
         this.showTextFieldsOnly = false;
         this.showParametersOnly = false;
         this.showAllFields = false;
@@ -123,6 +126,9 @@ window.comfyUIBentoML.fieldEditor = {
         switch(mode) {
           case 'seeds':
             this.showSeedsOnly = true;
+            break;
+          case 'prompts':
+            this.showPromptsOnly = true;
             break;
           case 'text':
             this.showTextFieldsOnly = true;
@@ -163,29 +169,18 @@ window.comfyUIBentoML.fieldEditor = {
         
         // When "Show All" is enabled, show everything but still apply filter
         if (this.showAllFields) {
-          this.filteredSeeds = this.fields.seeds.filter(matchesFilter);
-          this.filteredTextFields = this.fields.textFields.filter(matchesFilter);
-          this.filteredParameters = this.fields.parameters.filter(matchesFilter);
+          this.filteredSeeds = (this.fields?.seeds || []).filter(matchesFilter);
+          this.filteredPrompts = (this.fields?.prompts || []).filter(matchesFilter);
+          this.filteredTextFields = (this.fields?.textFields || []).filter(matchesFilter);
+          this.filteredParameters = (this.fields?.parameters || []).filter(matchesFilter);
           return;
         }
         
-        // Filter seeds
-        this.filteredSeeds = this.fields.seeds.filter(field => {
-          if (this.showTextFieldsOnly || this.showParametersOnly) return false;
-          return matchesFilter(field);
-        });
-        
-        // Filter text fields
-        this.filteredTextFields = this.fields.textFields.filter(field => {
-          if (this.showSeedsOnly || this.showParametersOnly) return false;
-          return matchesFilter(field);
-        });
-        
-        // Filter parameters
-        this.filteredParameters = this.fields.parameters.filter(field => {
-          if (this.showSeedsOnly || this.showTextFieldsOnly) return false;
-          return matchesFilter(field);
-        });
+        // Filter based on selected mode only
+        this.filteredSeeds = this.showSeedsOnly ? (this.fields?.seeds || []).filter(matchesFilter) : [];
+        this.filteredPrompts = this.showPromptsOnly ? (this.fields?.prompts || []).filter(matchesFilter) : [];
+        this.filteredTextFields = this.showTextFieldsOnly ? (this.fields?.textFields || []).filter(matchesFilter) : [];
+        this.filteredParameters = this.showParametersOnly ? (this.fields?.parameters || []).filter(matchesFilter) : [];
       },
 
 
@@ -249,30 +244,32 @@ window.comfyUIBentoML.fieldEditor = {
        * Get filtered seeds
        */
       getFilteredSeeds() {
-        if (this.showTextFieldsOnly || this.showParametersOnly) return [];
-        if (this.showAllFields) return this.fields?.seeds || [];
-        if (this.showSeedsOnly) return this.filteredSeeds;
-        return this.fields?.seeds || [];
+        if (this.showAllFields) return this.filteredSeeds;
+        return this.showSeedsOnly ? this.filteredSeeds : [];
+      },
+      
+      /**
+       * Get filtered prompts
+       */
+      getFilteredPrompts() {
+        if (this.showAllFields) return this.filteredPrompts;
+        return this.showPromptsOnly ? this.filteredPrompts : [];
       },
       
       /**
        * Get filtered text fields
        */
       getFilteredTextFields() {
-        if (this.showSeedsOnly || this.showParametersOnly) return [];
-        if (this.showAllFields) return this.fields?.textFields || [];
-        if (this.showTextFieldsOnly) return this.filteredTextFields;
-        return this.fields?.textFields || [];
+        if (this.showAllFields) return this.filteredTextFields;
+        return this.showTextFieldsOnly ? this.filteredTextFields : [];
       },
 
       /**
        * Get filtered parameters
        */
       getFilteredParameters() {
-        if (this.showSeedsOnly || this.showTextFieldsOnly) return [];
-        if (this.showAllFields) return this.fields?.parameters || [];
-        if (this.showParametersOnly) return this.filteredParameters;
-        return this.fields?.parameters || [];
+        if (this.showAllFields) return this.filteredParameters;
+        return this.showParametersOnly ? this.filteredParameters : [];
       },
 
       /**

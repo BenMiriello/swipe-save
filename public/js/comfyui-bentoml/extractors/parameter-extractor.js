@@ -173,9 +173,23 @@ window.comfyUIBentoML.extractors.parameterExtractor = {
     // Skip connection arrays (node connections)
     if (Array.isArray(value)) return false;
     
-    // Include ALL non-connection values (numbers, strings, booleans)
-    // This captures all editable parameters instead of a restrictive whitelist
-    return typeof value === 'number' || typeof value === 'string' || typeof value === 'boolean';
+    // Skip seeds (handled separately)
+    if (inputName === 'seed') return false;
+    
+    // Skip long text (handled by text field detector)
+    if (typeof value === 'string' && (value.length > 50 || value.includes('\n'))) return false;
+    
+    // Skip prompt-like field names (handled by text field detector)
+    if (typeof value === 'string') {
+      const promptPatterns = ['prompt', 'text', 'description', 'positive', 'negative'];
+      if (promptPatterns.some(pattern => inputName.toLowerCase().includes(pattern))) {
+        return false;
+      }
+    }
+    
+    // Include numeric/boolean config parameters and short strings
+    return typeof value === 'number' || typeof value === 'boolean' || 
+           (typeof value === 'string' && value.length <= 50);
   },
 
   /**
