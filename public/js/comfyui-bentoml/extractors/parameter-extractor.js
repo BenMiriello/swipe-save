@@ -205,12 +205,9 @@ window.comfyUIBentoML.extractors.parameterExtractor = {
     // Skip seeds (handled separately)
     if (inputName === 'seed') return false;
     
-    // Skip long text (handled by text field detector) - but allow known model fields
-    if (typeof value === 'string' && (value.length > 50 || value.includes('\n'))) {
-      const modelFields = ['ckpt_name', 'vae_name', 'lora_name', 'unet_name', 'clip_name', 'model_name'];
-      if (!modelFields.includes(inputName)) {
-        return false;
-      }
+    // Skip multiline text only (single line long text is fine)
+    if (typeof value === 'string' && value.includes('\n')) {
+      return false;
     }
     
     // Skip prompt-like field names (handled by text field detector)
