@@ -315,10 +315,11 @@
                         </div>
                       </template>
                       <template x-if="!isEditing(promptField)">
-                        <div class="comfyui-field-preview">
-                          <div class="comfyui-field-content" 
-                               @click="startEditing(promptField)"
-                               x-text="formatFieldValue(promptField)"></div>
+                        <div class="comfyui-field-display">
+                          <span class="comfyui-field-text" x-text="promptField.currentValue"></span>
+                          <div class="comfyui-field-actions">
+                            <button class="comfy-btn comfy-btn-primary comfy-btn-xs" @click="startEditing(promptField)">Edit</button>
+                          </div>
                         </div>
                       </template>
                     </div>
@@ -355,7 +356,7 @@
                       </template>
                       <template x-if="!isEditing(textField)">
                         <div class="comfyui-field-display">
-                          <span class="comfyui-field-text" x-text="getDisplayValue(textField)"></span>
+                          <span class="comfyui-field-text" x-text="textField.currentValue"></span>
                           <div class="comfyui-field-actions">
                             <button class="comfy-btn comfy-btn-primary comfy-btn-xs" @click="startEditing(textField)">Edit</button>
                           </div>

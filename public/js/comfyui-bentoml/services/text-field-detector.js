@@ -113,7 +113,9 @@ const TextFieldDetector = {
                                   key.toLowerCase().includes('positive') || 
                                   key.toLowerCase().includes('negative');
             
-            const isPrompt = isActualPrompt && (value.length > 20 || value.includes('\n'));
+            // Prompt fields should be prompts regardless of length if they contain prompt keywords
+            // But non-prompt fields need significant content to be prompts
+            const isPrompt = isActualPrompt || (value.length > 50 && value.includes(' '));
             
             // Extract nodeId from path if it follows ComfyUI format
             const pathParts = fullPath.split('.');
