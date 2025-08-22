@@ -108,14 +108,12 @@ const TextFieldDetector = {
                           window.comfyUIBentoML.SchemaUtils.isConfigurationValue(key, value) : false;
           
           if (!isConfig) {
-            // Check if it's prompt-like
-            const isPromptName = window.comfyUIBentoML?.SchemaUtils?.isPromptLikeName ? 
-                                window.comfyUIBentoML.SchemaUtils.isPromptLikeName(key) : 
-                                key.toLowerCase().includes('prompt') || key.toLowerCase().includes('text');
+            // Only actual prompt fields should be prompts - be very specific
+            const isActualPrompt = key.toLowerCase().includes('prompt') || 
+                                  key.toLowerCase().includes('positive') || 
+                                  key.toLowerCase().includes('negative');
             
-            const isPrompt = isPromptName || 
-                            value.length > 50 || // Long text likely to be prompt
-                            value.includes('\n'); // Multi-line text
+            const isPrompt = isActualPrompt && (value.length > 20 || value.includes('\n'));
             
             // Extract nodeId from path if it follows ComfyUI format
             const pathParts = fullPath.split('.');

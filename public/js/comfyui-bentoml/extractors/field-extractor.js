@@ -10,12 +10,11 @@ window.comfyUIBentoML.fieldExtractor = {
    * Extract all editable fields from a workflow using improved pattern detection
    */
   async extractFields(workflowData) {
-    if (!workflowData) return { seeds: [], prompts: [], textFields: [], parameters: [] };
+    if (!workflowData) return { seeds: [], prompts: [], textFields: [] };
 
     // Extract different field types
     const seeds = await window.comfyUIBentoML.schemaService.identifySeedFields(workflowData);
     const allTextFields = await window.comfyUIBentoML.schemaService.identifyTextFields(workflowData);
-    const parameters = window.comfyUIBentoML.extractors.parameterExtractor.extractParameters(workflowData);
 
     // Separate prompts from regular text fields
     const prompts = allTextFields.filter(field => field.isPrompt);
@@ -24,8 +23,7 @@ window.comfyUIBentoML.fieldExtractor = {
     return {
       seeds: seeds,
       prompts: prompts,
-      textFields: textFields,
-      parameters: parameters
+      textFields: textFields
     };
   },
 
@@ -38,12 +36,10 @@ window.comfyUIBentoML.fieldExtractor = {
       totalSeeds: fields.seeds.length,
       totalPrompts: fields.prompts.length,
       totalTextFields: fields.textFields.length,
-      totalParameters: fields.parameters.length,
       uniqueNodeTypes: [...new Set([
         ...fields.seeds.map(f => f.nodeType),
         ...fields.prompts.map(f => f.nodeType),
-        ...fields.textFields.map(f => f.nodeType),
-        ...fields.parameters.map(f => f.nodeType)
+        ...fields.textFields.map(f => f.nodeType)
       ])]
     };
   },
