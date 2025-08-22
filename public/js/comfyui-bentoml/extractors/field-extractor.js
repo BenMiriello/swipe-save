@@ -10,7 +10,7 @@ window.comfyUIBentoML.fieldExtractor = {
    * Extract all editable fields from a workflow using improved pattern detection
    */
   async extractFields(workflowData) {
-    if (!workflowData) return { seeds: [], prompts: [], textFields: [], parameters: [] };
+    if (!workflowData) return { seeds: [], prompts: [], textFields: [], dropdowns: [], numbers: [], toggles: [] };
 
     try {
       // Extract different field types
@@ -22,17 +22,24 @@ window.comfyUIBentoML.fieldExtractor = {
       const prompts = allTextFields.filter(field => field.isPrompt);
       const textFields = allTextFields.filter(field => !field.isPrompt);
 
+      // Categorize parameters by UI type
+      const dropdowns = parameters.filter(field => field.fieldType && field.fieldType.type === 'dropdown');
+      const numbers = parameters.filter(field => field.fieldType && field.fieldType.type === 'number');
+      const toggles = parameters.filter(field => field.fieldType && field.fieldType.type === 'boolean');
+
       const result = {
         seeds: seeds,
         prompts: prompts,
         textFields: textFields,
-        parameters: parameters
+        dropdowns: dropdowns,
+        numbers: numbers,
+        toggles: toggles
       };
       
       return result;
     } catch (error) {
       console.error('Error in field extraction:', error);
-      return { seeds: [], prompts: [], textFields: [], parameters: [] };
+      return { seeds: [], prompts: [], textFields: [], dropdowns: [], numbers: [], toggles: [] };
     }
   },
 
@@ -45,12 +52,16 @@ window.comfyUIBentoML.fieldExtractor = {
       totalSeeds: fields.seeds.length,
       totalPrompts: fields.prompts.length,
       totalTextFields: fields.textFields.length,
-      totalParameters: fields.parameters.length,
+      totalDropdowns: fields.dropdowns.length,
+      totalNumbers: fields.numbers.length,
+      totalToggles: fields.toggles.length,
       uniqueNodeTypes: [...new Set([
         ...fields.seeds.map(f => f.nodeType),
         ...fields.prompts.map(f => f.nodeType),
         ...fields.textFields.map(f => f.nodeType),
-        ...fields.parameters.map(f => f.nodeType)
+        ...fields.dropdowns.map(f => f.nodeType),
+        ...fields.numbers.map(f => f.nodeType),
+        ...fields.toggles.map(f => f.nodeType)
       ])]
     };
   },
