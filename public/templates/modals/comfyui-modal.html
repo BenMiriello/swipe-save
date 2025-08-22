@@ -188,7 +188,7 @@
       </div>
 
       <!-- Field Editor Section -->
-      <div class="comfyui-section" x-data="window.comfyUIBentoML.fieldEditor.createComponent()">
+      <div class="comfyui-section" x-data="window.comfyUIBentoML.fieldEditorUI.createComponent()">
         <div class="comfyui-section-header" @click="toggleExpanded()">
           <span class="comfyui-section-caret" :class="{ 'expanded': isExpanded }">▶</span>
           <h3 class="comfyui-section-title">
@@ -249,8 +249,8 @@
                   Models
                 </label>
                 <label class="comfyui-filter-checkbox">
-                  <input type="radio" name="fieldTypeFilter" :checked="showDropdownsOnly" @change="setFilterMode('dropdowns')">
-                  Dropdowns
+                  <input type="radio" name="fieldTypeFilter" :checked="showOptionsOnly" @change="setFilterMode('options')">
+                  Options
                 </label>
                 <label class="comfyui-filter-checkbox">
                   <input type="radio" name="fieldTypeFilter" :checked="showNumbersOnly" @change="setFilterMode('numbers')">
@@ -265,11 +265,11 @@
           </template>
 
           <!-- Prompts Section -->
-          <template x-if="getFilteredPrompts().length > 0">
+          <template x-if="filteredPrompts.length > 0">
             <div class="comfyui-field-group">
-              <h4 class="comfyui-field-group-title">Prompts (<span x-text="getFilteredPrompts().length"></span>)</h4>
+              <h4 class="comfyui-field-group-title">Prompts (<span x-text="filteredPrompts.length"></span>)</h4>
               <div class="comfyui-field-list">
-                <template x-for="promptField in getFilteredPrompts()" :key="`${promptField.nodeId}-${promptField.fieldName}`">
+                <template x-for="promptField in filteredPrompts" :key="`${promptField.nodeId}-${promptField.fieldName}`">
                   <div class="comfyui-field-item comfyui-prompt-field" :class="getFieldClasses(promptField)">
                     <div class="comfyui-field-header">
                       <span class="comfyui-field-label" x-text="getDisplayName(promptField)"></span>
@@ -279,10 +279,11 @@
                       <template x-if="isEditing(promptField)">
                         <div class="comfyui-field-edit">
                           <textarea class="comfy-input comfyui-field-textarea"
-                                   x-model="tempValue"
+                                   :value="getTempValue()"
+                                   @input="updateTempValue($event.target.value)"
                                    @keyup.enter.ctrl="saveEdit(promptField)"
                                    @keyup.escape="cancelEditing()"
-                                   rows="6"></textarea>
+                                   :rows="getTextareaRows(promptField)"></textarea>
                           <div class="comfyui-field-actions">
                             <button class="comfy-btn comfy-btn-success comfy-btn-xs" @click="saveEdit(promptField)">Save</button>
                             <button class="comfy-btn comfy-btn-secondary comfy-btn-xs" @click="cancelEditing()">Cancel</button>
@@ -291,7 +292,7 @@
                       </template>
                       <template x-if="!isEditing(promptField)">
                         <div class="comfyui-field-display">
-                          <span class="comfyui-field-text" x-text="promptField.currentValue"></span>
+                          <span class="comfyui-field-text" x-text="getDisplayValueWithEllipsis(promptField)"></span>
                           <div class="comfyui-field-actions">
                             <button class="comfy-btn comfy-btn-primary comfy-btn-xs" @click="startEditing(promptField)">Edit</button>
                           </div>
@@ -305,11 +306,11 @@
           </template>
 
           <!-- Text Fields Section -->
-          <template x-if="getFilteredTextFields().length > 0">
+          <template x-if="filteredTextFields.length > 0">
             <div class="comfyui-field-group">
-              <h4 class="comfyui-field-group-title">Text Fields (<span x-text="getFilteredTextFields().length"></span>)</h4>
+              <h4 class="comfyui-field-group-title">Text Fields (<span x-text="filteredTextFields.length"></span>)</h4>
               <div class="comfyui-field-list">
-                <template x-for="textField in getFilteredTextFields()" :key="`${textField.nodeId}-${textField.fieldName}`">
+                <template x-for="textField in filteredTextFields" :key="`${textField.nodeId}-${textField.fieldName}`">
                   <div class="comfyui-field-item" :class="getFieldClasses(textField)">
                     <div class="comfyui-field-header">
                       <span class="comfyui-field-label" x-text="getDisplayName(textField)"></span>
@@ -319,10 +320,11 @@
                       <template x-if="isEditing(textField)">
                         <div class="comfyui-field-edit">
                           <textarea class="comfy-input comfyui-field-textarea"
-                                   x-model="tempValue"
+                                   :value="getTempValue()"
+                                   @input="updateTempValue($event.target.value)"
                                    @keyup.enter.ctrl="saveEdit(textField)"
                                    @keyup.escape="cancelEditing()"
-                                   rows="6"></textarea>
+                                   :rows="getTextareaRows(textField)"></textarea>
                           <div class="comfyui-field-actions">
                             <button class="comfy-btn comfy-btn-success comfy-btn-xs" @click="saveEdit(textField)">Save</button>
                             <button class="comfy-btn comfy-btn-secondary comfy-btn-xs" @click="cancelEditing()">Cancel</button>
@@ -331,7 +333,7 @@
                       </template>
                       <template x-if="!isEditing(textField)">
                         <div class="comfyui-field-display">
-                          <span class="comfyui-field-text" x-text="textField.currentValue"></span>
+                          <span class="comfyui-field-text" x-text="getDisplayValueWithEllipsis(textField)"></span>
                           <div class="comfyui-field-actions">
                             <button class="comfy-btn comfy-btn-primary comfy-btn-xs" @click="startEditing(textField)">Edit</button>
                           </div>
@@ -345,11 +347,11 @@
           </template>
 
           <!-- Seeds Section -->
-          <template x-if="getFilteredSeeds().length > 0">
+          <template x-if="filteredSeeds.length > 0">
             <div class="comfyui-field-group">
-              <h4 class="comfyui-field-group-title">Seeds (<span x-text="getFilteredSeeds().length"></span>)</h4>
+              <h4 class="comfyui-field-group-title">Seeds (<span x-text="filteredSeeds.length"></span>)</h4>
               <div class="comfyui-field-list">
-                <template x-for="seedField in getFilteredSeeds()" :key="`${seedField.nodeId}-${seedField.fieldName}`">
+                <template x-for="seedField in filteredSeeds" :key="`${seedField.nodeId}-${seedField.fieldName}`">
                   <div class="comfyui-field-item" :class="getFieldClasses(seedField)">
                     <div class="comfyui-field-header">
                       <span class="comfyui-field-label" x-text="getDisplayName(seedField)"></span>
@@ -360,7 +362,8 @@
                         <div class="comfyui-field-edit">
                           <input type="number" 
                                  class="comfy-input comfyui-field-input"
-                                 x-model="tempValue"
+                                 :value="getTempValue()"
+                                 @input="updateTempValue($event.target.value)"
                                  @keyup.enter="saveEdit(seedField)"
                                  @keyup.escape="cancelEditing()">
                           <div class="comfyui-field-actions">
@@ -386,11 +389,11 @@
           </template>
 
           <!-- Models Section -->
-          <template x-if="getFilteredModels().length > 0">
+          <template x-if="filteredModels.length > 0">
             <div class="comfyui-field-group">
-              <h4 class="comfyui-field-group-title">Models (<span x-text="getFilteredModels().length"></span>)</h4>
+              <h4 class="comfyui-field-group-title">Models (<span x-text="filteredModels.length"></span>)</h4>
               <div class="comfyui-field-list">
-                <template x-for="modelField in getFilteredModels()" :key="`${modelField.nodeId}-${modelField.fieldName}`">
+                <template x-for="modelField in filteredModels" :key="`${modelField.nodeId}-${modelField.fieldName}`">
                   <div class="comfyui-field-item" :class="getFieldClasses(modelField)" 
                        data-field-type="model">
                     <div class="comfyui-field-header">
@@ -418,11 +421,11 @@
                             
                             <!-- Dropdown select -->
                             <select class="comfy-input comfyui-field-dropdown" 
-                                    x-model="tempValue"
-                                    @change="handleDropdownChange(modelField, $event)">
+                                    :value="getTempValue()"
+                                    @change="updateTempValue($event.target.value)">
                               <option value="">Select model...</option>
                               <template x-for="option in getFilteredDropdownOptions(modelField)" :key="option">
-                                <option :value="option" x-text="option" :selected="option == tempValue"></option>
+                                <option :value="option" x-text="option" :selected="option == getTempValue()"></option>
                               </template>
                             </select>
                             
@@ -455,66 +458,66 @@
             </div>
           </template>
 
-          <!-- Dropdowns Section -->
-          <template x-if="getFilteredDropdowns().length > 0">
+          <!-- Options Section -->
+          <template x-if="filteredOptions.length > 0">
             <div class="comfyui-field-group">
-              <h4 class="comfyui-field-group-title">Dropdowns (<span x-text="getFilteredDropdowns().length"></span>)</h4>
+              <h4 class="comfyui-field-group-title">Options (<span x-text="filteredOptions.length"></span>)</h4>
               <div class="comfyui-field-list">
-                <template x-for="dropdownField in getFilteredDropdowns()" :key="`${dropdownField.nodeId}-${dropdownField.fieldName}`">
-                  <div class="comfyui-field-item" :class="getFieldClasses(dropdownField)" 
+                <template x-for="optionField in filteredOptions" :key="`${optionField.nodeId}-${optionField.fieldName}`">
+                  <div class="comfyui-field-item" :class="getFieldClasses(optionField)" 
                        data-field-type="dropdown">
                     <div class="comfyui-field-header">
-                      <span class="comfyui-field-label" x-text="getDisplayName(dropdownField)"></span>
-                      <span class="comfyui-field-node" x-text="`Node ${dropdownField.nodeId} (${dropdownField.nodeType})`"></span>
+                      <span class="comfyui-field-label" x-text="getDisplayName(optionField)"></span>
+                      <span class="comfyui-field-node" x-text="`Node ${optionField.nodeId} (${optionField.nodeType})`"></span>
                     </div>
                     <div class="comfyui-field-value">
-                      <template x-if="isEditing(dropdownField)">
+                      <template x-if="isEditing(optionField)">
                         <div class="comfyui-field-edit">
                           <div class="comfyui-searchable-dropdown">
                             <!-- Search input for dropdowns with many options -->
-                            <template x-if="getFieldOptions(dropdownField).length > 10">
+                            <template x-if="getFieldOptions(optionField).length > 10">
                               <div class="comfyui-dropdown-search-container">
                                 <input type="text" 
                                        class="comfy-input comfyui-dropdown-search" 
-                                       :placeholder="`Search ${getFieldOptions(dropdownField).length} options...`"
-                                       :x-model="dropdownSearchTerms[getFieldId(dropdownField)]"
-                                       @input="onDropdownSearchInput(dropdownField, $event.target.value)">
+                                       :placeholder="`Search ${getFieldOptions(optionField).length} options...`"
+                                       :x-model="dropdownSearchTerms[getFieldId(optionField)]"
+                                       @input="onDropdownSearchInput(optionField, $event.target.value)">
                                 <button class="comfyui-dropdown-search-clear" 
-                                        x-show="dropdownSearchTerms[getFieldId(dropdownField)]"
-                                        @click="clearDropdownSearch(dropdownField)"
+                                        x-show="dropdownSearchTerms[getFieldId(optionField)]"
+                                        @click="clearDropdownSearch(optionField)"
                                         title="Clear search">×</button>
                               </div>
                             </template>
                             
                             <!-- Dropdown select -->
                             <select class="comfy-input comfyui-field-dropdown" 
-                                    x-model="tempValue"
-                                    @change="handleDropdownChange(dropdownField, $event)">
+                                    :value="getTempValue()"
+                                    @change="updateTempValue($event.target.value)">
                               <option value="">Select option...</option>
-                              <template x-for="option in getFilteredDropdownOptions(dropdownField)" :key="option">
-                                <option :value="option" x-text="option" :selected="option == tempValue"></option>
+                              <template x-for="option in getFilteredDropdownOptions(optionField)" :key="option">
+                                <option :value="option" x-text="option" :selected="option == getTempValue()"></option>
                               </template>
                             </select>
                             
                             <!-- Show filtered count when searching -->
-                            <template x-if="dropdownSearchTerms[getFieldId(dropdownField)] && getFilteredDropdownOptions(dropdownField).length !== getFieldOptions(dropdownField).length">
+                            <template x-if="dropdownSearchTerms[getFieldId(optionField)] && getFilteredDropdownOptions(optionField).length !== getFieldOptions(optionField).length">
                               <div class="comfyui-dropdown-filter-info">
-                                Showing <span x-text="getFilteredDropdownOptions(dropdownField).length"></span> of <span x-text="getFieldOptions(dropdownField).length"></span> options
+                                Showing <span x-text="getFilteredDropdownOptions(optionField).length"></span> of <span x-text="getFieldOptions(optionField).length"></span> options
                               </div>
                             </template>
                           </div>
                           
                           <div class="comfyui-field-actions">
-                            <button class="comfy-btn comfy-btn-success comfy-btn-xs" @click="saveEdit(dropdownField)">Save</button>
+                            <button class="comfy-btn comfy-btn-success comfy-btn-xs" @click="saveEdit(optionField)">Save</button>
                             <button class="comfy-btn comfy-btn-secondary comfy-btn-xs" @click="cancelEditing()">Cancel</button>
                           </div>
                         </div>
                       </template>
-                      <template x-if="!isEditing(dropdownField)">
+                      <template x-if="!isEditing(optionField)">
                         <div class="comfyui-field-display">
-                          <span class="comfyui-field-text" x-text="dropdownField.currentValue"></span>
+                          <span class="comfyui-field-text" x-text="optionField.currentValue"></span>
                           <div class="comfyui-field-actions">
-                            <button class="comfy-btn comfy-btn-primary comfy-btn-xs" @click="startEditing(dropdownField)">Edit</button>
+                            <button class="comfy-btn comfy-btn-primary comfy-btn-xs" @click="startEditing(optionField)">Edit</button>
                           </div>
                         </div>
                       </template>
@@ -526,11 +529,11 @@
           </template>
 
           <!-- Numbers Section -->
-          <template x-if="getFilteredNumbers().length > 0">
+          <template x-if="filteredNumbers.length > 0">
             <div class="comfyui-field-group">
-              <h4 class="comfyui-field-group-title">Numbers (<span x-text="getFilteredNumbers().length"></span>)</h4>
+              <h4 class="comfyui-field-group-title">Numbers (<span x-text="filteredNumbers.length"></span>)</h4>
               <div class="comfyui-field-list">
-                <template x-for="numberField in getFilteredNumbers()" :key="`${numberField.nodeId}-${numberField.fieldName}`">
+                <template x-for="numberField in filteredNumbers" :key="`${numberField.nodeId}-${numberField.fieldName}`">
                   <div class="comfyui-field-item" :class="getFieldClasses(numberField)" 
                        data-field-type="number">
                     <div class="comfyui-field-header">
@@ -542,7 +545,8 @@
                         <div class="comfyui-field-edit">
                           <input type="number" 
                                  class="comfy-input comfyui-field-input"
-                                 x-model="tempValue"
+                                 :value="getTempValue()"
+                                 @input="updateTempValue($event.target.value)"
                                  @keyup.enter="saveEdit(numberField)"
                                  @keyup.escape="cancelEditing()">
                           
@@ -568,11 +572,11 @@
           </template>
 
           <!-- Toggles Section -->
-          <template x-if="getFilteredToggles().length > 0">
+          <template x-if="filteredToggles.length > 0">
             <div class="comfyui-field-group">
-              <h4 class="comfyui-field-group-title">Toggles (<span x-text="getFilteredToggles().length"></span>)</h4>
+              <h4 class="comfyui-field-group-title">Toggles (<span x-text="filteredToggles.length"></span>)</h4>
               <div class="comfyui-field-list">
-                <template x-for="toggleField in getFilteredToggles()" :key="`${toggleField.nodeId}-${toggleField.fieldName}`">
+                <template x-for="toggleField in filteredToggles" :key="`${toggleField.nodeId}-${toggleField.fieldName}`">
                   <div class="comfyui-field-item" :class="getFieldClasses(toggleField)" 
                        data-field-type="toggle">
                     <div class="comfyui-field-header">
@@ -586,8 +590,9 @@
                             <label class="comfyui-toggle-label">
                               <input type="checkbox" 
                                      class="comfy-checkbox"
-                                     x-model="tempValue">
-                              <span x-text="tempValue ? 'Enabled' : 'Disabled'"></span>
+                                     :checked="getTempValue()"
+                                     @change="updateTempValue($event.target.checked)">
+                              <span x-text="getTempValue() ? 'Enabled' : 'Disabled'"></span>
                             </label>
                           </div>
                           

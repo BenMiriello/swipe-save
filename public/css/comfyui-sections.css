@@ -266,6 +266,14 @@ div.comfyui-field-edit textarea.comfy-input.comfyui-field-textarea {
   height: auto !important;
   font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace !important;
   line-height: 1.5 !important;
+  resize: vertical !important; /* Allow user to resize height */
+}
+
+/* Ellipsis for long text display */
+.comfyui-field-text {
+  display: block;
+  word-break: break-word;
+  overflow-wrap: break-word;
 }
 
 /* Keep seeds and number inputs compact */
