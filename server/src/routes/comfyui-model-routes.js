@@ -45,7 +45,8 @@ function parseExtraModelPaths(comfyPath) {
     embeddings: path.join(comfyPath, 'models/embeddings'),
     diffusion_models: path.join(comfyPath, 'models/diffusion_models'),
     upscale_models: path.join(comfyPath, 'models/upscale_models'),
-    hypernetworks: path.join(comfyPath, 'models/hypernetworks')
+    hypernetworks: path.join(comfyPath, 'models/hypernetworks'),
+    input: path.join(comfyPath, 'input')
   };
   
   // Add default paths first

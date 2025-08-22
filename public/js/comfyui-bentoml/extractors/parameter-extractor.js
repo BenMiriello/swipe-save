@@ -199,7 +199,7 @@ window.comfyUIBentoML.extractors.parameterExtractor = {
       const isKnownParam = knownParams.includes(inputName);
       
       // For strings, only include known params OR if it looks like a model/file field
-      const modelFieldPatterns = ['_name', 'model', 'checkpoint', 'lora', 'vae', 'unet', 'clip'];
+      const modelFieldPatterns = ['_name', 'model', 'checkpoint', 'lora', 'vae', 'unet', 'clip', 'image'];
       const looksLikeModelField = modelFieldPatterns.some(pattern => inputName.toLowerCase().includes(pattern));
       
       if (!isKnownParam && !looksLikeModelField) {
@@ -301,6 +301,18 @@ window.comfyUIBentoML.extractors.parameterExtractor = {
       };
     }
 
+    // Detect image files dynamically
+    if (typeof value === 'string' && this.looksLikeImageFile(value)) {
+      return {
+        type: 'dropdown',
+        subtype: 'filesystem',
+        modelType: 'input', // Images are typically in input folder
+        options: [],
+        loaded: false,
+        fieldName
+      };
+    }
+
     // For non-dropdown fields, determine basic type
     if (typeof value === 'number') {
       return { type: 'number' };
@@ -312,6 +324,25 @@ window.comfyUIBentoML.extractors.parameterExtractor = {
 
     // Default to text input
     return { type: 'text' };
+  },
+
+  /**
+   * Check if value looks like an image file
+   */
+  looksLikeImageFile(value) {
+    if (typeof value !== 'string') return false;
+    
+    // Check for common image file extensions
+    const imageExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp', '.tiff', '.svg'];
+    const lowerValue = value.toLowerCase();
+    
+    // Check if the string ends with an image extension
+    const hasImageExtension = imageExtensions.some(ext => lowerValue.endsWith(ext));
+    
+    // Also check if it contains typical image file patterns
+    const hasImagePattern = /\.(jpg|jpeg|png|gif|bmp|webp|tiff|svg)$/i.test(value);
+    
+    return hasImageExtension || hasImagePattern;
   },
 
   /**
