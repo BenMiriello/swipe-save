@@ -12,21 +12,36 @@ window.comfyUIBentoML.fieldExtractor = {
   async extractFields(workflowData) {
     if (!workflowData) return { seeds: [], prompts: [], textFields: [], parameters: [] };
 
+    console.log('Field extraction starting...', { workflowData });
+
     // Extract different field types
-    const seeds = await window.comfyUIBentoML.schemaService.identifySeedFields(workflowData);
-    const allTextFields = await window.comfyUIBentoML.schemaService.identifyTextFields(workflowData);
-    const parameters = window.comfyUIBentoML.extractors.parameterExtractor.extractParameters(workflowData);
+    try {
+      const seeds = await window.comfyUIBentoML.schemaService.identifySeedFields(workflowData);
+      console.log('Seeds extracted:', seeds.length, seeds);
+      
+      const allTextFields = await window.comfyUIBentoML.schemaService.identifyTextFields(workflowData);
+      console.log('Text fields extracted:', allTextFields.length, allTextFields);
+      
+      const parameters = window.comfyUIBentoML.extractors.parameterExtractor.extractParameters(workflowData);
+      console.log('Parameters extracted:', parameters.length, parameters);
 
-    // Separate prompts from regular text fields
-    const prompts = allTextFields.filter(field => field.isPrompt);
-    const textFields = allTextFields.filter(field => !field.isPrompt);
+      // Separate prompts from regular text fields
+      const prompts = allTextFields.filter(field => field.isPrompt);
+      const textFields = allTextFields.filter(field => !field.isPrompt);
 
-    return {
-      seeds: seeds,
-      prompts: prompts,
-      textFields: textFields,
-      parameters: parameters
-    };
+      const result = {
+        seeds: seeds,
+        prompts: prompts,
+        textFields: textFields,
+        parameters: parameters
+      };
+      
+      console.log('Final field extraction result:', result);
+      return result;
+    } catch (error) {
+      console.error('Error in field extraction:', error);
+      return { seeds: [], prompts: [], textFields: [], parameters: [] };
+    }
   },
 
 

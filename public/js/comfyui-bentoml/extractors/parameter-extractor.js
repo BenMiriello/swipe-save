@@ -265,7 +265,7 @@ window.comfyUIBentoML.extractors.parameterExtractor = {
       }
       
       // Try to get dropdown type from schema if available
-      const fieldType = window.comfyUIBentoML.FieldTypeDetector.detectFieldType(fieldName, value, null, 'Unknown');
+      const fieldType = window.comfyUIBentoML.FieldTypeDetector.inferTypeFromBentoMLSchema(null, fieldName, 'Unknown');
       if (fieldType && fieldType.type === 'dropdown') {
         return fieldType;
       }
