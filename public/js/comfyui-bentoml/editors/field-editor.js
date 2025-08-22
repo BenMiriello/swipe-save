@@ -25,10 +25,12 @@ window.comfyUIBentoML.fieldEditor = {
       showSeedsOnly: false,
       showPromptsOnly: false,
       showTextFieldsOnly: false,
+      showParametersOnly: false,
       showAllFields: true,
       filteredSeeds: [],
       filteredPrompts: [],
       filteredTextFields: [],
+      filteredParameters: [],
       
       // Dropdown search
       dropdownSearchTerms: {}, // Key: fieldId, Value: search term
@@ -117,6 +119,7 @@ window.comfyUIBentoML.fieldEditor = {
         this.showSeedsOnly = false;
         this.showPromptsOnly = false;
         this.showTextFieldsOnly = false;
+        this.showParametersOnly = false;
         this.showAllFields = false;
         
         // Set the selected mode
@@ -129,6 +132,9 @@ window.comfyUIBentoML.fieldEditor = {
             break;
           case 'text':
             this.showTextFieldsOnly = true;
+            break;
+          case 'parameters':
+            this.showParametersOnly = true;
             break;
           case 'all':
           default:
@@ -166,6 +172,7 @@ window.comfyUIBentoML.fieldEditor = {
           this.filteredSeeds = (this.fields?.seeds || []).filter(matchesFilter);
           this.filteredPrompts = (this.fields?.prompts || []).filter(matchesFilter);
           this.filteredTextFields = (this.fields?.textFields || []).filter(matchesFilter);
+          this.filteredParameters = (this.fields?.parameters || []).filter(matchesFilter);
           return;
         }
         
@@ -173,6 +180,7 @@ window.comfyUIBentoML.fieldEditor = {
         this.filteredSeeds = this.showSeedsOnly ? (this.fields?.seeds || []).filter(matchesFilter) : [];
         this.filteredPrompts = this.showPromptsOnly ? (this.fields?.prompts || []).filter(matchesFilter) : [];
         this.filteredTextFields = this.showTextFieldsOnly ? (this.fields?.textFields || []).filter(matchesFilter) : [];
+        this.filteredParameters = this.showParametersOnly ? (this.fields?.parameters || []).filter(matchesFilter) : [];
       },
 
 
@@ -256,6 +264,13 @@ window.comfyUIBentoML.fieldEditor = {
         return this.showTextFieldsOnly ? this.filteredTextFields : [];
       },
 
+      /**
+       * Get filtered parameters
+       */
+      getFilteredParameters() {
+        if (this.showAllFields) return this.filteredParameters;
+        return this.showParametersOnly ? this.filteredParameters : [];
+      },
 
       /**
        * Toggle section expansion

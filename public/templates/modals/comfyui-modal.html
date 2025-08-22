@@ -244,6 +244,10 @@
                   <input type="radio" name="fieldTypeFilter" :checked="showTextFieldsOnly" @change="setFilterMode('text')">
                   Text
                 </label>
+                <label class="comfyui-filter-checkbox">
+                  <input type="radio" name="fieldTypeFilter" :checked="showParametersOnly" @change="setFilterMode('parameters')">
+                  Parameters
+                </label>
               </div>
             </div>
           </template>
@@ -359,6 +363,88 @@
                           <span class="comfyui-field-text" x-text="textField.currentValue"></span>
                           <div class="comfyui-field-actions">
                             <button class="comfy-btn comfy-btn-primary comfy-btn-xs" @click="startEditing(textField)">Edit</button>
+                          </div>
+                        </div>
+                      </template>
+                    </div>
+                  </div>
+                </template>
+              </div>
+            </div>
+          </template>
+
+          <!-- Parameters Section -->
+          <template x-if="getFilteredParameters().length > 0">
+            <div class="comfyui-field-group">
+              <h4 class="comfyui-field-group-title">Parameters (<span x-text="getFilteredParameters().length"></span>)</h4>
+              <div class="comfyui-field-list">
+                <template x-for="paramField in getFilteredParameters()" :key="`${paramField.nodeId}-${paramField.fieldName}`">
+                  <div class="comfyui-field-item" :class="getFieldClasses(paramField)" 
+                       :data-field-type="isDropdownField(paramField) ? 'dropdown' : 'text'">
+                    <div class="comfyui-field-header">
+                      <span class="comfyui-field-label" x-text="getDisplayName(paramField)"></span>
+                      <span class="comfyui-field-node" x-text="`Node ${paramField.nodeId} (${paramField.nodeType})`"></span>
+                    </div>
+                    <div class="comfyui-field-value">
+                      <template x-if="isEditing(paramField)">
+                        <div class="comfyui-field-edit">
+                          <!-- Dropdown for dropdown fields that should be shown -->
+                          <template x-if="shouldShowDropdown(paramField)">
+                            <div class="comfyui-searchable-dropdown">
+                              <!-- Search input for dropdowns with many options -->
+                              <template x-if="getFieldOptions(paramField).length > 10">
+                                <div class="comfyui-dropdown-search-container">
+                                  <input type="text" 
+                                         class="comfy-input comfyui-dropdown-search" 
+                                         :placeholder="`Search ${getFieldOptions(paramField).length} options...`"
+                                         :x-model="dropdownSearchTerms[getFieldId(paramField)]"
+                                         @input="onDropdownSearchInput(paramField, $event.target.value)">
+                                  <button class="comfyui-dropdown-search-clear" 
+                                          x-show="dropdownSearchTerms[getFieldId(paramField)]"
+                                          @click="clearDropdownSearch(paramField)"
+                                          title="Clear search">×</button>
+                                </div>
+                              </template>
+                              
+                              <!-- Dropdown select -->
+                              <select class="comfy-input comfyui-field-dropdown" 
+                                      x-model="tempValue"
+                                      @change="handleDropdownChange(paramField, $event)">
+                                <option value="">Select option...</option>
+                                <template x-for="option in getFilteredDropdownOptions(paramField)" :key="option">
+                                  <option :value="option" x-text="option" :selected="option == tempValue"></option>
+                                </template>
+                              </select>
+                              
+                              <!-- Show filtered count when searching -->
+                              <template x-if="dropdownSearchTerms[getFieldId(paramField)] && getFilteredDropdownOptions(paramField).length !== getFieldOptions(paramField).length">
+                                <div class="comfyui-dropdown-filter-info">
+                                  Showing <span x-text="getFilteredDropdownOptions(paramField).length"></span> of <span x-text="getFilteredParameters().length"></span> options
+                                </div>
+                              </template>
+                            </div>
+                          </template>
+                          
+                          <!-- Text input for non-dropdown fields or dropdowns without loaded options -->
+                          <template x-if="!shouldShowDropdown(paramField)">
+                            <input type="text" 
+                                   class="comfy-input comfyui-field-input"
+                                   x-model="tempValue"
+                                   @keyup.enter="saveEdit(paramField)"
+                                   @keyup.escape="cancelEditing()">
+                          </template>
+                          
+                          <div class="comfyui-field-actions">
+                            <button class="comfy-btn comfy-btn-success comfy-btn-xs" @click="saveEdit(paramField)">Save</button>
+                            <button class="comfy-btn comfy-btn-secondary comfy-btn-xs" @click="cancelEditing()">Cancel</button>
+                          </div>
+                        </div>
+                      </template>
+                      <template x-if="!isEditing(paramField)">
+                        <div class="comfyui-field-display">
+                          <span class="comfyui-field-text" x-text="paramField.currentValue"></span>
+                          <div class="comfyui-field-actions">
+                            <button class="comfy-btn comfy-btn-primary comfy-btn-xs" @click="startEditing(paramField)">Edit</button>
                           </div>
                         </div>
                       </template>
