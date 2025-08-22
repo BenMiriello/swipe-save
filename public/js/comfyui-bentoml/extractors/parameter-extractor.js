@@ -250,12 +250,34 @@ window.comfyUIBentoML.extractors.parameterExtractor = {
    * Get field type (determines input widget type)
    */
   getFieldType(fieldName, value) {
-    // Use the proper field type detector to get real options from BentoML schema
+    // First try to get dropdown options from field-type-detector for known dropdown fields
     if (window.comfyUIBentoML?.FieldTypeDetector) {
+      // Check if it's a filesystem dropdown field
+      if (window.comfyUIBentoML.FieldTypeDetector.FILESYSTEM_DROPDOWN_FIELDS[fieldName]) {
+        return {
+          type: 'dropdown',
+          subtype: 'filesystem',
+          modelType: window.comfyUIBentoML.FieldTypeDetector.FILESYSTEM_DROPDOWN_FIELDS[fieldName].path,
+          options: [],
+          loaded: false,
+          fieldName
+        };
+      }
+      
+      // Try to get dropdown type from schema if available
       const fieldType = window.comfyUIBentoML.FieldTypeDetector.detectFieldType(fieldName, value, null, 'Unknown');
-      if (fieldType && fieldType.type !== 'text') {
+      if (fieldType && fieldType.type === 'dropdown') {
         return fieldType;
       }
+    }
+
+    // For non-dropdown fields, determine basic type
+    if (typeof value === 'number') {
+      return { type: 'number' };
+    }
+    
+    if (typeof value === 'boolean') {
+      return { type: 'boolean' };
     }
 
     // Default to text input
