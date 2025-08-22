@@ -205,9 +205,15 @@ window.comfyUIBentoML.extractors.parameterExtractor = {
         return false;
       }
       
-      // Only include known parameter/config fields for strings to avoid duplicates
+      // Include known parameter/config fields and model/file fields for strings
       const knownParams = ['sampler_name', 'scheduler', 'format', 'pix_fmt', 'operation', 'ckpt_name', 'vae_name', 'lora_name', 'unet_name', 'clip_name', 'model_name', 'filename_prefix'];
-      if (!knownParams.includes(inputName)) {
+      const isKnownParam = knownParams.includes(inputName);
+      
+      // For strings, only include known params OR if it looks like a model/file field
+      const modelFieldPatterns = ['_name', 'model', 'checkpoint', 'lora', 'vae', 'unet', 'clip'];
+      const looksLikeModelField = modelFieldPatterns.some(pattern => inputName.toLowerCase().includes(pattern));
+      
+      if (!isKnownParam && !looksLikeModelField) {
         return false;
       }
     }
