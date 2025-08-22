@@ -110,124 +110,68 @@ const TextFieldDetector = {
   fallbackTextFieldDetection(workflowData) {
     const textFields = [];
     
-    // Check if it's GUI format (has nodes array) or API format (object with node IDs)
-    if (workflowData.nodes && Array.isArray(workflowData.nodes)) {
-      // GUI format
-      for (const node of workflowData.nodes) {
-        const fields = this.extractFromGUINode(node);
-        textFields.push(...fields);
-      }
-    } else {
-      // API format
-      for (const [nodeId, node] of Object.entries(workflowData)) {
-        if (node && typeof node === 'object' && node.class_type) {
-          const fields = this.extractFromAPINode(nodeId, node);
-          textFields.push(...fields);
-        }
-      }
-    }
-    
-    return textFields;
-  },
-
-  /**
-   * Extract text fields from GUI format node
-   */
-  extractFromGUINode(node) {
-    const textFields = [];
-    if (!node.widgets_values || !Array.isArray(node.widgets_values)) return textFields;
-
-    node.widgets_values.forEach((value, index) => {
-      if (typeof value === 'string' && value.length > 2) {
-        // Generate field name for widget
-        const fieldName = `widget_${index}`;
+    const searchForText = (obj, currentPath = '', nodeInfo = null) => {
+      if (typeof obj !== 'object' || obj === null) return;
+      
+      for (const [key, value] of Object.entries(obj)) {
+        const fullPath = currentPath ? `${currentPath}.${key}` : key;
         
-        if (this.shouldIncludeTextField(fieldName, value)) {
-          const isPrompt = this.isPromptField(fieldName, value);
+        if (typeof value === 'string' && value.length > 2) {
+          // Check if it's a configuration value
+          const isConfig = window.comfyUIBentoML?.SchemaUtils?.isConfigurationValue ? 
+                          window.comfyUIBentoML.SchemaUtils.isConfigurationValue(key, value) : false;
           
-          textFields.push({
-            path: `nodes.${node.id}.widgets_values.${index}`,
-            value: value,
-            currentValue: value,
-            inputName: fieldName,
-            fieldName: fieldName,
-            nodeId: node.id,
-            nodeType: node.type || 'Unknown',
-            isPrompt: isPrompt,
-            fieldType: isPrompt ? 'textarea' : 'text'
-          });
+          // Skip metadata fields that shouldn't be editable
+          const metadataFields = ['title', 'class_type', '_meta'];
+          const isMetadata = metadataFields.includes(key);
+          
+          // Skip image files (handled as filesystem dropdowns by parameter extractor)
+          const isImageFile = this.looksLikeImageFile(value);
+          
+          if (!isConfig && !isMetadata && !isImageFile) {
+            // Only actual prompt fields should be prompts - be very specific
+            const isActualPrompt = key.toLowerCase().includes('prompt') || 
+                                  key.toLowerCase().includes('positive') || 
+                                  key.toLowerCase().includes('negative');
+            
+            // Prompt fields should be prompts regardless of length if they contain prompt keywords
+            // But non-prompt fields need significant content to be prompts
+            const isPrompt = isActualPrompt || (value.length > 50 && value.includes(' '));
+            
+            // Extract nodeId from path if it follows ComfyUI format
+            const pathParts = fullPath.split('.');
+            const nodeId = pathParts[0] || 'unknown';
+            
+            // Use nodeInfo if available, otherwise extract from workflow structure
+            let nodeType = 'Unknown';
+            if (nodeInfo) {
+              nodeType = nodeInfo.class_type || nodeInfo.type || 'Unknown';
+            } else if (workflowData[nodeId] && workflowData[nodeId].class_type) {
+              nodeType = workflowData[nodeId].class_type;
+            }
+            
+            textFields.push({
+              path: fullPath,
+              value: value,
+              currentValue: value,
+              inputName: key,
+              fieldName: key,
+              nodeId: nodeId,
+              nodeType: nodeType,
+              isPrompt: isPrompt,
+              fieldType: isPrompt ? 'textarea' : 'text'
+            });
+          }
+        } else if (typeof value === 'object') {
+          // Pass node info if we're at a node level
+          const currentNodeInfo = (key.match(/^\d+$/) && value.class_type) ? value : nodeInfo;
+          searchForText(value, fullPath, currentNodeInfo);
         }
       }
-    });
+    };
 
+    searchForText(workflowData);
     return textFields;
-  },
-
-  /**
-   * Extract text fields from API format node
-   */
-  extractFromAPINode(nodeId, node) {
-    const textFields = [];
-    if (!node.inputs) return textFields;
-
-    for (const [inputName, value] of Object.entries(node.inputs)) {
-      if (typeof value === 'string' && value.length > 2) {
-        if (this.shouldIncludeTextField(inputName, value)) {
-          const isPrompt = this.isPromptField(inputName, value);
-          
-          textFields.push({
-            path: `${nodeId}.inputs.${inputName}`,
-            value: value,
-            currentValue: value,
-            inputName: inputName,
-            fieldName: inputName,
-            nodeId: nodeId,
-            nodeType: node.class_type || 'Unknown',
-            isPrompt: isPrompt,
-            fieldType: isPrompt ? 'textarea' : 'text'
-          });
-        }
-      }
-    }
-
-    return textFields;
-  },
-
-  /**
-   * Check if a text field should be included
-   */
-  shouldIncludeTextField(fieldName, value) {
-    // Check if it's a configuration value
-    const isConfig = window.comfyUIBentoML?.SchemaUtils?.isConfigurationValue ? 
-                    window.comfyUIBentoML.SchemaUtils.isConfigurationValue(fieldName, value) : false;
-    
-    // Skip known parameter fields (handled by parameter extractor)
-    const knownParams = ['sampler_name', 'scheduler', 'format', 'pix_fmt', 'operation', 'ckpt_name', 'vae_name', 'lora_name', 'unet_name', 'clip_name', 'model_name', 'filename_prefix'];
-    const isKnownParam = knownParams.includes(fieldName);
-    
-    // Skip metadata fields that shouldn't be editable
-    const metadataFields = ['title', 'class_type', '_meta'];
-    const isMetadata = metadataFields.includes(fieldName);
-    
-    // Skip image files (handled as filesystem dropdowns by parameter extractor)
-    const isImageFile = this.looksLikeImageFile(value);
-    
-    return !isConfig && !isKnownParam && !isMetadata && !isImageFile;
-  },
-
-  /**
-   * Check if a field is a prompt field
-   */
-  isPromptField(fieldName, value) {
-    // Only actual prompt fields should be prompts - be very specific
-    const isActualPrompt = fieldName.toLowerCase().includes('prompt') || 
-                          fieldName.toLowerCase().includes('positive') || 
-                          fieldName.toLowerCase().includes('negative') ||
-                          fieldName.toLowerCase().includes('text');
-    
-    // Prompt fields should be prompts regardless of length if they contain prompt keywords
-    // But non-prompt fields need significant content to be prompts
-    return isActualPrompt || (value.length > 50 && value.includes(' '));
   }
 };
 
