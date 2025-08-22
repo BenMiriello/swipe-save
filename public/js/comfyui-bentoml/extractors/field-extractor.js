@@ -1,57 +1,23 @@
 /**
  * Field Extractor Service - Main Coordinator
- * Coordinates focused extractors for different field types
+ * Now delegates to unified field detection system
  */
 
 window.comfyUIBentoML = window.comfyUIBentoML || {};
 
 window.comfyUIBentoML.fieldExtractor = {
   /**
-   * Extract all editable fields from a workflow using improved pattern detection
+   * Extract all editable fields from a workflow using unified detection system
    */
   async extractFields(workflowData) {
-    if (!workflowData) return { seeds: [], prompts: [], textFields: [], models: [], dropdowns: [], numbers: [], toggles: [] };
-
-    try {
-      // Extract different field types
-      const seeds = await window.comfyUIBentoML.schemaService.identifySeedFields(workflowData);
-      const allTextFields = await window.comfyUIBentoML.schemaService.identifyTextFields(workflowData);
-      const parameters = window.comfyUIBentoML.extractors.parameterExtractor.extractParameters(workflowData);
-
-      // Separate prompts from regular text fields
-      const prompts = allTextFields.filter(field => field.isPrompt);
-      const textFields = allTextFields.filter(field => !field.isPrompt);
-
-      // Categorize parameters by UI type
-      const allDropdowns = parameters.filter(field => field.fieldType && field.fieldType.type === 'dropdown');
-      const numbers = parameters.filter(field => field.fieldType && field.fieldType.type === 'number');
-      const toggles = parameters.filter(field => field.fieldType && field.fieldType.type === 'boolean');
-
-      // Separate model fields from other dropdowns
-      const modelFieldNames = ['ckpt_name', 'lora_name', 'vae_name', 'unet_name', 'clip_name', 'model_name'];
-      const models = allDropdowns.filter(field => 
-        modelFieldNames.includes(field.fieldName) || 
-        field.fieldName.toLowerCase().includes('model') ||
-        field.fieldName.toLowerCase().includes('checkpoint') ||
-        field.fieldName.toLowerCase().includes('lora')
-      );
-      const dropdowns = allDropdowns.filter(field => !models.some(m => m.nodeId === field.nodeId && m.fieldName === field.fieldName));
-
-      const result = {
-        seeds: seeds,
-        prompts: prompts,
-        textFields: textFields,
-        models: models,
-        dropdowns: dropdowns,
-        numbers: numbers,
-        toggles: toggles
-      };
-      
-      return result;
-    } catch (error) {
-      console.error('Error in field extraction:', error);
-      return { seeds: [], prompts: [], textFields: [], models: [], dropdowns: [], numbers: [], toggles: [] };
+    // Delegate to new unified field detector
+    if (window.comfyUIBentoML.core && window.comfyUIBentoML.core.fieldDetector) {
+      return await window.comfyUIBentoML.core.fieldDetector.extractFields(workflowData);
     }
+    
+    // Fallback to empty result if new system not loaded
+    console.warn('Unified field detector not available, returning empty result');
+    return { seeds: [], prompts: [], textFields: [], models: [], dropdowns: [], numbers: [], toggles: [] };
   },
 
 
@@ -99,30 +65,13 @@ window.comfyUIBentoML.fieldExtractor = {
    * Get field display name
    */
   getFieldDisplayName(field) {
-    const displayNames = {
-      'wildcard_text': 'Wildcard Text',
-      'populated_text': 'Populated Text',
-      'text': 'Text',
-      'seed': 'Seed',
-      'noise_seed': 'Noise Seed',
-      'steps': 'Steps',
-      'cfg': 'CFG Scale',
-      'sampler_name': 'Sampler',
-      'scheduler': 'Scheduler',
-      'denoise': 'Denoise',
-      'ckpt_name': 'Checkpoint',
-      'lora_name': 'LoRA',
-      'vae_name': 'VAE',
-      'unet_name': 'UNet Model',
-      'clip_name': 'CLIP Model',
-      'model_name': 'Model',
-      'width': 'Width',
-      'height': 'Height',
-      'batch_size': 'Batch Size'
-    };
+    // Delegate to unified field types system
+    if (window.comfyUIBentoML.core && window.comfyUIBentoML.core.fieldTypes) {
+      return window.comfyUIBentoML.core.fieldTypes.getDisplayName(field);
+    }
     
-    // Use the actual field name from the field object
+    // Fallback to basic formatting
     const fieldName = field.fieldName || field.inputName || 'Unknown Field';
-    return displayNames[fieldName] || fieldName.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+    return fieldName.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
   }
 };
