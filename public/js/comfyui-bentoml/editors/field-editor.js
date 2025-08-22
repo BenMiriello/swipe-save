@@ -38,6 +38,9 @@ window.comfyUIBentoML.fieldEditor = {
       
       // Initialize
       init() {
+        // Load ComfyUI object_info for real dropdown options
+        this.loadComfyUIObjectInfo();
+        
         // Load current file immediately if available
         if (this.$store.comfyWorkflow?.currentFile) {
           this.loadFields(this.$store.comfyWorkflow.currentFile);
@@ -56,6 +59,24 @@ window.comfyUIBentoML.fieldEditor = {
         this.$watch('fieldFilter', () => {
           this.applyFieldFilter();
         });
+      },
+
+      /**
+       * Load ComfyUI object_info for real dropdown options
+       */
+      async loadComfyUIObjectInfo() {
+        try {
+          const response = await fetch('/api/comfyui/object_info');
+          if (response.ok) {
+            const objectInfo = await response.json();
+            window.comfyUIObjectInfo = objectInfo;
+            console.log('ComfyUI object_info loaded:', Object.keys(objectInfo).length, 'nodes');
+          } else {
+            console.warn('Failed to load ComfyUI object_info:', response.status);
+          }
+        } catch (error) {
+          console.error('Error loading ComfyUI object_info:', error);
+        }
       },
 
       /**

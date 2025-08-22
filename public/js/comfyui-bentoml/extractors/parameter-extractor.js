@@ -263,39 +263,32 @@ window.comfyUIBentoML.extractors.parameterExtractor = {
    * Get field type (determines input widget type)
    */
   getFieldType(fieldName, value, nodeType) {
-    // Node-specific dropdown options (real options from ComfyUI)
-    const nodeSpecificDropdowns = {
-      'VHS_VideoCombine': {
-        'format': ['image/gif', 'image/webp', 'video/webm', 'video/mp4', 'video/h264-mp4', 'video/h265-mp4']
+    // Get real dropdown options from ComfyUI object_info if available
+    if (window.comfyUIObjectInfo && nodeType && fieldName) {
+      const nodeInfo = window.comfyUIObjectInfo[nodeType];
+      if (nodeInfo && nodeInfo.input && nodeInfo.input.required && nodeInfo.input.required[fieldName]) {
+        const fieldDef = nodeInfo.input.required[fieldName];
+        
+        // ComfyUI COMBO format: [["option1", "option2"]] 
+        if (Array.isArray(fieldDef) && fieldDef.length > 0 && Array.isArray(fieldDef[0])) {
+          return {
+            type: 'dropdown',
+            subtype: 'combo',
+            options: fieldDef[0], // Real ComfyUI options
+            fieldName
+          };
+        }
+        
+        // New COMBO format: ["COMBO", {"options": [...]}]
+        if (fieldDef[0] === "COMBO" && fieldDef[1]?.options) {
+          return {
+            type: 'dropdown',
+            subtype: 'combo',
+            options: fieldDef[1].options, // Real ComfyUI options
+            fieldName
+          };
+        }
       }
-    };
-
-    // Generic dropdown fields with real options
-    const genericDropdownFields = {
-      'sampler_name': ['euler', 'euler_ancestral', 'heun', 'dpm_2', 'dpm_2_ancestral', 'lms', 'dpm_fast', 'dpm_adaptive', 'dpmpp_2s_ancestral', 'dpmpp_sde', 'dpmpp_sde_gpu', 'dpmpp_2m', 'dpmpp_2m_sde', 'dpmpp_2m_sde_gpu', 'dpmpp_3m_sde', 'dpmpp_3m_sde_gpu', 'ddpm', 'lcm'],
-      'scheduler': ['normal', 'karras', 'exponential', 'sgm_uniform', 'simple', 'ddim_uniform'],
-      'pix_fmt': ['yuv420p', 'yuv444p', 'rgb24'],
-      'operation': ['+', '-', '*', '/', '//', '%', '**']
-    };
-    
-    // Check node-specific dropdowns first
-    if (nodeType && nodeSpecificDropdowns[nodeType] && nodeSpecificDropdowns[nodeType][fieldName]) {
-      return {
-        type: 'dropdown',
-        subtype: 'node_specific',
-        options: nodeSpecificDropdowns[nodeType][fieldName],
-        fieldName
-      };
-    }
-    
-    // Check generic dropdown fields
-    if (genericDropdownFields[fieldName]) {
-      return {
-        type: 'dropdown',
-        subtype: 'generic',
-        options: genericDropdownFields[fieldName],
-        fieldName
-      };
     }
 
     // Check filesystem dropdown fields
