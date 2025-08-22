@@ -12,7 +12,7 @@ window.comfyUIBentoML.fieldEditor = {
   createComponent() {
     return {
       // State
-      fields: { seeds: [], textFields: [], dropdowns: [], numbers: [], toggles: [] },
+      fields: { seeds: [], textFields: [], models: [], dropdowns: [], numbers: [], toggles: [] },
       summary: null,
       isLoading: false,
       isExpanded: false,
@@ -25,6 +25,7 @@ window.comfyUIBentoML.fieldEditor = {
       showSeedsOnly: false,
       showPromptsOnly: false,
       showTextFieldsOnly: false,
+      showModelsOnly: false,
       showDropdownsOnly: false,
       showNumbersOnly: false,
       showTogglesOnly: false,
@@ -32,6 +33,7 @@ window.comfyUIBentoML.fieldEditor = {
       filteredSeeds: [],
       filteredPrompts: [],
       filteredTextFields: [],
+      filteredModels: [],
       filteredDropdowns: [],
       filteredNumbers: [],
       filteredToggles: [],
@@ -125,12 +127,13 @@ window.comfyUIBentoML.fieldEditor = {
        * Reset fields state
        */
       resetFields() {
-        this.fields = { seeds: [], textFields: [], dropdowns: [], numbers: [], toggles: [] };
+        this.fields = { seeds: [], textFields: [], models: [], dropdowns: [], numbers: [], toggles: [] };
         this.summary = null;
         this.editingField = null;
         this.tempValue = '';
         this.filteredSeeds = [];
         this.filteredTextFields = [];
+        this.filteredModels = [];
         this.filteredDropdowns = [];
         this.filteredNumbers = [];
         this.filteredToggles = [];
@@ -145,6 +148,7 @@ window.comfyUIBentoML.fieldEditor = {
         this.showSeedsOnly = false;
         this.showPromptsOnly = false;
         this.showTextFieldsOnly = false;
+        this.showModelsOnly = false;
         this.showDropdownsOnly = false;
         this.showNumbersOnly = false;
         this.showTogglesOnly = false;
@@ -160,6 +164,9 @@ window.comfyUIBentoML.fieldEditor = {
             break;
           case 'text':
             this.showTextFieldsOnly = true;
+            break;
+          case 'models':
+            this.showModelsOnly = true;
             break;
           case 'dropdowns':
             this.showDropdownsOnly = true;
@@ -206,6 +213,7 @@ window.comfyUIBentoML.fieldEditor = {
           this.filteredSeeds = (this.fields?.seeds || []).filter(matchesFilter);
           this.filteredPrompts = (this.fields?.prompts || []).filter(matchesFilter);
           this.filteredTextFields = (this.fields?.textFields || []).filter(matchesFilter);
+          this.filteredModels = (this.fields?.models || []).filter(matchesFilter);
           this.filteredDropdowns = (this.fields?.dropdowns || []).filter(matchesFilter);
           this.filteredNumbers = (this.fields?.numbers || []).filter(matchesFilter);
           this.filteredToggles = (this.fields?.toggles || []).filter(matchesFilter);
@@ -216,6 +224,7 @@ window.comfyUIBentoML.fieldEditor = {
         this.filteredSeeds = this.showSeedsOnly ? (this.fields?.seeds || []).filter(matchesFilter) : [];
         this.filteredPrompts = this.showPromptsOnly ? (this.fields?.prompts || []).filter(matchesFilter) : [];
         this.filteredTextFields = this.showTextFieldsOnly ? (this.fields?.textFields || []).filter(matchesFilter) : [];
+        this.filteredModels = this.showModelsOnly ? (this.fields?.models || []).filter(matchesFilter) : [];
         this.filteredDropdowns = this.showDropdownsOnly ? (this.fields?.dropdowns || []).filter(matchesFilter) : [];
         this.filteredNumbers = this.showNumbersOnly ? (this.fields?.numbers || []).filter(matchesFilter) : [];
         this.filteredToggles = this.showTogglesOnly ? (this.fields?.toggles || []).filter(matchesFilter) : [];
@@ -300,6 +309,14 @@ window.comfyUIBentoML.fieldEditor = {
       getFilteredTextFields() {
         if (this.showAllFields) return this.filteredTextFields;
         return this.showTextFieldsOnly ? this.filteredTextFields : [];
+      },
+
+      /**
+       * Get filtered models
+       */
+      getFilteredModels() {
+        if (this.showAllFields) return this.filteredModels;
+        return this.showModelsOnly ? this.filteredModels : [];
       },
 
       /**
@@ -396,7 +413,14 @@ window.comfyUIBentoML.fieldEditor = {
        */
       startEditing(field) {
         this.editingField = `${field.nodeId}-${field.fieldName}`;
-        this.tempValue = field.currentValue.toString();
+        
+        // Set tempValue based on field type
+        if (field.fieldType && field.fieldType.type === 'boolean') {
+          // For booleans, convert string values to actual boolean
+          this.tempValue = field.currentValue === true || field.currentValue === 'true';
+        } else {
+          this.tempValue = field.currentValue.toString();
+        }
         
         // For dropdown fields, load options if needed
         if (this.isDropdownField(field)) {
@@ -560,6 +584,9 @@ window.comfyUIBentoML.fieldEditor = {
         if (this.summary.totalTextFields > 0) {
           parts.push(`${this.summary.totalTextFields} text field${this.summary.totalTextFields === 1 ? '' : 's'}`);
         }
+        if (this.summary.totalModels > 0) {
+          parts.push(`${this.summary.totalModels} model${this.summary.totalModels === 1 ? '' : 's'}`);
+        }
         if (this.summary.totalDropdowns > 0) {
           parts.push(`${this.summary.totalDropdowns} dropdown${this.summary.totalDropdowns === 1 ? '' : 's'}`);
         }
@@ -580,6 +607,7 @@ window.comfyUIBentoML.fieldEditor = {
         return this.summary && (
           this.summary.totalSeeds > 0 ||
           this.summary.totalTextFields > 0 ||
+          this.summary.totalModels > 0 ||
           this.summary.totalDropdowns > 0 ||
           this.summary.totalNumbers > 0 ||
           this.summary.totalToggles > 0
@@ -596,6 +624,7 @@ window.comfyUIBentoML.fieldEditor = {
         const allFields = [
           ...this.fields.seeds,
           ...this.fields.textFields,
+          ...this.fields.models,
           ...this.fields.dropdowns,
           ...this.fields.numbers,
           ...this.fields.toggles

@@ -245,6 +245,10 @@
                   Text
                 </label>
                 <label class="comfyui-filter-checkbox">
+                  <input type="radio" name="fieldTypeFilter" :checked="showModelsOnly" @change="setFilterMode('models')">
+                  Models
+                </label>
+                <label class="comfyui-filter-checkbox">
                   <input type="radio" name="fieldTypeFilter" :checked="showDropdownsOnly" @change="setFilterMode('dropdowns')">
                   Dropdowns
                 </label>
@@ -371,6 +375,76 @@
                           <span class="comfyui-field-text" x-text="textField.currentValue"></span>
                           <div class="comfyui-field-actions">
                             <button class="comfy-btn comfy-btn-primary comfy-btn-xs" @click="startEditing(textField)">Edit</button>
+                          </div>
+                        </div>
+                      </template>
+                    </div>
+                  </div>
+                </template>
+              </div>
+            </div>
+          </template>
+
+          <!-- Models Section -->
+          <template x-if="getFilteredModels().length > 0">
+            <div class="comfyui-field-group">
+              <h4 class="comfyui-field-group-title">Models (<span x-text="getFilteredModels().length"></span>)</h4>
+              <div class="comfyui-field-list">
+                <template x-for="modelField in getFilteredModels()" :key="`${modelField.nodeId}-${modelField.fieldName}`">
+                  <div class="comfyui-field-item" :class="getFieldClasses(modelField)" 
+                       data-field-type="model">
+                    <div class="comfyui-field-header">
+                      <span class="comfyui-field-label" x-text="getDisplayName(modelField)"></span>
+                      <span class="comfyui-field-node" x-text="`Node ${modelField.nodeId} (${modelField.nodeType})`"></span>
+                    </div>
+                    <div class="comfyui-field-value">
+                      <template x-if="isEditing(modelField)">
+                        <div class="comfyui-field-edit">
+                          <div class="comfyui-searchable-dropdown">
+                            <!-- Search input for dropdowns with many options -->
+                            <template x-if="getFieldOptions(modelField).length > 10">
+                              <div class="comfyui-dropdown-search-container">
+                                <input type="text" 
+                                       class="comfy-input comfyui-dropdown-search" 
+                                       :placeholder="`Search ${getFieldOptions(modelField).length} options...`"
+                                       :x-model="dropdownSearchTerms[getFieldId(modelField)]"
+                                       @input="onDropdownSearchInput(modelField, $event.target.value)">
+                                <button class="comfyui-dropdown-search-clear" 
+                                        x-show="dropdownSearchTerms[getFieldId(modelField)]"
+                                        @click="clearDropdownSearch(modelField)"
+                                        title="Clear search">×</button>
+                              </div>
+                            </template>
+                            
+                            <!-- Dropdown select -->
+                            <select class="comfy-input comfyui-field-dropdown" 
+                                    x-model="tempValue"
+                                    @change="handleDropdownChange(modelField, $event)">
+                              <option value="">Select model...</option>
+                              <template x-for="option in getFilteredDropdownOptions(modelField)" :key="option">
+                                <option :value="option" x-text="option" :selected="option == tempValue"></option>
+                              </template>
+                            </select>
+                            
+                            <!-- Show filtered count when searching -->
+                            <template x-if="dropdownSearchTerms[getFieldId(modelField)] && getFilteredDropdownOptions(modelField).length !== getFieldOptions(modelField).length">
+                              <div class="comfyui-dropdown-filter-info">
+                                Showing <span x-text="getFilteredDropdownOptions(modelField).length"></span> of <span x-text="getFieldOptions(modelField).length"></span> options
+                              </div>
+                            </template>
+                          </div>
+                          
+                          <div class="comfyui-field-actions">
+                            <button class="comfy-btn comfy-btn-success comfy-btn-xs" @click="saveEdit(modelField)">Save</button>
+                            <button class="comfy-btn comfy-btn-secondary comfy-btn-xs" @click="cancelEditing()">Cancel</button>
+                          </div>
+                        </div>
+                      </template>
+                      <template x-if="!isEditing(modelField)">
+                        <div class="comfyui-field-display">
+                          <span class="comfyui-field-text" x-text="modelField.currentValue"></span>
+                          <div class="comfyui-field-actions">
+                            <button class="comfy-btn comfy-btn-primary comfy-btn-xs" @click="startEditing(modelField)">Edit</button>
                           </div>
                         </div>
                       </template>
@@ -508,10 +582,14 @@
                     <div class="comfyui-field-value">
                       <template x-if="isEditing(toggleField)">
                         <div class="comfyui-field-edit">
-                          <input type="checkbox" 
-                                 class="comfy-checkbox"
-                                 x-model="tempValue"
-                                 @change="tempValue = $event.target.checked">
+                          <div class="comfyui-toggle-edit">
+                            <label class="comfyui-toggle-label">
+                              <input type="checkbox" 
+                                     class="comfy-checkbox"
+                                     x-model="tempValue">
+                              <span x-text="tempValue ? 'Enabled' : 'Disabled'"></span>
+                            </label>
+                          </div>
                           
                           <div class="comfyui-field-actions">
                             <button class="comfy-btn comfy-btn-success comfy-btn-xs" @click="saveEdit(toggleField)">Save</button>

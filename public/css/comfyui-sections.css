@@ -35,9 +35,6 @@
   margin: 0 0 12px 0;
   padding-bottom: 4px;
   border-bottom: 1px solid #e5e7eb;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
 }
 
 .comfyui-field-list {
@@ -377,4 +374,50 @@ input[type="number"] {
 .comfyui-field-display .comfyui-field-text[data-field-type="dropdown"] {
   font-weight: 500;
   color: var(--comfy-primary);
+}
+
+/* Toggle field styles */
+.comfyui-toggle-edit {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.comfyui-toggle-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  color: #374151;
+}
+
+.comfyui-toggle-label input[type="checkbox"] {
+  margin: 0;
+  transform: scale(1.2);
+}
+
+.comfyui-toggle-label span {
+  font-weight: 500;
+}
+
+/* Field type indicators in labels */
+.comfyui-field-item[data-field-type="model"] .comfyui-field-label::after {
+  content: " 🏷️";
+  font-size: 0.7em;
+  opacity: 0.6;
+}
+
+.comfyui-field-item[data-field-type="number"] .comfyui-field-label::after {
+  content: " #";
+  font-size: 0.7em;
+  opacity: 0.6;
+  font-weight: bold;
+}
+
+.comfyui-field-item[data-field-type="toggle"] .comfyui-field-label::after {
+  content: " ☑️";
+  font-size: 0.7em;
+  opacity: 0.6;
 }
