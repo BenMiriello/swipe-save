@@ -51,7 +51,7 @@ window.comfyUIBentoML.extractors.parameterExtractor = {
           fieldName: fieldName,
           currentValue: node.widgets_values[idx],
           source: 'gui',
-          fieldType: this.getFieldType(fieldName, node.widgets_values[idx])
+          fieldType: this.getFieldType(fieldName, node.widgets_values[idx], node.type)
         });
       }
     }
@@ -68,13 +68,26 @@ window.comfyUIBentoML.extractors.parameterExtractor = {
 
     for (const [inputName, value] of Object.entries(node.inputs)) {
       if (this.isParameterInput(inputName, value)) {
+        const fieldType = this.getFieldType(inputName, value, node.class_type);
+        
+        // Debug format fields specifically
+        if (inputName === 'format') {
+          console.log('Format field detected:', {
+            inputName,
+            value,
+            fieldType,
+            nodeType: node.class_type
+          });
+          console.log('fieldType details:', JSON.stringify(fieldType, null, 2));
+        }
+        
         parameters.push({
           nodeId: nodeId,
           nodeType: node.class_type,
           fieldName: inputName,
           currentValue: value,
           source: 'api',
-          fieldType: this.getFieldType(inputName, value)
+          fieldType: fieldType
         });
       }
     }
@@ -249,26 +262,52 @@ window.comfyUIBentoML.extractors.parameterExtractor = {
   /**
    * Get field type (determines input widget type)
    */
-  getFieldType(fieldName, value) {
-    // First try to get dropdown options from field-type-detector for known dropdown fields
-    if (window.comfyUIBentoML?.FieldTypeDetector) {
-      // Check if it's a filesystem dropdown field
-      if (window.comfyUIBentoML.FieldTypeDetector.FILESYSTEM_DROPDOWN_FIELDS[fieldName]) {
-        return {
-          type: 'dropdown',
-          subtype: 'filesystem',
-          modelType: window.comfyUIBentoML.FieldTypeDetector.FILESYSTEM_DROPDOWN_FIELDS[fieldName].path,
-          options: [],
-          loaded: false,
-          fieldName
-        };
+  getFieldType(fieldName, value, nodeType) {
+    // Node-specific dropdown options (real options from ComfyUI)
+    const nodeSpecificDropdowns = {
+      'VHS_VideoCombine': {
+        'format': ['image/gif', 'image/webp', 'video/webm', 'video/mp4', 'video/h264-mp4', 'video/h265-mp4']
       }
-      
-      // Try to get dropdown type from schema if available
-      const fieldType = window.comfyUIBentoML.FieldTypeDetector.inferTypeFromBentoMLSchema(null, fieldName, 'Unknown');
-      if (fieldType && fieldType.type === 'dropdown') {
-        return fieldType;
-      }
+    };
+
+    // Generic dropdown fields with real options
+    const genericDropdownFields = {
+      'sampler_name': ['euler', 'euler_ancestral', 'heun', 'dpm_2', 'dpm_2_ancestral', 'lms', 'dpm_fast', 'dpm_adaptive', 'dpmpp_2s_ancestral', 'dpmpp_sde', 'dpmpp_sde_gpu', 'dpmpp_2m', 'dpmpp_2m_sde', 'dpmpp_2m_sde_gpu', 'dpmpp_3m_sde', 'dpmpp_3m_sde_gpu', 'ddpm', 'lcm'],
+      'scheduler': ['normal', 'karras', 'exponential', 'sgm_uniform', 'simple', 'ddim_uniform'],
+      'pix_fmt': ['yuv420p', 'yuv444p', 'rgb24'],
+      'operation': ['+', '-', '*', '/', '//', '%', '**']
+    };
+    
+    // Check node-specific dropdowns first
+    if (nodeType && nodeSpecificDropdowns[nodeType] && nodeSpecificDropdowns[nodeType][fieldName]) {
+      return {
+        type: 'dropdown',
+        subtype: 'node_specific',
+        options: nodeSpecificDropdowns[nodeType][fieldName],
+        fieldName
+      };
+    }
+    
+    // Check generic dropdown fields
+    if (genericDropdownFields[fieldName]) {
+      return {
+        type: 'dropdown',
+        subtype: 'generic',
+        options: genericDropdownFields[fieldName],
+        fieldName
+      };
+    }
+
+    // Check filesystem dropdown fields
+    if (window.comfyUIBentoML?.FieldTypeDetector?.FILESYSTEM_DROPDOWN_FIELDS?.[fieldName]) {
+      return {
+        type: 'dropdown',
+        subtype: 'filesystem',
+        modelType: window.comfyUIBentoML.FieldTypeDetector.FILESYSTEM_DROPDOWN_FIELDS[fieldName].path,
+        options: [],
+        loaded: false,
+        fieldName
+      };
     }
 
     // For non-dropdown fields, determine basic type
