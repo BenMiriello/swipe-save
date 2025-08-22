@@ -12,18 +12,11 @@ window.comfyUIBentoML.fieldExtractor = {
   async extractFields(workflowData) {
     if (!workflowData) return { seeds: [], prompts: [], textFields: [], parameters: [] };
 
-    console.log('Field extraction starting...', { workflowData });
-
-    // Extract different field types
     try {
+      // Extract different field types
       const seeds = await window.comfyUIBentoML.schemaService.identifySeedFields(workflowData);
-      console.log('Seeds extracted:', seeds.length, seeds);
-      
       const allTextFields = await window.comfyUIBentoML.schemaService.identifyTextFields(workflowData);
-      console.log('Text fields extracted:', allTextFields.length, allTextFields);
-      
       const parameters = window.comfyUIBentoML.extractors.parameterExtractor.extractParameters(workflowData);
-      console.log('Parameters extracted:', parameters.length, parameters);
 
       // Separate prompts from regular text fields
       const prompts = allTextFields.filter(field => field.isPrompt);
@@ -36,7 +29,6 @@ window.comfyUIBentoML.fieldExtractor = {
         parameters: parameters
       };
       
-      console.log('Final field extraction result:', result);
       return result;
     } catch (error) {
       console.error('Error in field extraction:', error);
