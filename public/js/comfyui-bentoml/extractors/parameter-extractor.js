@@ -67,6 +67,16 @@ window.comfyUIBentoML.extractors.parameterExtractor = {
     if (!node.inputs) return parameters;
 
     for (const [inputName, value] of Object.entries(node.inputs)) {
+      // Debug lora nodes specifically
+      if (node.class_type && node.class_type.toLowerCase().includes('lora')) {
+        console.log('Lora node field:', {
+          nodeType: node.class_type,
+          inputName,
+          value,
+          isParam: this.isParameterInput(inputName, value)
+        });
+      }
+      
       if (this.isParameterInput(inputName, value)) {
         const fieldType = this.getFieldType(inputName, value, node.class_type);
         
@@ -195,8 +205,13 @@ window.comfyUIBentoML.extractors.parameterExtractor = {
     // Skip seeds (handled separately)
     if (inputName === 'seed') return false;
     
-    // Skip long text (handled by text field detector)
-    if (typeof value === 'string' && (value.length > 50 || value.includes('\n'))) return false;
+    // Skip long text (handled by text field detector) - but allow known model fields
+    if (typeof value === 'string' && (value.length > 50 || value.includes('\n'))) {
+      const modelFields = ['ckpt_name', 'vae_name', 'lora_name', 'unet_name', 'clip_name', 'model_name'];
+      if (!modelFields.includes(inputName)) {
+        return false;
+      }
+    }
     
     // Skip prompt-like field names (handled by text field detector)
     if (typeof value === 'string') {
