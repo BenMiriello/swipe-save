@@ -250,9 +250,9 @@ window.comfyUIBentoML.fieldEditor = {
        */
       getFilteredSeeds() {
         if (this.showTextFieldsOnly || this.showParametersOnly) return [];
-        if (this.showAllFields) return this.fields.seeds || [];
-        if (!this.fieldFilter && !this.showSeedsOnly) return this.fields.seeds || [];
-        return this.filteredSeeds;
+        if (this.showAllFields) return this.fields?.seeds || [];
+        if (this.showSeedsOnly) return this.filteredSeeds;
+        return this.fields?.seeds || [];
       },
       
       /**
@@ -260,9 +260,9 @@ window.comfyUIBentoML.fieldEditor = {
        */
       getFilteredTextFields() {
         if (this.showSeedsOnly || this.showParametersOnly) return [];
-        if (this.showAllFields) return this.fields.textFields || [];
-        if (!this.fieldFilter && !this.showTextFieldsOnly) return this.fields.textFields || [];
-        return this.filteredTextFields;
+        if (this.showAllFields) return this.fields?.textFields || [];
+        if (this.showTextFieldsOnly) return this.filteredTextFields;
+        return this.fields?.textFields || [];
       },
 
       /**
@@ -270,9 +270,9 @@ window.comfyUIBentoML.fieldEditor = {
        */
       getFilteredParameters() {
         if (this.showSeedsOnly || this.showTextFieldsOnly) return [];
-        if (this.showAllFields) return this.fields.parameters || [];
-        if (!this.fieldFilter && !this.showParametersOnly) return this.fields.parameters || [];
-        return this.filteredParameters;
+        if (this.showAllFields) return this.fields?.parameters || [];
+        if (this.showParametersOnly) return this.filteredParameters;
+        return this.fields?.parameters || [];
       },
 
       /**

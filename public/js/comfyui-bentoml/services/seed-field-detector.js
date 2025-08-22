@@ -26,9 +26,20 @@ const SeedFieldDetector = {
         const fullPath = currentPath ? `${currentPath}.${key}` : key;
         
         if (key === 'seed' && typeof value === 'number') {
+          // Extract nodeId from path if it follows ComfyUI format
+          const pathParts = fullPath.split('.');
+          const nodeId = pathParts[0] || 'unknown';
+          const nodeType = 'Unknown';
+          
           seedFields.push({
             path: fullPath,
-            value: value
+            value: value,
+            currentValue: value,
+            inputName: key,
+            fieldName: key,
+            nodeId: nodeId,
+            nodeType: nodeType,
+            fieldType: 'number'
           });
         } else if (typeof value === 'object') {
           searchForSeeds(value, fullPath);

@@ -103,15 +103,33 @@ const TextFieldDetector = {
         const fullPath = currentPath ? `${currentPath}.${key}` : key;
         
         if (typeof value === 'string' && value.length > 2) {
-          // Skip configuration values
-          if (!window.comfyUIBentoML.SchemaUtils.isConfigurationValue(key, value)) {
-            const isPrompt = window.comfyUIBentoML.SchemaUtils.isPromptLikeName(key) || 
+          // Check if it's a configuration value
+          const isConfig = window.comfyUIBentoML?.SchemaUtils?.isConfigurationValue ? 
+                          window.comfyUIBentoML.SchemaUtils.isConfigurationValue(key, value) : false;
+          
+          if (!isConfig) {
+            // Check if it's prompt-like
+            const isPromptName = window.comfyUIBentoML?.SchemaUtils?.isPromptLikeName ? 
+                                window.comfyUIBentoML.SchemaUtils.isPromptLikeName(key) : 
+                                key.toLowerCase().includes('prompt') || key.toLowerCase().includes('text');
+            
+            const isPrompt = isPromptName || 
                             value.length > 50 || // Long text likely to be prompt
                             value.includes('\n'); // Multi-line text
+            
+            // Extract nodeId from path if it follows ComfyUI format
+            const pathParts = fullPath.split('.');
+            const nodeId = pathParts[0] || 'unknown';
+            const nodeType = 'Unknown';
+            
             textFields.push({
               path: fullPath,
               value: value,
+              currentValue: value,
               inputName: key,
+              fieldName: key,
+              nodeId: nodeId,
+              nodeType: nodeType,
               isPrompt: isPrompt,
               fieldType: isPrompt ? 'textarea' : 'text'
             });
