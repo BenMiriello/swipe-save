@@ -86,8 +86,8 @@ const TextFieldDetector = {
    * Check if input is text-related using BentoML schema
    */
   isTextInput(inputName, nodeSchema) {
-    return window.comfyUIBentoML.SchemaUtils.isTextFieldType(nodeSchema) || 
-           window.comfyUIBentoML.SchemaUtils.isPromptInput(inputName);
+    return window.comfyUIBentoML.services.schemaProvider.isTextField(inputName, nodeSchema) ||
+           window.comfyUIBentoML.services.schemaProvider.isPromptField(inputName, '');
   },
 
   /**
@@ -119,7 +119,7 @@ const TextFieldDetector = {
         if (typeof value === 'string' && value.length > 2) {
           // Check if it's a configuration value
           const isConfig = window.comfyUIBentoML?.SchemaUtils?.isConfigurationValue ? 
-                          window.comfyUIBentoML.SchemaUtils.isConfigurationValue(key, value) : false;
+                          window.comfyUIBentoML.services.schemaProvider.isConfigurationValue(key, value) : false;
           
           // Skip metadata fields that shouldn't be editable
           const metadataFields = ['title', 'class_type', '_meta'];

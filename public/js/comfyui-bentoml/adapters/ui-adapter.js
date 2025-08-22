@@ -190,7 +190,7 @@ window.comfyUIBentoML.uiAdapter = {
 
         // Try BentoML schema-driven analysis first
         try {
-          const textFields = await window.comfyUIBentoML.schemaService.identifyTextFields(workflowData);
+          const textFields = await window.comfyUIBentoML.services.schemaProvider.identifyTextFields(workflowData);
           
           this.analysisResult = {
             nodes: this.extractNodesFromTextFields(textFields),

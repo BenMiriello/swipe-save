@@ -36,12 +36,12 @@ window.comfyUIBentoML.main = {
         console.warn('BentoML client not ready, running in limited mode');
       }
 
-      // Initialize schema service (depends on client)
-      if (window.comfyUIBentoML.schemaService) {
+      // Initialize schema provider (depends on client)
+      if (window.comfyUIBentoML.services?.schemaProvider) {
         try {
-          await window.comfyUIBentoML.schemaService.getSchema();
+          await window.comfyUIBentoML.services.schemaProvider.getSchema();
         } catch (error) {
-          console.warn('Schema service initialization failed:', error.message);
+          console.warn('Schema provider initialization failed:', error.message);
         }
       }
 
@@ -123,8 +123,8 @@ window.comfyUIBentoML.main = {
       console.log('Feature flags:', window.comfyUIBentoML.client.featureFlags);
 
       // Test 3: Schema fetch
-      if (window.comfyUIBentoML.schemaService) {
-        const schema = await window.comfyUIBentoML.schemaService.getSchema();
+      if (window.comfyUIBentoML.services?.schemaProvider) {
+        const schema = await window.comfyUIBentoML.services.schemaProvider.getSchema();
         console.log('Schema available:', Boolean(schema));
       }
 

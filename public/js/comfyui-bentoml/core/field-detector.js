@@ -61,8 +61,8 @@ window.comfyUIBentoML.core.fieldDetector = {
   async extractSeeds(workflowData) {
     // Try schema service first, fallback to direct detection
     try {
-      if (window.comfyUIBentoML?.schemaService?.identifySeedFields) {
-        return await window.comfyUIBentoML.schemaService.identifySeedFields(workflowData);
+      if (window.comfyUIBentoML?.services?.schemaProvider?.identifySeedFields) {
+        return await window.comfyUIBentoML.services.schemaProvider.identifySeedFields(workflowData);
       }
     } catch (error) {
       console.warn('Schema service unavailable for seeds, using fallback');
@@ -77,8 +77,8 @@ window.comfyUIBentoML.core.fieldDetector = {
   async extractTextFields(workflowData) {
     // Try schema service first, fallback to direct detection
     try {
-      if (window.comfyUIBentoML?.schemaService?.identifyTextFields) {
-        return await window.comfyUIBentoML.schemaService.identifyTextFields(workflowData);
+      if (window.comfyUIBentoML?.services?.schemaProvider?.identifyTextFields) {
+        return await window.comfyUIBentoML.services.schemaProvider.identifyTextFields(workflowData);
       }
     } catch (error) {
       console.warn('Schema service unavailable for text fields, using fallback');
