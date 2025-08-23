@@ -28,6 +28,12 @@ document.addEventListener('alpine:init', () => {
         mediaContainer.style.display = 'none';
       }
       
+      // Show list view container
+      const listViewContainer = document.getElementById('list-view-container');
+      if (listViewContainer) {
+        listViewContainer.style.display = 'block';
+      }
+      
       // Hide list view button
       const listViewButton = document.getElementById('listViewButton');
       if (listViewButton) {
@@ -48,6 +54,12 @@ document.addEventListener('alpine:init', () => {
       const mediaContainer = document.querySelector('.media-container');
       if (mediaContainer) {
         mediaContainer.style.display = 'block';
+      }
+      
+      // Hide list view container
+      const listViewContainer = document.getElementById('list-view-container');
+      if (listViewContainer) {
+        listViewContainer.style.display = 'none';
       }
       
       // Show list view button

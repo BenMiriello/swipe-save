@@ -27,23 +27,9 @@ window.alpineListView = {
       return;
     }
     
-    // Switch app state - also do manual DOM manipulation as backup
+    // Switch app state
     if (Alpine?.store('appState')) {
       Alpine.store('appState').switchToListView();
-    } else {
-      console.warn('appState store not available, doing manual DOM manipulation');
-      // Manual fallback
-      const mediaContainer = document.querySelector('.media-container');
-      if (mediaContainer) mediaContainer.style.display = 'none';
-      
-      const listViewButton = document.getElementById('listViewButton');
-      if (listViewButton) listViewButton.style.display = 'none';
-      
-      const bottomControls = document.querySelector('.bottom-controls');
-      if (bottomControls) {
-        console.log('Hiding bottom controls manually');
-        bottomControls.style.display = 'none';
-      }
     }
     
     // Create the Alpine component
@@ -213,11 +199,12 @@ window.alpineListView = {
       </div>
     `;
     
-    // Add after the header
-    const header = document.querySelector('.header-container');
-    if (header && header.nextSibling) {
-      header.parentNode.insertBefore(container, header.nextSibling);
+    // Add to dedicated list view container
+    const listViewContainer = document.getElementById('list-view-container');
+    if (listViewContainer) {
+      listViewContainer.appendChild(container);
     } else {
+      console.error('List view container not found, falling back to body');
       document.body.appendChild(container);
     }
     
