@@ -370,6 +370,15 @@ window.comfyUIBentoML.fieldEditorUI = {
 
       handleDropdownChange(field, event) {
         this.updateTempValue(event.target.value);
+      },
+
+      /**
+       * Show image file picker for input selection
+       */
+      showImageFilePicker(field) {
+        console.log('Opening image file picker for field:', field);
+        // For now, just alert - will implement proper picker in next iteration
+        alert('Image picker will open here. For now, manually enter the filename from your ComfyUI input directory.');
       }
     };
   }

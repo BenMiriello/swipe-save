@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Test List View</title>
+  <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.1/dist/cdn.min.js" defer></script>
+</head>
+<body>
+  <div id="app">
+    <h1>Alpine.js List View Test</h1>
+    
+    <!-- Test store connectivity -->
+    <div x-data="{ message: 'Alpine.js is working!' }">
+      <p x-text="message"></p>
+    </div>
+    
+    <!-- Test store access -->
+    <div x-data="{}" x-show="$store.listView">
+      <p>List view store found: <span x-text="$store.listView ? 'YES' : 'NO'"></span></p>
+      <p>Files loaded: <span x-text="$store.listView?.allFiles?.length || 0"></span></p>
+      <p>Displayed files: <span x-text="$store.listView?.displayedFiles?.length || 0"></span></p>
+      <p>Is loading: <span x-text="$store.listView?.isLoading || 'unknown'"></span></p>
+    </div>
+    
+    <!-- Test list rendering -->
+    <div x-data="{}" x-show="$store.listView && !$store.listView.isLoading">
+      <h3>File List Test:</h3>
+      <div x-show="$store.listView.displayedFiles.length > 0">
+        <p>Should show <span x-text="$store.listView.displayedFiles.length"></span> files:</p>
+        <ul>
+          <template x-for="file in $store.listView.displayedFiles.slice(0, 5)" :key="file.name">
+            <li x-text="file.name || file.filename || 'unnamed'"></li>
+          </template>
+        </ul>
+      </div>
+      <div x-show="$store.listView.displayedFiles.length === 0">
+        <p>No files in displayedFiles array</p>
+      </div>
+    </div>
+  </div>
+  
+  <script>
+    // Initialize store
+    document.addEventListener('alpine:init', () => {
+      Alpine.store('listView', {
+        isLoading: false,
+        allFiles: [],
+        displayedFiles: [],
+        currentPage: 1,
+        itemsPerPage: 100,
+        
+        async init() {
+          console.log('Test store init');
+          this.isLoading = true;
+          
+          try {
+            const response = await fetch('/api/media?includePreviews=true');
+            const data = await response.json();
+            const newFiles = data.items || data.files || [];
+            console.log('Loaded', newFiles.length, 'files');
+            
+            // Clear and replace arrays
+            this.allFiles.length = 0;
+            this.allFiles.push(...newFiles);
+            
+            this.displayedFiles.length = 0;
+            this.displayedFiles.push(...newFiles.slice(0, this.itemsPerPage));
+            
+            console.log('displayedFiles after update:', this.displayedFiles.length);
+          } catch (error) {
+            console.error('Error loading files:', error);
+          } finally {
+            this.isLoading = false;
+          }
+        }
+      });
+    });
+    
+    // Test when Alpine is ready
+    document.addEventListener('alpine:initialized', () => {
+      console.log('Alpine initialized, testing store...');
+      const store = Alpine.store('listView');
+      if (store) {
+        console.log('Store found, initializing...');
+        store.init();
+      } else {
+        console.error('Store not found!');
+      }
+    });
+  </script>
+</body>
+</html>

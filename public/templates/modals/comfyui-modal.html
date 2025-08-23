@@ -477,39 +477,57 @@
                     <div class="comfyui-field-value">
                       <template x-if="isEditing(mediaField)">
                         <div class="comfyui-field-edit">
-                          <!-- Use the same dropdown interface as other fields, it should automatically load input files -->
-                          <div class="comfyui-searchable-dropdown">
-                            <!-- Search box for large option lists -->
-                            <template x-if="getFieldOptions(mediaField).length > 10">
-                              <div class="comfyui-dropdown-search-container">
+                          <!-- Image field gets a file picker button -->
+                          <template x-if="mediaField.fieldType?.category === 'image'">
+                            <div class="comfyui-image-field">
+                              <div class="comfyui-image-field-controls">
                                 <input type="text" 
-                                       class="comfy-input comfyui-dropdown-search" 
-                                       :placeholder="`Search ${getFieldOptions(mediaField).length} options...`"
-                                       :x-model="dropdownSearchTerms[getFieldId(mediaField)]"
-                                       @input="onDropdownSearchInput(mediaField, $event.target.value)">
-                                <button class="comfyui-dropdown-search-clear" 
-                                        x-show="dropdownSearchTerms[getFieldId(mediaField)]"
-                                        @click="clearDropdownSearch(mediaField)"
-                                        title="Clear search">×</button>
+                                       class="comfy-input comfyui-image-filename" 
+                                       :value="getTempValue()"
+                                       @input="updateTempValue($event.target.value)"
+                                       placeholder="Enter filename or click Pick File">
+                                <button type="button" 
+                                        class="comfy-btn comfy-btn-secondary" 
+                                        @click="showImageFilePicker(mediaField)">Pick File</button>
                               </div>
-                            </template>
-                            
-                            <!-- Dropdown select -->
-                            <select class="comfy-input" 
-                                    :x-model="tempValue"
-                                    @change="updateTempValue($event.target.value)">
-                              <template x-for="option in getFilteredDropdownOptions(mediaField)" :key="option">
-                                <option :value="option" x-text="option" :selected="option == getTempValue()"></option>
+                            </div>
+                          </template>
+                          
+                          <!-- Non-image media fields use dropdown -->
+                          <template x-if="!mediaField.fieldType?.category || mediaField.fieldType?.category !== 'image'">
+                            <div class="comfyui-searchable-dropdown">
+                              <!-- Search box for large option lists -->
+                              <template x-if="getFieldOptions(mediaField).length > 10">
+                                <div class="comfyui-dropdown-search-container">
+                                  <input type="text" 
+                                         class="comfy-input comfyui-dropdown-search" 
+                                         :placeholder="`Search ${getFieldOptions(mediaField).length} options...`"
+                                         :x-model="dropdownSearchTerms[getFieldId(mediaField)]"
+                                         @input="onDropdownSearchInput(mediaField, $event.target.value)">
+                                  <button class="comfyui-dropdown-search-clear" 
+                                          x-show="dropdownSearchTerms[getFieldId(mediaField)]"
+                                          @click="clearDropdownSearch(mediaField)"
+                                          title="Clear search">×</button>
+                                </div>
                               </template>
-                            </select>
-                            
-                            <!-- Show filtered count when searching -->
-                            <template x-if="dropdownSearchTerms[getFieldId(mediaField)] && getFilteredDropdownOptions(mediaField).length !== getFieldOptions(mediaField).length">
-                              <div class="comfyui-dropdown-filter-info">
-                                Showing <span x-text="getFilteredDropdownOptions(mediaField).length"></span> of <span x-text="getFieldOptions(mediaField).length"></span> options
-                              </div>
-                            </template>
-                          </div>
+                              
+                              <!-- Dropdown select -->
+                              <select class="comfy-input" 
+                                      :value="getTempValue()"
+                                      @change="updateTempValue($event.target.value)">
+                                <template x-for="option in getFilteredDropdownOptions(mediaField)" :key="option">
+                                  <option :value="option" x-text="option" :selected="option == getTempValue()"></option>
+                                </template>
+                              </select>
+                              
+                              <!-- Show filtered count when searching -->
+                              <template x-if="dropdownSearchTerms[getFieldId(mediaField)] && getFilteredDropdownOptions(mediaField).length !== getFieldOptions(mediaField).length">
+                                <div class="comfyui-dropdown-filter-info">
+                                  Showing <span x-text="getFilteredDropdownOptions(mediaField).length"></span> of <span x-text="getFieldOptions(mediaField).length"></span> options
+                                </div>
+                              </template>
+                            </div>
+                          </template>
                           
                           <div class="comfyui-field-actions">
                             <button class="comfy-btn comfy-btn-success comfy-btn-xs" @click="saveEdit(mediaField)">Save</button>

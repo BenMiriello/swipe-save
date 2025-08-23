@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Alpine Test</title>
+    <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.1/dist/cdn.min.js" defer></script>
+</head>
+<body>
+    <div x-data="{ files: [], loading: false }" x-init="
+        loading = true;
+        setTimeout(() => {
+            files.push({name: 'test1.jpg'}, {name: 'test2.jpg'});
+            loading = false;
+            console.log('Files loaded, length:', files.length);
+        }, 1000);
+    ">
+        <div x-show="loading">Loading...</div>
+        <div x-show="!loading && files.length > 0">
+            Files found: <span x-text="files.length"></span>
+            <div x-for="file in files" x-text="file.name"></div>
+        </div>
+        <div x-show="!loading && files.length === 0">No files</div>
+        
+        <div style="background: #f0f0f0; padding: 10px; margin: 10px 0;">
+            Debug: loading=<span x-text="loading"></span>, files.length=<span x-text="files.length"></span>
+        </div>
+    </div>
+</body>
+</html>

@@ -429,3 +429,26 @@ input[type="number"] {
   font-size: 0.7em;
   opacity: 0.6;
 }
+
+/* Image field controls */
+.comfyui-image-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.comfyui-image-field-controls {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.comfyui-image-filename {
+  flex: 1;
+}
+
+.comfyui-field-item[data-field-type="media"] .comfyui-field-label::after {
+  content: " 📁";
+  font-size: 0.7em;
+  opacity: 0.6;
+}
