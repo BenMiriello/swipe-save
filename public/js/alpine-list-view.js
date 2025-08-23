@@ -7,6 +7,20 @@ window.alpineListView = {
    * Initialize and show the Alpine.js list view
    */
   init() {
+    // If Alpine.js isn't ready yet, wait for it
+    if (!window.Alpine) {
+      document.addEventListener('alpine:init', () => {
+        this.init();
+      });
+      return;
+    }
+    
+    // Also wait for stores to be available
+    if (!Alpine.store('listView') || !Alpine.store('appState')) {
+      setTimeout(() => this.init(), 100);
+      return;
+    }
+    
     // Check if we already created the list view to prevent double creation
     const existing = document.querySelector('.alpine-list-view');
     if (existing) {
