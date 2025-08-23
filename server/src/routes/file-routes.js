@@ -952,4 +952,77 @@ router.post('/api/save-to-inputs', async (req, res) => {
   }
 });
 
+// Dedicated endpoint for input picker files
+router.get('/api/media/input-picker', async (req, res) => {
+  try {
+    const limit = req.query.limit ? parseInt(req.query.limit) : undefined;
+    const offset = parseInt(req.query.offset) || 0;
+    const sortBy = req.query.sortBy || 'date';
+    const order = req.query.order || 'desc';
+
+    // Load directory configuration
+    const DirectoryConfigService = require('../services/directory-config-service');
+    
+    const dirService = new DirectoryConfigService();
+    const dirConfig = dirService.loadConfig();
+    
+    // Get input picker directories only
+    const inputDirectories = dirConfig.sources?.featureDirectories?.inputPicker || [];
+    const enabledInputDirs = inputDirectories.filter(dir => dir.enabled);
+    
+    if (enabledInputDirs.length === 0) {
+      return res.json({ files: [], totalFiles: 0 });
+    }
+
+    console.log(`Input picker scanning ${enabledInputDirs.length} directories:`, enabledInputDirs.map(d => d.path));
+    
+    let allFiles = [];
+    for (const dir of enabledInputDirs) {
+      try {
+        const files = scanDirectoryFlat(dir.path, limit);
+        // Add directory info to each file
+        const filesWithDir = files.map(file => ({
+          ...file,
+          directoryId: dir.id,
+          directoryName: dir.name,
+          directoryPath: dir.path
+        }));
+        allFiles.push(...filesWithDir);
+      } catch (error) {
+        console.error(`Error scanning input directory ${dir.path}:`, error);
+      }
+    }
+
+    // Sort all files
+    allFiles.sort((a, b) => {
+      if (sortBy === 'name') {
+        return order === 'asc' ? a.name.localeCompare(b.name) : b.name.localeCompare(a.name);
+      } else if (sortBy === 'size') {
+        return order === 'asc' ? a.size - b.size : b.size - a.size;
+      } else { // date
+        return order === 'asc' ? new Date(a.date) - new Date(b.date) : new Date(b.date) - new Date(a.date);
+      }
+    });
+
+    // Apply pagination
+    const totalFiles = allFiles.length;
+    const startIndex = offset;
+    const endIndex = limit ? offset + limit : allFiles.length;
+    const paginatedFiles = allFiles.slice(startIndex, endIndex);
+
+    console.log(`Input picker API: Returning ${paginatedFiles.length} files (${startIndex}-${endIndex} of ${totalFiles})`);
+    
+    res.json({
+      files: paginatedFiles,
+      totalFiles: totalFiles,
+      currentPage: limit ? Math.floor(offset / limit) + 1 : 1,
+      totalPages: limit ? Math.ceil(totalFiles / limit) : 1,
+      hasMore: endIndex < totalFiles
+    });
+  } catch (error) {
+    console.error('Error in input picker files API:', error);
+    res.status(500).json({ error: 'Failed to get input picker files' });
+  }
+});
+
 module.exports = { router, actionHistory };

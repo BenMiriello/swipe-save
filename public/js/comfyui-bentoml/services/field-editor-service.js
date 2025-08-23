@@ -57,7 +57,14 @@ window.comfyUIBentoML.services.fieldEditorService = {
       const workflowData = await response.json();
       
       // Extract fields using unified field detector
-      const fields = await window.comfyUIBentoML.core.fieldDetector.extractFields(workflowData);
+      const extractedFields = await window.comfyUIBentoML.core.fieldDetector.extractFields(workflowData);
+      
+      // Map field structure to UI expectations (dropdowns → options)
+      const fields = {
+        ...extractedFields,
+        options: extractedFields.dropdowns || []
+      };
+      
       const summary = this.summarizeFields(fields);
       
       return { fields, summary, workflowData };
@@ -79,10 +86,12 @@ window.comfyUIBentoML.services.fieldEditorService = {
       totalDropdowns: fields.dropdowns?.length || 0,
       totalNumbers: fields.numbers?.length || 0,
       totalToggles: fields.toggles?.length || 0,
+      totalMedia: fields.media?.length || 0,
       totalFields: (fields.seeds?.length || 0) + 
                    (fields.prompts?.length || 0) + 
                    (fields.textFields?.length || 0) + 
                    (fields.models?.length || 0) + 
+                   (fields.media?.length || 0) + 
                    (fields.dropdowns?.length || 0) + 
                    (fields.numbers?.length || 0) + 
                    (fields.toggles?.length || 0)

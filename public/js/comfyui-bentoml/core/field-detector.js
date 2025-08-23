@@ -38,20 +38,43 @@ window.comfyUIBentoML.core.fieldDetector = {
         field.fieldName.toLowerCase().includes('checkpoint') ||
         field.fieldName.toLowerCase().includes('lora')
       );
-      const dropdowns = allDropdowns.filter(field => !models.some(m => m.nodeId === field.nodeId && m.fieldName === field.fieldName));
+
+      // Separate media/image fields from other dropdowns  
+      const media = allDropdowns.filter(field =>
+        (field.nodeType === 'LoadImage' && field.fieldName === 'image') ||
+        (field.fieldType && field.fieldType.category === 'image') ||
+        field.fieldName.toLowerCase().includes('image')
+      );
+
+      const dropdowns = allDropdowns.filter(field => 
+        !models.some(m => m.nodeId === field.nodeId && m.fieldName === field.fieldName) &&
+        !media.some(m => m.nodeId === field.nodeId && m.fieldName === field.fieldName)
+      );
+
+      console.log('Field extraction results:', {
+        seeds: seeds.length,
+        prompts: prompts.length,
+        textFields: regularTextFields.length,
+        models: models.length,
+        media: media.length,
+        dropdowns: dropdowns.length,
+        numbers: numbers.length,
+        toggles: toggles.length
+      });
 
       return {
         seeds,
         prompts,
         textFields: regularTextFields,
         models,
+        media,
         dropdowns,
         numbers,
         toggles
       };
     } catch (error) {
       console.error('Error in field extraction:', error);
-      return { seeds: [], prompts: [], textFields: [], models: [], dropdowns: [], numbers: [], toggles: [] };
+      return { seeds: [], prompts: [], textFields: [], models: [], media: [], dropdowns: [], numbers: [], toggles: [] };
     }
   },
 
@@ -295,6 +318,16 @@ window.comfyUIBentoML.core.fieldDetector = {
    * Determine field type for UI rendering
    */
   getFieldType(nodeType, fieldName, value) {
+    // Specific LoadImage node detection
+    if (nodeType === 'LoadImage' && fieldName === 'image') {
+      return {
+        type: 'dropdown',
+        subtype: 'filesystem',
+        category: 'image',
+        fieldName
+      };
+    }
+
     // Check ComfyUI object_info for real dropdown options
     if (window.comfyUIObjectInfo && nodeType && fieldName) {
       const nodeInfo = window.comfyUIObjectInfo[nodeType];

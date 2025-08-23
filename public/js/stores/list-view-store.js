@@ -21,21 +21,16 @@ document.addEventListener('alpine:init', () => {
     
     // Methods
     init() {
-      console.log('List store init called');
       // Restore selected file index from localStorage
       const storedIndex = localStorage.getItem('selectedFileIndex');
-      console.log('Stored selectedFileIndex:', storedIndex);
       if (storedIndex !== null) {
         this.selectedFileIndex = parseInt(storedIndex, 10);
-        console.log('Set selectedFileIndex to:', this.selectedFileIndex);
       }
       
       // Check if we should navigate to a specific page (from back button)
       const targetPage = localStorage.getItem('targetListPage');
-      console.log('Stored targetListPage:', targetPage);
       if (targetPage !== null) {
         this.currentPage = parseInt(targetPage, 10);
-        console.log('Set currentPage to:', this.currentPage);
         localStorage.removeItem('targetListPage'); // Clear it after using
       }
       
@@ -44,20 +39,31 @@ document.addEventListener('alpine:init', () => {
     
     async loadFiles() {
       this.isLoading = true;
+      
       try {
         const url = `${window.appConfig.getApiUrl()}/api/media?includePreviews=true`;
         const response = await fetch(url);
         if (!response.ok) throw new Error('Failed to load files');
         
         const data = await response.json();
-        this.allFiles = data.items || data.files || [];
+        const newFiles = data.items || data.files || [];
+        console.log('List view loaded', newFiles.length, 'files');
+        
+        // Ensure Alpine reactivity by replacing array contents, not the array reference
+        this.allFiles.length = 0;
+        this.allFiles.push(...newFiles);
+        
         this.totalPages = Math.ceil(this.allFiles.length / this.itemsPerPage);
         this.updateDisplayedFiles();
         
         // Navigate to page containing selected item if coming from single view
         this.navigateToSelectedItem();
+        
       } catch (error) {
         console.error('Error loading files:', error);
+        // Clear arrays on error
+        this.allFiles.length = 0;
+        this.displayedFiles.length = 0;
       } finally {
         this.isLoading = false;
       }
@@ -66,7 +72,11 @@ document.addEventListener('alpine:init', () => {
     updateDisplayedFiles() {
       const startIndex = (this.currentPage - 1) * this.itemsPerPage;
       const endIndex = startIndex + this.itemsPerPage;
-      this.displayedFiles = this.allFiles.slice(startIndex, endIndex);
+      const newDisplayedFiles = this.allFiles.slice(startIndex, endIndex);
+      
+      // Ensure Alpine reactivity by replacing array contents, not the array reference
+      this.displayedFiles.length = 0;
+      this.displayedFiles.push(...newDisplayedFiles);
     },
     
     togglePreviews() {

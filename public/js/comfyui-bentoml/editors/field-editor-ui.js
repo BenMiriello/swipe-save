@@ -29,6 +29,7 @@ window.comfyUIBentoML.fieldEditorUI = {
       showPromptsOnly: false,
       showTextFieldsOnly: false,
       showModelsOnly: false,
+      showMediaOnly: false,
       showOptionsOnly: false,
       showNumbersOnly: false,
       showTogglesOnly: false,
@@ -43,6 +44,7 @@ window.comfyUIBentoML.fieldEditorUI = {
       filteredPrompts: [],
       filteredTextFields: [],
       filteredModels: [],
+      filteredMedia: [],
       filteredOptions: [],
       filteredNumbers: [],
       filteredToggles: [],
@@ -96,7 +98,7 @@ window.comfyUIBentoML.fieldEditorUI = {
        * Reset fields state
        */
       resetFields() {
-        this.fields = { seeds: [], prompts: [], textFields: [], models: [], options: [], numbers: [], toggles: [] };
+        this.fields = { seeds: [], prompts: [], textFields: [], models: [], media: [], options: [], numbers: [], toggles: [] };
         this.summary = null;
         this.currentFile = null;
         this.applyFieldFilter();
@@ -109,14 +111,14 @@ window.comfyUIBentoML.fieldEditorUI = {
         // Reset all filter flags
         Object.assign(this, {
           showSeedsOnly: false, showPromptsOnly: false, showTextFieldsOnly: false,
-          showModelsOnly: false, showOptionsOnly: false, showNumbersOnly: false,
+          showModelsOnly: false, showMediaOnly: false, showOptionsOnly: false, showNumbersOnly: false,
           showTogglesOnly: false, showAllFields: false
         });
         
         // Set the selected mode
         const modeMap = {
           seeds: 'showSeedsOnly', prompts: 'showPromptsOnly', text: 'showTextFieldsOnly',
-          models: 'showModelsOnly', options: 'showOptionsOnly', 
+          models: 'showModelsOnly', media: 'showMediaOnly', options: 'showOptionsOnly', 
           numbers: 'showNumbersOnly', toggles: 'showTogglesOnly'
         };
         
@@ -140,8 +142,8 @@ window.comfyUIBentoML.fieldEditorUI = {
         };
         
         // Apply filters based on current mode
-        const categories = ['seeds', 'prompts', 'textFields', 'models', 'options', 'numbers', 'toggles'];
-        const showModes = ['showSeedsOnly', 'showPromptsOnly', 'showTextFieldsOnly', 'showModelsOnly', 'showOptionsOnly', 'showNumbersOnly', 'showTogglesOnly'];
+        const categories = ['seeds', 'prompts', 'textFields', 'models', 'media', 'options', 'numbers', 'toggles'];
+        const showModes = ['showSeedsOnly', 'showPromptsOnly', 'showTextFieldsOnly', 'showModelsOnly', 'showMediaOnly', 'showOptionsOnly', 'showNumbersOnly', 'showTogglesOnly'];
         
         categories.forEach((category, i) => {
           const shouldShow = this.showAllFields || this[showModes[i]];

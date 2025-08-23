@@ -101,7 +101,17 @@ window.comfyUIBentoML.services.dropdownProvider = {
     const category = this.getFilesystemCategory(field);
     
     try {
-      const response = await fetch(`/api/comfyui/models/${category}`);
+      let response;
+      
+      // Route to dedicated endpoints based on category
+      if (category === 'input') {
+        // Input picker files - use dedicated endpoint
+        response = await fetch('/api/media/input-picker');
+      } else {
+        // Other model types - use ComfyUI models endpoint
+        response = await fetch(`/api/comfyui/models/${category}`);
+      }
+      
       if (response.ok) {
         const data = await response.json();
         return data.files || [];
@@ -120,6 +130,11 @@ window.comfyUIBentoML.services.dropdownProvider = {
     // Check explicit category first
     if (field.fieldType.category) {
       return field.fieldType.category;
+    }
+
+    // Specific LoadImage node detection
+    if (field.nodeType === 'LoadImage' && field.fieldName === 'image') {
+      return 'input';
     }
 
     // Infer from field name

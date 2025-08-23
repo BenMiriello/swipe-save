@@ -32,15 +32,15 @@ window.alpineListView = {
       Alpine.store('appState').switchToListView();
     }
     
-    // Create the Alpine component
-    this.createListViewComponent();
-    
-    // Initialize the store
+    // Initialize the store FIRST
     if (Alpine?.store('listView')) {
       Alpine.store('listView').init();
     } else {
       console.error('listView store not found!');
     }
+    
+    // Create the Alpine component AFTER store starts loading
+    this.createListViewComponent();
   },
   
   /**

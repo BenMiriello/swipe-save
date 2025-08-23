@@ -203,6 +203,14 @@ class DirectoryConfigService {
   }
 
   /**
+   * Get enabled feature directories by type
+   */
+  getEnabledFeatureDirectories(config, featureType) {
+    const featureDirectories = config.sources?.featureDirectories?.[featureType] || [];
+    return featureDirectories.filter(dir => dir.enabled);
+  }
+
+  /**
    * Update recent directories
    */
   updateRecentDirectory(config, dirPath) {
