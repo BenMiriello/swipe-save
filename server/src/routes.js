@@ -4,6 +4,7 @@ const router = express.Router();
 // Import route modules
 const configRoutes = require('./routes/config-routes');
 const fileRoutes = require('./routes/file-routes');
+const filterRoutes = require('./routes/filter-routes');
 const workflowRoutes = require('./routes/workflow-routes');
 const bentomlRoutes = require('./routes/bentoml-routes');
 const directoryRoutes = require('./routes/directory-management-routes');
@@ -12,6 +13,7 @@ const comfyModelRoutes = require('./routes/comfyui-model-routes');
 // Use the imported routes
 router.use(configRoutes);
 router.use(fileRoutes.router);
+router.use(filterRoutes);
 router.use(workflowRoutes);
 router.use(bentomlRoutes);
 router.use(directoryRoutes);

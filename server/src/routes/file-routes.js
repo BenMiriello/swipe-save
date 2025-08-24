@@ -5,9 +5,11 @@ const router = express.Router();
 const fileOps = require('../fileOperations');
 const config = require('../config');
 const PreviewService = require('../services/preview-service');
+const FilterService = require('../services/filter-service');
 
-// Initialize preview service
+// Initialize services
 const previewService = new PreviewService();
+const filterService = new FilterService();
 
 // Action history for undo functionality
 const actionHistory = [];
@@ -189,8 +191,26 @@ router.get('/api/media', async (req, res) => {
     // Use unlimited when no limit specified, or use provided limit
     const limit = req.query.limit ? parseInt(req.query.limit) : undefined;
     const offset = parseInt(req.query.offset) || 0;
-    const sortBy = req.query.sortBy || 'date';
-    const order = req.query.order || 'desc';
+    let sortBy = req.query.sortBy || 'date';
+    let order = req.query.order || 'desc';
+    
+    // If no sorting params provided, try to load from saved state
+    if (!req.query.sortBy && !req.query.order) {
+      try {
+        const os = require('os');
+        const savedStatePath = path.join(os.homedir(), '.config', 'swipe-save', 'filters', 'current-state.json');
+        if (await fs.pathExists(savedStatePath)) {
+          const savedState = await fs.readJson(savedStatePath);
+          if (savedState && savedState.appliedSorting) {
+            sortBy = savedState.appliedSorting.field || 'date';
+            order = savedState.appliedSorting.direction || 'desc';
+            console.log('Using saved sorting:', { sortBy, order });
+          }
+        }
+      } catch (error) {
+        console.error('Error loading saved sorting state:', error);
+      }
+    }
     const includePreviews = req.query.includePreviews === 'true';
     const sources = req.query.sources; // 'enabled', 'all', or specific IDs
     const directories = req.query.directories; // Specific directory IDs
@@ -228,6 +248,59 @@ router.get('/api/media', async (req, res) => {
       const enabledDirectories = dirService.getEnabledDirectories(dirConfig);
       console.log(`Found ${enabledDirectories.length} enabled directories:`, enabledDirectories.map(d => d.path));
       allFiles = scanner.scanEnabledDirectories(enabledDirectories, { limit: null, sortBy, order });
+    }
+    
+    // Apply filters if provided, or load saved state if no explicit filters
+    let filterConfig = null;
+    let usedSavedState = false;
+    
+    if (req.query.filters) {
+      try {
+        filterConfig = JSON.parse(req.query.filters);
+      } catch (error) {
+        console.error('Error parsing filters:', error);
+      }
+    } else {
+      // Load saved filter state if no explicit filters provided
+      try {
+        const os = require('os');
+        const savedStatePath = path.join(os.homedir(), '.config', 'swipe-save', 'filters', 'current-state.json');
+        if (await fs.pathExists(savedStatePath)) {
+          const savedState = await fs.readJson(savedStatePath);
+          if (savedState && savedState.appliedFilters) {
+            // Check if there are any meaningful filters to apply
+            const hasFilters = !!(
+              savedState.appliedFilters.filename ||
+              savedState.appliedFilters.metadata ||
+              savedState.appliedFilters.date ||
+              savedState.appliedFilters.size ||
+              (savedState.appliedMediaTypes && savedState.appliedMediaTypes.length > 0)
+            );
+            
+            if (hasFilters) {
+              filterConfig = { ...savedState.appliedFilters };
+              if (savedState.appliedMediaTypes && savedState.appliedMediaTypes.length > 0) {
+                filterConfig.mediaTypes = savedState.appliedMediaTypes;
+              }
+              usedSavedState = true;
+              console.log('Using saved filter state:', filterConfig);
+            }
+          }
+        }
+      } catch (error) {
+        console.error('Error loading saved filter state:', error);
+      }
+    }
+    
+    if (filterConfig) {
+      allFiles = filterService.applyFilters(allFiles, filterConfig);
+      console.log(`Applied ${usedSavedState ? 'saved' : 'provided'} filters, ${allFiles.length} files remaining`);
+    }
+    
+    // Apply sorting if filters were applied (may have changed order) or use saved sorting
+    if ((req.query.filters || usedSavedState) && req.query.sortBy) {
+      const sortConfig = { field: sortBy, direction: order };
+      allFiles = filterService.applySorting(allFiles, sortConfig);
     }
     
     // Apply pagination
