@@ -299,6 +299,9 @@
                           <span class="comfyui-field-text" x-text="getDisplayValueWithEllipsis(promptField)"></span>
                           <div class="comfyui-field-actions">
                             <button class="comfy-btn comfy-btn-primary comfy-btn-xs" @click="startEditing(promptField)">Edit</button>
+                            <template x-if="hasChanges(promptField)">
+                              <button class="comfy-btn comfy-btn-secondary comfy-btn-xs" @click="revertField(promptField)">Revert</button>
+                            </template>
                           </div>
                         </div>
                       </template>
@@ -537,9 +540,50 @@
                       </template>
                       <template x-if="!isEditing(mediaField)">
                         <div class="comfyui-field-display">
-                          <span class="comfyui-field-text" x-text="getDisplayValue(mediaField)"></span>
+                          <!-- Enhanced Media Field Preview -->
+                          <template x-if="mediaField.fieldType?.category === 'image'">
+                            <div class="comfyui-media-preview">
+                              <!-- Current Value with Thumbnail -->
+                              <div class="comfyui-media-current">
+                                <div class="comfyui-media-thumbnail">
+                                  <template x-if="mediaField.currentValue">
+                                    <img :src="`/media/${encodeURIComponent(mediaField.currentValue)}`" 
+                                         :alt="mediaField.currentValue"
+                                         loading="lazy"
+                                         @error="$event.target.style.display='none'"
+                                         style="max-width: 90px; max-height: 90px; object-fit: contain; border-radius: 4px;">
+                                  </template>
+                                  <template x-if="!mediaField.currentValue">
+                                    <div class="comfyui-media-placeholder">No image</div>
+                                  </template>
+                                </div>
+                                <div class="comfyui-media-info">
+                                  <div class="comfyui-media-label">Current:</div>
+                                  <div class="comfyui-media-value" x-text="mediaField.currentValue || 'None'"></div>
+                                  <template x-if="mediaField.originalValue && mediaField.currentValue !== mediaField.originalValue">
+                                    <div class="comfyui-media-original">
+                                      <div class="comfyui-media-label">Original:</div>
+                                      <div class="comfyui-media-value" x-text="mediaField.originalValue"></div>
+                                    </div>
+                                  </template>
+                                </div>
+                              </div>
+                            </div>
+                          </template>
+                          
+                          <!-- Fallback for non-image media fields -->
+                          <template x-if="!mediaField.fieldType?.category || mediaField.fieldType?.category !== 'image'">
+                            <span class="comfyui-field-text" x-text="getDisplayValue(mediaField)"></span>
+                          </template>
+                          
                           <div class="comfyui-field-actions">
+                            <template x-if="mediaField.fieldType?.category === 'image'">
+                              <button class="comfy-btn comfy-btn-success comfy-btn-xs" @click="openInputPicker(mediaField)">🖼️ Pick</button>
+                            </template>
                             <button class="comfy-btn comfy-btn-primary comfy-btn-xs" @click="startEditing(mediaField)">Edit</button>
+                            <template x-if="hasChanges(mediaField)">
+                              <button class="comfy-btn comfy-btn-secondary comfy-btn-xs" @click="revertField(mediaField)">Revert</button>
+                            </template>
                           </div>
                         </div>
                       </template>
@@ -889,7 +933,7 @@
   </div>
 
   <!-- Input Picker Modal -->
-  <div x-data="InputManager.ui.createInputPickerModal()" x-init="init()" @input-file-selected="handleInputFileSelected($event.detail)">
+  <div x-data="InputManager.ui.createInputPickerModal()" x-init="init()">
     <!-- Include input picker modal template -->
     <div class="input-picker-modal" 
          x-show="showModal" 
@@ -939,28 +983,29 @@
           </div>
 
           <!-- Input Grid -->
-          <div class="input-picker-grid" x-show="!isLoading && displayedFiles.length > 0">
-            <template x-for="file in displayedFiles" :key="file.name">
-              <div class="input-file-item" 
-                   :class="{ selected: selectedFile?.name === file.name }"
-                   @click="selectFile(file)">
-                
-                <div class="input-file-thumbnail">
-                  <img :src="file.thumbnail" 
-                       :alt="file.name"
+          <div class="input-thumbnail-grid" x-show="!isLoading && hasFiles">
+            <div class="input-grid-container">
+              <template x-for="file in displayedFiles" :key="file.id">
+                <div class="input-thumbnail"
+                     :class="{ selected: selectedFile?.id === file.id }"
+                     @click="selectFile(file)">
+                  
+                  <img :src="getThumbnailUrl(file)" 
+                       :alt="file.filename"
                        loading="lazy"
                        @error="handleImageError($event)">
-                </div>
-                
-                <div class="input-file-info">
-                  <div class="input-file-name" x-text="file.name"></div>
-                  <div class="input-file-stats">
-                    <span class="input-file-size" x-text="formatFileSize(file.size)"></span>
-                    <span class="input-file-date" x-text="formatDate(file.mtime)"></span>
+                  
+                  <div class="input-thumbnail-overlay">
+                    <div class="input-thumbnail-filename" x-text="getFileDisplayName(file)"></div>
+                    <div class="input-thumbnail-meta">
+                      <span x-text="formatFileSize(file.file_size)"></span>
+                      <span x-show="file.file_size"> • </span>
+                      <span x-text="formatDate(file.created_at)"></span>
+                    </div>
                   </div>
                 </div>
-              </div>
-            </template>
+              </template>
+            </div>
           </div>
 
           <!-- Pagination -->

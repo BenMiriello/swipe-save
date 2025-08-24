@@ -54,6 +54,11 @@ window.comfyUIBentoML.fieldEditorUI = {
         // Initialize services
         await window.comfyUIBentoML.services.fieldEditorService.init();
         
+        // Set up document-level event listener for input file selection
+        document.addEventListener('input-file-selected', (event) => {
+          this.handleInputFileSelected(event.detail);
+        });
+        
         // Load current file if available
         if (this.$store.comfyWorkflow?.currentFile) {
           this.loadFields(this.$store.comfyWorkflow.currentFile);
@@ -417,6 +422,9 @@ window.comfyUIBentoML.fieldEditorUI = {
         if (this.currentImageField && fileData) {
           console.log('Input file selected:', fileData);
           
+          // Update the field with the selected file (for immediate UI update)
+          this.currentImageField.currentValue = fileData.filename;
+          
           // Save the change using the field edit session
           const session = window.comfyUIBentoML.services.fieldEditSession;
           session.startEdit(this.currentImageField);
@@ -428,6 +436,39 @@ window.comfyUIBentoML.fieldEditorUI = {
           });
 
           this.currentImageField = null;
+        }
+      },
+
+      /**
+       * Check if field has changes from original value
+       */
+      hasChanges(field) {
+        // Check if field has stored original value
+        if (!field._originalValue) {
+          // Store original value on first check
+          field._originalValue = field.currentValue;
+          return false;
+        }
+        return field.currentValue !== field._originalValue;
+      },
+
+      /**
+       * Revert field to its original value
+       */
+      revertField(field) {
+        if (field._originalValue !== undefined) {
+          const originalValue = field._originalValue;
+          field.currentValue = originalValue;
+          
+          // Save the revert using the field edit session
+          const session = window.comfyUIBentoML.services.fieldEditSession;
+          session.startEdit(field);
+          session.updateTempValue(originalValue);
+          session.saveEdit().then(() => {
+            console.log('Field reverted:', field.fieldName, originalValue);
+          }).catch(error => {
+            console.error('Failed to revert field:', error);
+          });
         }
       }
     };

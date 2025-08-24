@@ -133,6 +133,7 @@ window.InputManager.ui.createInputPickerModal = function() {
         }));
         
         console.log('Input picker loaded', this.allFiles.length, 'files');
+        console.log('Sample file thumbnail path:', this.allFiles[0]?.thumbnail);
         console.log('displayedFiles after load:', this.displayedFiles?.length);
         
         // Force reactivity update 
@@ -161,14 +162,23 @@ window.InputManager.ui.createInputPickerModal = function() {
       if (!this.selectedFile) return;
       
       try {
-        // Update usage statistics
-        const database = window.InputManager.core.InputDatabase;
-        await database.updateUsage(this.selectedFile.id);
+        // Update usage statistics (skip if database not available)
+        try {
+          const database = window.InputManager.core.InputDatabase;
+          if (database && database.updateUsage) {
+            await database.updateUsage(this.selectedFile.id);
+          }
+        } catch (dbError) {
+          console.warn('Could not update usage statistics:', dbError);
+          // Continue without database update
+        }
         
-        // Dispatch custom event for ComfyUI integration
-        this.$el.dispatchEvent(new CustomEvent('input-file-selected', {
-          detail: this.selectedFile,
-          bubbles: true
+        // Dispatch document-level event for ComfyUI field editor integration
+        document.dispatchEvent(new CustomEvent('input-file-selected', {
+          detail: {
+            filename: this.selectedFile.filename,
+            name: this.selectedFile.name
+          }
         }));
         
         this.closeModal();
@@ -231,22 +241,6 @@ window.InputManager.ui.createInputPickerModal = function() {
       console.log('Selected file:', file.filename);
     },
     
-    applySelection() {
-      if (!this.selectedFile) return;
-      
-      console.log('Applying selection:', this.selectedFile.filename);
-      
-      // Dispatch event to field editor
-      const event = new CustomEvent('input-file-selected', {
-        detail: {
-          filename: this.selectedFile.filename,
-          name: this.selectedFile.name
-        }
-      });
-      
-      document.dispatchEvent(event);
-      this.closeModal();
-    },
     
     handleImageError(event) {
       // Handle broken image

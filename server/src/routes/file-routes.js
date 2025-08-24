@@ -388,6 +388,25 @@ router.get('/media/*', (req, res) => {
         }
       }
       
+      // Also search through feature directories (input picker, etc)
+      if (!filePath && dirConfig.sources.featureDirectories) {
+        // Check input picker directories
+        const inputPickerDirs = dirConfig.sources.featureDirectories.inputPicker || [];
+        for (const directory of inputPickerDirs) {
+          if (!directory.enabled) {
+            continue;
+          }
+          
+          const testPath = path.join(directory.path, decodedPath);
+          if (fs.existsSync(testPath)) {
+            filePath = testPath;
+            sourceDirectory = directory;
+            console.log(`Found file in input picker directory ${directory.name}: ${filePath}`);
+            break;
+          }
+        }
+      }
+      
       // If file not found in enabled directories, don't fall back to legacy path
       if (!filePath) {
         console.log(`File ${decodedPath} not found in any enabled source directories`);
