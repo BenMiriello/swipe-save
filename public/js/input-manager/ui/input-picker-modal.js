@@ -11,6 +11,7 @@ window.InputManager.ui.createInputPickerModal = function() {
     // Modal state
     showModal: false,
     isLoading: false,
+    debugCounter: 0,
     
     // File data
     allFiles: [],
@@ -34,26 +35,36 @@ window.InputManager.ui.createInputPickerModal = function() {
       return window.InputManager.utils.SortFilterUtils;
     },
 
-    // Computed properties
+    // Computed properties 
     get filteredFiles() {
-      return this.sortFilterUtils.applyFiltersAndSort(
-        this.allFiles, 
-        this.filterText, 
-        this.sortBy, 
-        this.sortOrder
-      );
+      // Simplified filtering for now
+      let filtered = [...this.allFiles];
+      if (this.filterText && this.filterText.trim()) {
+        const searchTerm = this.filterText.toLowerCase();
+        filtered = filtered.filter(file => 
+          file.filename?.toLowerCase().includes(searchTerm) ||
+          file.name?.toLowerCase().includes(searchTerm)
+        );
+      }
+      return filtered;
     },
 
     get paginationData() {
-      return this.sortFilterUtils.paginate(
-        this.filteredFiles,
-        this.currentPage,
-        this.perPage
-      );
+      const totalItems = this.filteredFiles.length;
+      const totalPages = Math.ceil(totalItems / this.perPage);
+      const startIndex = (this.currentPage - 1) * this.perPage;
+      const endIndex = startIndex + this.perPage;
+      const items = this.filteredFiles.slice(startIndex, endIndex);
+      
+      return { items, totalPages, totalItems };
     },
 
     get paginatedFiles() {
       return this.paginationData.items;
+    },
+    
+    get displayedFiles() {
+      return this.paginatedFiles;
     },
 
     get totalPages() {
@@ -72,6 +83,7 @@ window.InputManager.ui.createInputPickerModal = function() {
 
     // Modal actions
     async openModal() {
+      console.log('🔥 Opening input picker modal...');
       this.showModal = true;
       await this.loadInputFiles();
     },
@@ -120,14 +132,13 @@ window.InputManager.ui.createInputPickerModal = function() {
           usage_count: 0
         }));
         
-        console.log('🎉 UI Step 2: Service returned:', this.allFiles.length, 'files');
-        console.log('🎉 UI Step 2: Data sample:', this.allFiles.slice(0, 2));
+        console.log('Input picker loaded', this.allFiles.length, 'files');
+        console.log('displayedFiles after load:', this.displayedFiles?.length);
         
-        // Check what the UI actually has
-        console.log('🔍 UI Step 3: this.allFiles type:', typeof this.allFiles);
-        console.log('🔍 UI Step 3: this.allFiles is Array:', Array.isArray(this.allFiles));
-        console.log('🔍 UI Step 3: this.hasFiles:', this.hasFiles);
-        console.log('🔍 UI Step 3: this.isLoading:', this.isLoading);
+        // Force reactivity update 
+        this.$nextTick(() => {
+          console.log('nextTick - displayedFiles:', this.displayedFiles?.length);
+        });
         
         // Reset to first page when data changes
         this.resetPagination();
@@ -212,6 +223,52 @@ window.InputManager.ui.createInputPickerModal = function() {
 
     resetPagination() {
       this.currentPage = 1;
+    },
+
+    // File selection
+    selectFile(file) {
+      this.selectedFile = file;
+      console.log('Selected file:', file.filename);
+    },
+    
+    applySelection() {
+      if (!this.selectedFile) return;
+      
+      console.log('Applying selection:', this.selectedFile.filename);
+      
+      // Dispatch event to field editor
+      const event = new CustomEvent('input-file-selected', {
+        detail: {
+          filename: this.selectedFile.filename,
+          name: this.selectedFile.name
+        }
+      });
+      
+      document.dispatchEvent(event);
+      this.closeModal();
+    },
+    
+    handleImageError(event) {
+      // Handle broken image
+      event.target.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjQwIiBoZWlnaHQ9IjQwIiBmaWxsPSIjMzMzIi8+CjxwYXRoIGQ9Ik0xMCAxMEwzMCAzME0zMCAxMEwxMCAzMCIgc3Ryb2tlPSIjNzc3IiBzdHJva2Utd2lkdGg9IjIiLz4KPC9zdmc+';
+    },
+    
+    formatFilename(file) {
+      const filename = file.filename || file.name || '';
+      if (filename.length > 20) {
+        return filename.substring(0, 17) + '...';
+      }
+      return filename;
+    },
+
+    formatFileSize(size) {
+      if (size < 1024) return size + ' B';
+      if (size < 1024 * 1024) return Math.round(size / 1024) + ' KB';
+      return Math.round(size / (1024 * 1024)) + ' MB';
+    },
+
+    formatDate(date) {
+      return new Date(date).toLocaleDateString();
     },
 
     // Utility methods
