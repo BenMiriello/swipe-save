@@ -132,13 +132,10 @@ window.InputManager.ui.createInputPickerModal = function() {
           usage_count: 0
         }));
         
-        console.log('Input picker loaded', this.allFiles.length, 'files');
-        console.log('Sample file thumbnail path:', this.allFiles[0]?.thumbnail);
-        console.log('displayedFiles after load:', this.displayedFiles?.length);
         
         // Force reactivity update 
         this.$nextTick(() => {
-          console.log('nextTick - displayedFiles:', this.displayedFiles?.length);
+          // Update display
         });
         
         // Reset to first page when data changes
@@ -155,7 +152,6 @@ window.InputManager.ui.createInputPickerModal = function() {
     // File selection
     selectFile(file) {
       this.selectedFile = file;
-      console.log('Selected input file:', file.filename);
     },
 
     async applySelection() {

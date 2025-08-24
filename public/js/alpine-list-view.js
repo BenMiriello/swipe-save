@@ -154,23 +154,9 @@ window.alpineListView = {
           Loading files...
         </div>
         
-        <!-- Always visible diagnostic -->
-        <div style="background: #ffe6e6; border: 2px solid #cc0000; padding: 10px; margin: 10px 0;">
-          <h4>List View Diagnostics (Always Visible)</h4>
-          <p>Store exists: <span x-text="$store.listView ? 'YES' : 'NO'"></span></p>
-          <p>All files: <span x-text="$store.listView?.allFiles?.length || 'N/A'"></span></p>
-          <p>Displayed files: <span x-text="$store.listView?.displayedFiles?.length || 'N/A'"></span></p>
-          <p>Is loading: <span x-text="$store.listView?.isLoading"></span></p>
-          <p>Current page: <span x-text="$store.listView?.currentPage"></span></p>
-        </div>
         
         <!-- File List -->
-        <div x-show="$store.listView.displayedFiles.length > 0" 
-             class="file-list"
-             style="background: #f0f8ff; border: 2px solid #0066cc; padding: 10px; margin: 10px 0;">
-          <p style="margin: 0 0 10px 0; font-weight: bold; color: #0066cc;">
-            File list container (showing <span x-text="$store.listView.displayedFiles.length"></span> files)
-          </p>
+        <div x-show="$store.listView.displayedFiles.length > 0" class="file-list">
           <template x-for="(file, index) in $store.listView.displayedFiles" :key="file.name">
             <div class="file-item" 
                  :class="{ 
