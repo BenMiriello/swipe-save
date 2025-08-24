@@ -488,7 +488,7 @@
                                        placeholder="Enter filename or click Pick File">
                                 <button type="button" 
                                         class="comfy-btn comfy-btn-secondary" 
-                                        @click="showImageFilePicker(mediaField)">Pick File</button>
+                                        @click="openInputPicker(mediaField)">Pick File</button>
                               </div>
                             </div>
                           </template>
@@ -884,6 +884,115 @@
                 @click.stop="console.log('Keeping item'); $store.queueViewer.showCancelItemModal = false">
           Keep Item
         </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Input Picker Modal -->
+  <div x-data="InputManager.ui.createInputPickerModal()" x-init="init()" @input-file-selected="handleInputFileSelected($event.detail)">
+    <!-- Include input picker modal template -->
+    <div class="input-picker-modal" 
+         x-show="showModal" 
+         x-transition.opacity
+         @click.self="closeModal()"
+         @click.stop>
+         
+      <div class="input-picker-content" @click.stop>
+        <!-- Header -->
+        <header class="input-picker-header">
+          <h3 class="input-picker-title">Select Input File</h3>
+          <button class="input-picker-close" @click="closeModal()" aria-label="Close">×</button>
+        </header>
+
+        <!-- Controls -->
+        <div class="input-picker-controls">
+          <input type="text" 
+                 class="filter-input" 
+                 x-model="filterText" 
+                 @input="onFilterChange()"
+                 placeholder="Filter by filename...">
+          
+          <div class="sort-controls">
+            <template x-for="option in sortOptions" :key="option.value">
+              <button class="sort-button" 
+                      :class="{ active: sortBy === option.value }"
+                      @click="setSortBy(option.value)">
+                <span x-text="getSortLabel(option.value)"></span>
+                <span x-text="getSortIcon(option.value)"></span>
+              </button>
+            </template>
+          </div>
+
+          <div class="quick-actions">
+            <button class="quick-action-btn" @click="selectMostRecentFile()">Recent</button>
+            <button class="quick-action-btn" @click="selectMostUsedFile()">Popular</button>
+            <button class="quick-action-btn" @click="clearFilter()">Clear</button>
+          </div>
+        </div>
+
+        <!-- Content Area -->
+        <div class="input-picker-content-area">
+          
+          <!-- Loading State -->
+          <div class="input-picker-loading" x-show="isLoading">
+            <div>Loading input files...</div>
+          </div>
+
+          <!-- Input Grid -->
+          <div class="input-picker-grid" x-show="!isLoading && displayedFiles.length > 0">
+            <template x-for="file in displayedFiles" :key="file.name">
+              <div class="input-file-item" 
+                   :class="{ selected: selectedFile?.name === file.name }"
+                   @click="selectFile(file)">
+                
+                <div class="input-file-thumbnail">
+                  <img :src="file.thumbnail" 
+                       :alt="file.name"
+                       loading="lazy"
+                       @error="handleImageError($event)">
+                </div>
+                
+                <div class="input-file-info">
+                  <div class="input-file-name" x-text="file.name"></div>
+                  <div class="input-file-stats">
+                    <span class="input-file-size" x-text="formatFileSize(file.size)"></span>
+                    <span class="input-file-date" x-text="formatDate(file.mtime)"></span>
+                  </div>
+                </div>
+              </div>
+            </template>
+          </div>
+
+          <!-- Pagination -->
+          <div class="input-picker-pagination" x-show="totalPages > 1">
+            <button class="pagination-btn" 
+                    @click="previousPage()" 
+                    :disabled="currentPage <= 1">‹ Prev</button>
+            
+            <div class="page-numbers">
+              <template x-for="page in getPageNumbers()" :key="page">
+                <button class="page-btn" 
+                        :class="{ current: currentPage === page }"
+                        @click="goToPage(page)"
+                        x-text="page"></button>
+              </template>
+            </div>
+            
+            <button class="pagination-btn" 
+                    @click="nextPage()" 
+                    :disabled="currentPage >= totalPages">Next ›</button>
+          </div>
+
+          <!-- Action Buttons -->
+          <div class="input-picker-actions">
+            <button class="input-action-btn secondary" @click="closeModal()">Cancel</button>
+            <button class="input-action-btn primary" 
+                    @click="applySelection()"
+                    :disabled="!selectedFile">
+              Apply Selection
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   </div>

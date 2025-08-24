@@ -1,0 +1,154 @@
+<!-- Input Picker Modal Template -->
+<div class="input-picker-modal" 
+     x-show="showModal" 
+     x-transition.opacity
+     @click.self="closeModal()">
+     
+  <div class="input-picker-content" @click.stop>
+    
+    <!-- Header -->
+    <header class="input-picker-header">
+      <h3 class="input-picker-title">Select Input File</h3>
+      <button class="input-picker-close" @click="closeModal()" aria-label="Close">×</button>
+    </header>
+
+    <!-- Controls -->
+    <div class="input-picker-controls">
+      <input type="text" 
+             class="filter-input" 
+             x-model="filterText" 
+             @input="onFilterChange()"
+             placeholder="Filter by filename...">
+      
+      <div class="sort-controls">
+        <template x-for="option in sortOptions" :key="option.value">
+          <button class="sort-button" 
+                  :class="{ active: sortBy === option.value }"
+                  @click="setSortBy(option.value)">
+            <span x-text="getSortLabel(option.value)"></span>
+            <span x-text="getSortIcon(option.value)"></span>
+          </button>
+        </template>
+      </div>
+
+      <div class="quick-actions">
+        <button class="quick-action-btn" @click="selectMostRecentFile()">Recent</button>
+        <button class="quick-action-btn" @click="selectMostUsedFile()">Popular</button>
+        <button class="quick-action-btn" @click="clearFilter()">Clear</button>
+      </div>
+    </div>
+
+    <!-- Content Area -->
+    <div class="input-picker-content-area">
+      
+      <!-- Loading State -->
+      <div class="input-picker-loading" x-show="isLoading">
+        <div>Loading input files...</div>
+      </div>
+
+      <!-- Empty State -->
+      <div class="input-picker-empty" x-show="!isLoading && !hasFiles">
+        <div class="input-picker-empty-icon">📁</div>
+        <div>No input files found</div>
+        <div style="margin-top: 8px; font-size: 12px; color: #666;">
+          Add images to your ComfyUI input directory to see them here
+        </div>
+      </div>
+
+      <!-- File Grid -->
+      <div class="input-thumbnail-grid" 
+           x-show="!isLoading && hasFiles">
+        
+        <div class="input-grid-container" 
+             style="display: grid; gap: 8px; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));">
+          
+          <template x-for="file in paginatedFiles" :key="file.id">
+            <div class="input-thumbnail"
+                 :class="{ selected: selectedFile && selectedFile.id === file.id }"
+                 @click="selectFile(file)">
+              
+              <img :src="getThumbnailUrl(file)" 
+                   :alt="file.filename"
+                   loading="lazy">
+              
+              <div class="input-thumbnail-overlay">
+                <div class="input-thumbnail-filename" x-text="getFileDisplayName(file)"></div>
+                <div class="input-thumbnail-meta">
+                  <span x-text="formatFileSize(file.file_size)"></span>
+                  <span x-show="file.file_size"> • </span>
+                  <span x-text="formatDate(file.created_at)"></span>
+                </div>
+              </div>
+            </div>
+          </template>
+        </div>
+
+        <!-- Preview Overlay -->
+        <div class="input-preview-overlay" 
+             x-show="showPreview && previewFile" 
+             x-ref="previewOverlay"
+             x-transition.opacity
+             @click="closeFilePreview()">
+          
+          <img class="input-preview-image" 
+               :src="previewFile ? getThumbnailUrl(previewFile) : ''" 
+               :alt="previewFile ? previewFile.filename : ''">
+          
+          <div class="input-preview-info">
+            <div class="input-preview-filename" x-text="previewFile ? previewFile.filename : ''"></div>
+            <div x-text="previewFile ? formatFileSize(previewFile.file_size) : ''"></div>
+            <div x-text="previewFile ? formatDate(previewFile.created_at) : ''"></div>
+            <div x-show="previewFile && previewFile.usage_count">
+              Used <span x-text="previewFile.usage_count"></span> times
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Footer with Pagination and Actions -->
+    <div class="input-picker-footer" x-show="!isLoading && hasFiles">
+      
+      <!-- Results Info -->
+      <div class="pagination-info">
+        <span x-text="getResultsText()"></span>
+      </div>
+
+      <!-- Pagination Controls -->
+      <div class="pagination-controls" x-show="totalPages > 1">
+        <button class="pagination-btn" 
+                @click="prevPage()" 
+                :disabled="currentPage <= 1">‹ Prev</button>
+        
+        <div class="pagination-pages">
+          <template x-for="page in Math.min(5, totalPages)" :key="page">
+            <button class="page-btn" 
+                    :class="{ current: currentPage === page }"
+                    @click="goToPage(page)"
+                    x-text="page"></button>
+          </template>
+          <span x-show="totalPages > 5 && currentPage < totalPages - 2">...</span>
+          <button class="page-btn" 
+                  x-show="totalPages > 5 && currentPage < totalPages - 1"
+                  :class="{ current: currentPage === totalPages }"
+                  @click="goToPage(totalPages)"
+                  x-text="totalPages"></button>
+        </div>
+        
+        <button class="pagination-btn" 
+                @click="nextPage()" 
+                :disabled="currentPage >= totalPages">Next ›</button>
+      </div>
+
+      <!-- Action Buttons -->
+      <div class="input-picker-actions">
+        <button class="input-action-btn secondary" @click="closeModal()">Cancel</button>
+        <button class="input-action-btn primary" 
+                @click="applySelection()"
+                :disabled="!selectedFile">
+          Apply Selection
+        </button>
+      </div>
+    </div>
+  </div>
+</div>

@@ -373,12 +373,62 @@ window.comfyUIBentoML.fieldEditorUI = {
       },
 
       /**
-       * Show image file picker for input selection
+       * Open input file picker for image field selection
        */
-      showImageFilePicker(field) {
-        console.log('Opening image file picker for field:', field);
-        // For now, just alert - will implement proper picker in next iteration
-        alert('Image picker will open here. For now, manually enter the filename from your ComfyUI input directory.');
+      openInputPicker(field) {
+        console.log('openInputPicker called for:', field);
+        this.currentImageField = field;
+        
+        // Find the input picker modal instance and open it
+        const inputPickerEl = document.querySelector('[x-data*="createInputPickerModal"]');
+        console.log('Input picker element:', inputPickerEl);
+        
+        // Try different ways to access Alpine component
+        if (inputPickerEl) {
+          // Method 1: Direct Alpine access
+          if (inputPickerEl._x_dataStack && inputPickerEl._x_dataStack[0]) {
+            console.log('Opening modal via _x_dataStack...');
+            inputPickerEl._x_dataStack[0].openModal();
+            return;
+          }
+          
+          // Method 2: Using Alpine.js $data
+          if (window.Alpine && window.Alpine.$data) {
+            const alpineData = window.Alpine.$data(inputPickerEl);
+            if (alpineData && alpineData.openModal) {
+              console.log('Opening modal via Alpine.$data...');
+              alpineData.openModal();
+              return;
+            }
+          }
+          
+          // Method 3: Manual event dispatch
+          console.log('Fallback: dispatching custom event...');
+          inputPickerEl.dispatchEvent(new CustomEvent('open-input-picker'));
+        } else {
+          console.error('Could not find input picker modal element');
+        }
+      },
+
+      /**
+       * Handle input file selection from picker modal
+       */
+      handleInputFileSelected(fileData) {
+        if (this.currentImageField && fileData) {
+          console.log('Input file selected:', fileData);
+          
+          // Save the change using the field edit session
+          const session = window.comfyUIBentoML.services.fieldEditSession;
+          session.startEdit(this.currentImageField);
+          session.updateTempValue(fileData.filename);
+          session.saveEdit().then(() => {
+            console.log('Image field updated:', fileData.filename);
+          }).catch(error => {
+            console.error('Failed to update image field:', error);
+          });
+
+          this.currentImageField = null;
+        }
       }
     };
   }
