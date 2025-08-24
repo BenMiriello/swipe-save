@@ -90,14 +90,14 @@ window.InputManager.ui.createInputPickerModal = function() {
       try {
         console.log('Loading input files...');
         
-        // Use the media API with the specific ComfyUI input directory ID
-        const response = await fetch('/api/media?directories=input-picker-comfyui-input');
+        // Use the input picker API endpoint  
+        const response = await fetch('/api/media/input-picker');
         if (!response.ok) {
           throw new Error(`HTTP ${response.status}: ${response.statusText}`);
         }
         
         const data = await response.json();
-        const files = data.items || [];
+        const files = data.files || data.items || [];
         
         // Filter for image files only
         const imageFiles = files.filter(file => {
@@ -110,9 +110,13 @@ window.InputManager.ui.createInputPickerModal = function() {
         this.allFiles = imageFiles.map((file, index) => ({
           id: index + 1,
           filename: file.name,
+          name: file.name, // Also include name for compatibility
           input_path: file.path, // Use the path from the media API
+          thumbnail: file.path, // Use the same path for thumbnail
           file_size: file.size,
+          size: file.size, // Include size for template
           created_at: file.date,
+          mtime: file.date, // Include mtime for template
           usage_count: 0
         }));
         
