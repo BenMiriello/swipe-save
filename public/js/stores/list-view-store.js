@@ -138,13 +138,13 @@ document.addEventListener('alpine:init', () => {
     
     // Cross-view navigation: find page containing specific item
     navigateToSelectedItem() {
-      const globalState = Alpine.store('appState');
-      if (globalState && globalState.currentFileIndex !== undefined) {
-        const targetPage = Math.ceil((globalState.currentFileIndex + 1) / this.itemsPerPage);
-        if (targetPage !== this.currentPage) {
+      const selectedIndex = this.selectedFileIndex;
+      
+      if (selectedIndex !== undefined && selectedIndex >= 0 && selectedIndex < this.allFiles.length) {
+        const targetPage = Math.floor(selectedIndex / this.itemsPerPage) + 1;
+        if (targetPage !== this.currentPage && targetPage >= 1 && targetPage <= this.totalPages) {
           this.goToPage(targetPage);
         }
-        this.selectedFileIndex = globalState.currentFileIndex;
         
         // Scroll to item after a short delay
         setTimeout(() => this.scrollToSelectedItem(), 200);
@@ -168,50 +168,33 @@ document.addEventListener('alpine:init', () => {
     },
     
     selectFile(fileIndex) {
-      console.log('=== selectFile called ===');
-      console.log('fileIndex parameter:', fileIndex);
-      console.log('currentPage:', this.currentPage);
-      console.log('itemsPerPage:', this.itemsPerPage);
-      console.log('displayedFiles length:', this.displayedFiles.length);
-      console.log('allFiles length:', this.allFiles.length);
-      
       // Prevent rapid double calls with simple debounce
       const now = Date.now();
       if (this._lastSelectFile && (now - this._lastSelectFile) < 500) {
-        console.log('Debounced - returning early');
         return;
       }
       this._lastSelectFile = now;
       
       const globalIndex = (this.currentPage - 1) * this.itemsPerPage + fileIndex;
-      console.log('Calculated globalIndex:', globalIndex);
       this.selectedFileIndex = globalIndex;
       
       // Store in localStorage for persistence across page loads
       localStorage.setItem('selectedFileIndex', globalIndex.toString());
-      console.log('Stored selectedFileIndex in localStorage:', globalIndex);
       
       // Get the file object
       const file = this.allFiles[globalIndex];
       if (!file) {
-        console.error('File not found at globalIndex:', globalIndex);
-        console.log('Available files:', this.allFiles.map((f, i) => `${i}: ${f.name}`));
+        console.error('File not found at index:', globalIndex);
         return;
       }
-      
-      console.log('Selecting file:', file.name, 'at globalIndex:', globalIndex);
-      console.log('File object:', file);
       
       // Exit list view and switch to existing single view  
       this.exitListView();
       
-      // Navigate using full path for unique identification AND pass the index
-      const encodedPath = encodeURIComponent(file.fullPath);
-      if (window.router && window.router.navigate) {
-        window.router.navigate(`/view?file=${encodedPath}&index=${globalIndex}`);
-      } else {
-        window.location.href = `/view?file=${encodedPath}&index=${globalIndex}`;
-      }
+      // Use file.path (URL path) instead of file.fullPath (filesystem path)
+      // because single view searches for f.path in findIndex
+      const encodedPath = encodeURIComponent(file.path);
+      window.location.href = `/view?file=${encodedPath}&index=${globalIndex}`;
     },
 
     

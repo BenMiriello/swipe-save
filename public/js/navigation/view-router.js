@@ -37,29 +37,50 @@ const ViewRouter = {
    */
   initializeWithFilePath(app, filePath) {
     window.globalState.currentFilePath = filePath;
-    app.init();
+    app.initWithoutAutoLoad();
     
-    setTimeout(() => {
-      if (window.app && window.app.state && window.app.state.allFiles) {
-        const fileIndex = window.app.state.allFiles.findIndex(f => f.path === filePath);
-        if (fileIndex >= 0 && window.app.goToIndex) {
-          window.app.goToIndex(fileIndex);
+    // Load files manually and navigate to correct one
+    app.fetchMediaFiles().then(() => {
+      const navigate = () => {
+        if (window.app && window.app.state && window.app.state.allFiles && window.app.state.allFiles.length > 0) {
+          // Try both encoded and decoded path matching
+          const decodedFilePath = decodeURIComponent(filePath);
+          const fileIndex = window.app.state.allFiles.findIndex(f => 
+            f.path === filePath || f.path === decodedFilePath || f.fullPath === decodedFilePath
+          );
+          if (fileIndex >= 0 && window.app.goToIndex) {
+            window.app.goToIndex(fileIndex);
+          }
+        } else {
+          // Retry if not ready yet
+          setTimeout(navigate, 100);
         }
-      }
-    }, 1500);
+      };
+      navigate();
+    });
   },
 
   /**
    * Initialize app with specific file index
    */
   initializeWithIndex(app, index) {
-    app.init();
+    app.initWithoutAutoLoad();
     
-    setTimeout(() => {
-      if (window.app && window.app.goToIndex) {
-        window.app.goToIndex(parseInt(index));
-      }
-    }, 1000);
+    // Load files manually and navigate to correct index
+    app.fetchMediaFiles().then(() => {
+      const navigate = () => {
+        if (window.app && window.app.goToIndex && window.app.state && window.app.state.allFiles && window.app.state.allFiles.length > 0) {
+          const targetIndex = parseInt(index);
+          if (targetIndex >= 0 && targetIndex < window.app.state.allFiles.length) {
+            window.app.goToIndex(targetIndex);
+          }
+        } else {
+          // Retry if not ready yet
+          setTimeout(navigate, 100);
+        }
+      };
+      navigate();
+    });
   }
 };
 

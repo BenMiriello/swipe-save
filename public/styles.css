@@ -1565,4 +1565,32 @@ video.media-content[data-hide-controls]::-webkit-media-controls-volume-slider {
   #appTitle {
     font-size: 1.3rem;
   }
+  
+  /* Reduce header container margins to match media viewer margins */
+  .header-container {
+    margin: 5px;
+  }
+  
+  /* Reduce header icons spacing */
+  .header-icons {
+    gap: 6px;
+    margin-right: 5px;
+  }
+  
+  /* Reduce header left spacing */
+  .header-left {
+    margin-left: 5px;
+    gap: 4px;
+  }
+  
+  /* Reduce bottom controls margins and padding */
+  .bottom-controls {
+    margin: 0 5px;
+    padding: 0 15px;
+  }
+  
+  /* Reduce gap between navigation buttons */
+  .controls {
+    gap: 6px;
+  }
 }

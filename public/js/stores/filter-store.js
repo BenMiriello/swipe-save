@@ -204,7 +204,10 @@ document.addEventListener('alpine:init', () => {
           listView.allFiles.length = 0;
           listView.allFiles.push(...newFiles);
           listView.totalPages = Math.ceil(listView.allFiles.length / listView.itemsPerPage);
-          listView.currentPage = 1; // Reset to first page
+          // Only reset page if filters are actually active, preserve navigation otherwise
+          if (this.hasActiveFilters()) {
+            listView.currentPage = 1; // Reset to first page only when filtering
+          }
           listView.updateDisplayedFiles();
         }
       } catch (error) {
