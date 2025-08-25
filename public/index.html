@@ -366,16 +366,30 @@
     
     <!-- Modal Content -->
     <div class="filter-modal" @click.stop>
-      <!-- Modal Header -->
-      <div class="filter-modal-header">
+      <!-- Modal Header (Sticky) -->
+      <div class="filter-modal-header filter-sticky-header">
         <h3>Advanced Filters</h3>
       </div>
+      
+      <!-- Scrollable Content Area -->
+      <div class="filter-modal-body">
       
       <!-- Filter Fields -->
       <div class="filter-fields">
         <!-- Filename Filter -->
         <div class="filter-field">
-          <label for="filter-filename">Filename</label>
+          <div class="filter-label-with-info">
+            <label for="filter-filename">Filename</label>
+            <button @click="toggleInfo('filename')" 
+                    class="filter-info-btn" 
+                    title="Show format examples">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="10"></circle>
+                <path d="m9,9 0,0 a3,3 0 1,1 6,0c0,2 -3,3 -3,3"></path>
+                <path d="m9,17 6,0"></path>
+              </svg>
+            </button>
+          </div>
           <div class="filter-input-group">
             <input type="text" 
                    id="filter-filename"
@@ -387,57 +401,134 @@
                     class="filter-clear-btn" 
                     title="Clear">×</button>
           </div>
+          <div x-show="showInfo.filename" 
+               x-transition.opacity.duration.200ms
+               class="filter-info-row">
+            <small class="filter-info-text">
+              Examples: <code>*.png</code> (all PNG files), <code>ComfyUI_*</code> (starts with ComfyUI), 
+              <code>*lightning*</code> (contains lightning), <code>folder/file.png</code> (specific path)
+            </small>
+          </div>
         </div>
         
         <!-- Size Filter -->
         <div class="filter-field">
-          <label>File Size</label>
-          <div class="filter-size-controls">
-            <div class="size-slider-group">
-              <label class="size-slider-label">Minimum Size</label>
-              <div class="size-slider-container">
-                <input type="range" 
-                       id="filter-size-min"
-                       x-model="sizeMin"
-                       min="0" max="100" step="1"
-                       class="size-slider">
-                <span class="size-slider-value" x-text="formatSizeValue(sizeMin)"></span>
+          <div class="filter-collapsible">
+            <button @click="toggleCollapsible('size')" 
+                    class="filter-collapsible-header" 
+                    type="button">
+              <span class="filter-collapsible-title">File Size</span>
+              <div class="filter-collapsible-right">
+                <span x-show="getSizeSummary() !== 'Any Size'" 
+                      class="filter-collapsible-summary" 
+                      x-text="getSizeSummary()"></span>
+                <svg class="filter-collapsible-icon" 
+                     :class="{ 'rotated': showCollapsible.size }"
+                     width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <polyline points="6,9 12,15 18,9"></polyline>
+                </svg>
+              </div>
+            </button>
+            <div x-show="showCollapsible.size" 
+                 x-transition:enter.duration.200ms
+                 x-transition:leave.duration.150ms
+                 class="filter-collapsible-content">
+              <div class="filter-size-controls">
+                <div class="size-slider-group">
+                  <label class="size-slider-label">Minimum Size</label>
+                  <div class="size-slider-container">
+                    <input type="range" 
+                           id="filter-size-min"
+                           x-model="sizeMin"
+                           min="0" max="100" step="1"
+                           class="size-slider">
+                    <span class="size-slider-value" x-text="formatSizeValue(sizeMin)"></span>
+                  </div>
+                </div>
+                <div class="size-slider-group">
+                  <label class="size-slider-label">Maximum Size</label>
+                  <div class="size-slider-container">
+                    <input type="range" 
+                           id="filter-size-max"
+                           x-model="sizeMax"
+                           min="0" max="100" step="1"
+                           class="size-slider">
+                    <span class="size-slider-value" x-text="formatSizeValue(sizeMax)"></span>
+                  </div>
+                </div>
+                <button x-show="sizeMin > 0 || sizeMax < 100" 
+                        @click="resetSizeFilter()" 
+                        class="filter-clear-btn size-clear-btn" 
+                        title="Clear Size Filter">Clear</button>
+              </div>
+              <div class="size-examples">
+                <small class="size-examples-text">Examples: Any Size, 1MB-50MB, >10MB, <500KB</small>
               </div>
             </div>
-            <div class="size-slider-group">
-              <label class="size-slider-label">Maximum Size</label>
-              <div class="size-slider-container">
-                <input type="range" 
-                       id="filter-size-max"
-                       x-model="sizeMax"
-                       min="0" max="100" step="1"
-                       class="size-slider">
-                <span class="size-slider-value" x-text="formatSizeValue(sizeMax)"></span>
-              </div>
-            </div>
-            <button x-show="sizeMin > 0 || sizeMax < 100" 
-                    @click="resetSizeFilter()" 
-                    class="filter-clear-btn size-clear-btn" 
-                    title="Clear Size Filter">Clear</button>
           </div>
         </div>
         
         <!-- Date Filter -->
         <div class="filter-field">
-          <label for="filter-date">Date</label>
-          <div class="filter-input-group">
-            <select x-model="$store.filters.currentFilters.date" class="filter-select">
-              <option value="">Any date</option>
-              <template x-for="option in $store.filters.getDateOptions()" :key="option.value">
-                <option :value="option.value" x-text="option.label"></option>
-              </template>
-            </select>
+          <div class="filter-collapsible">
+            <button @click="toggleCollapsible('date')" 
+                    class="filter-collapsible-header" 
+                    type="button">
+              <span class="filter-collapsible-title">Date Range</span>
+              <div class="filter-collapsible-right">
+                <span x-show="getDateSummary() !== 'Any Date'" 
+                      class="filter-collapsible-summary" 
+                      x-text="getDateSummary()"></span>
+                <svg class="filter-collapsible-icon" 
+                     :class="{ 'rotated': showCollapsible.date }"
+                     width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <polyline points="6,9 12,15 18,9"></polyline>
+                </svg>
+              </div>
+            </button>
+            <div x-show="showCollapsible.date" 
+                 x-transition:enter.duration.200ms
+                 x-transition:leave.duration.150ms
+                 class="filter-collapsible-content">
+              <div class="date-range-controls">
+                <div class="date-input-group">
+                  <label class="date-label">From Date</label>
+                  <input type="date" 
+                         x-model="startDate"
+                         class="date-input">
+                </div>
+                <div class="date-input-group">
+                  <label class="date-label">To Date</label>
+                  <input type="date" 
+                         x-model="endDate"
+                         class="date-input">
+                </div>
+                <button x-show="startDate || endDate" 
+                        @click="resetDateFilter()" 
+                        class="filter-clear-btn date-clear-btn" 
+                        title="Clear Date Filter">Clear</button>
+              </div>
+            </div>
           </div>
         </div>
         
         <!-- Metadata Filter (conditionally shown) -->
         <div class="filter-field" x-show="$store.filters.includeWorkflowMetadata">
-          <label for="filter-metadata">Workflow Content</label>
+          <div class="filter-label-with-info">
+            <label for="filter-metadata">Workflow Content</label>
+            <button @click="toggleInfo('metadata')" class="filter-info-btn" title="Show search examples">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2"/>
+                <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                <path d="M12 17h.01" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+            </button>
+          </div>
+          <div x-show="showInfo.metadata" class="filter-info-row">
+            <small class="filter-info-text">
+              Examples: <code>KSampler</code> (find KSampler nodes), <code>checkpoint</code> (find checkpoint references), <code>LoRA</code> (find LoRA usage)
+            </small>
+          </div>
           <div class="filter-input-group">
             <input type="text" 
                    id="filter-metadata"
@@ -451,20 +542,36 @@
           </div>
         </div>
       </div>
-      
-      <!-- Sorting -->
+
+      <!-- Input File Metadata Filter -->
       <div class="filter-section">
-        <h4>Sorting</h4>
-        <div class="filter-sort-controls">
-          <select x-model="$store.filters.sorting.field" class="filter-select">
-            <option value="date">Date</option>
-            <option value="name">Name</option>
-            <option value="size">Size</option>
-          </select>
-          <select x-model="$store.filters.sorting.direction" class="filter-select">
-            <option value="desc">Descending</option>
-            <option value="asc">Ascending</option>
-          </select>
+        <div class="filter-field">
+          <div class="filter-label-with-info">
+            <label for="filter-input-metadata">Input File Content</label>
+            <button @click="toggleInfo('inputMetadata')" class="filter-info-btn">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2"/>
+                <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                <path d="M12 17h.01" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+            </button>
+          </div>
+          <div x-show="showInfo.inputMetadata" class="filter-info-row">
+            <small class="filter-info-text">
+              Search in metadata of input images used by the workflow. Same syntax as filename filter. Examples: <code>*portrait*</code> (contains "portrait"), <code>1024</code> (files with 1024 dimensions), <code>*.png</code> (PNG input files)
+            </small>
+          </div>
+          <div class="filter-input-group">
+            <input type="text" 
+                   id="filter-input-metadata"
+                   x-model="$store.filters.currentFilters.inputMetadata"
+                   placeholder="Search in input file metadata..."
+                   class="filter-input">
+            <button x-show="hasFilterContent('inputMetadata')" 
+                    @click="clearFilterField('inputMetadata')" 
+                    class="filter-clear-btn" 
+                    title="Clear">×</button>
+          </div>
         </div>
       </div>
       
@@ -490,55 +597,78 @@
           <input type="checkbox" x-model="$store.filters.includeWorkflowMetadata">
           <span>Include ComfyUI workflow metadata</span>
         </label>
+        <label class="filter-checkbox-label">
+          <input type="checkbox" x-model="$store.filters.caseSensitive">
+          <span>Case sensitive search</span>
+        </label>
       </div>
       
-      <!-- Filter Summary -->
-      <div class="filter-summary" x-show="$store.filters.hasActiveFilters()">
-        <small x-text="getFilterSummary()"></small>
-      </div>
-      
-      <!-- Live Preview Results -->
-      <div class="filter-preview-section" x-show="$store.filters.previewActive">
-        <div class="filter-preview-count">
-          <span x-show="$store.filters.previewResultCount !== null">
-            Preview: <strong x-text="$store.filters.previewResultCount"></strong> files match
-          </span>
-          <span x-show="$store.filters.previewResultCount === null">
-            Loading preview...
-          </span>
+      <!-- Presets Section -->
+      <div class="filter-presets-section" x-show="$store.filters.presets.length > 0">
+        <h4>Saved Presets</h4>
+        <div class="filter-presets-grid">
+          <template x-for="preset in $store.filters.presets" :key="preset.id">
+            <div class="filter-preset-item">
+              <button @click="loadPreset(preset.id)" class="filter-preset-load" :title="preset.description || ''">
+                <span x-text="preset.name"></span>
+                <small x-show="preset.description" x-text="preset.description"></small>
+              </button>
+              <button @click="deletePreset(preset.id, preset.name)" class="filter-preset-delete" title="Delete preset">×</button>
+            </div>
+          </template>
         </div>
       </div>
       
-      <!-- Modal Actions -->
-      <div class="filter-modal-actions">
-        <div class="filter-actions-left">
-          <button @click="showSavePresetDialog()" 
-                  :disabled="!$store.filters.hasActiveFilters()"
-                  class="filter-btn filter-btn-secondary">
-            Save Preset
-          </button>
+      </div>
+      
+      <!-- Filter Summary & Results (Sticky Footer) -->
+      <div class="filter-modal-footer filter-sticky-footer">
+        <div class="filter-results-info">
+          <div class="filter-summary" x-show="$store.filters.hasActiveFilters()">
+            <span class="filter-summary-text" x-text="getFilterSummary()"></span>
+          </div>
+          <div class="filter-live-count">
+            <span x-show="$store.filters.previewResultCount !== null" class="filter-count">
+              <strong x-text="$store.filters.previewResultCount"></strong> files
+              <span x-show="$store.filters.hasActiveFilters()">match filters</span>
+              <span x-show="!$store.filters.hasActiveFilters()">total</span>
+            </span>
+            <span x-show="$store.filters.previewResultCount === null && $store.filters.previewActive" class="filter-count-loading">
+              Updating count...
+            </span>
+          </div>
         </div>
         
-        <div class="filter-actions-center">
-          <button @click="$store.filters.startPreview()" 
-                  :disabled="$store.filters.previewActive || $store.filters.isLoading"
-                  class="filter-btn filter-btn-secondary"
-                  x-show="!$store.filters.previewActive">
-            Preview
-          </button>
-        </div>
-        
-        <div class="filter-actions-right">
-          <button @click="$store.filters.cancelFilters(); $store.filters.close()" 
-                  class="filter-btn filter-btn-secondary">
-            Cancel
-          </button>
-          <button @click="$store.filters.saveFilters(); $store.filters.close()" 
-                  :disabled="$store.filters.isLoading"
-                  class="filter-btn filter-btn-primary">
-            <span x-show="!$store.filters.isLoading">Save & Apply</span>
-            <span x-show="$store.filters.isLoading">Saving...</span>
-          </button>
+        <!-- Modal Actions -->
+        <div class="filter-modal-actions">
+          <div class="filter-actions-left">
+            <button @click="showSavePresetDialog()" 
+                    :disabled="!$store.filters.hasActiveFilters()"
+                    class="filter-btn filter-btn-secondary">
+              Save Preset
+            </button>
+          </div>
+          
+          <div class="filter-actions-center">
+            <button @click="clearFilters()" 
+                    :disabled="!$store.filters.hasActiveFilters()"
+                    class="filter-btn filter-btn-secondary">
+              Clear All
+            </button>
+          </div>
+          
+          <div class="filter-actions-right">
+            <button @click="$store.filters.cancelFilters(); $store.filters.close()" 
+                    class="filter-btn filter-btn-secondary">
+              Cancel
+            </button>
+            <button @click="$store.filters.saveFilters(); $store.filters.close()" 
+                    :disabled="$store.filters.isLoading"
+                    class="filter-btn filter-btn-primary">
+              <span x-show="!$store.filters.isLoading">Save</span>
+              <span x-show="$store.filters.isLoading">Saving...</span>
+            </button>
+          </div>
         </div>
       </div>
     </div>

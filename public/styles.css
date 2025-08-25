@@ -1559,3 +1559,10 @@ video.media-content[data-hide-controls]::-webkit-media-controls-volume-slider {
   border-color: #4f46e5;
   box-shadow: 0 0 0 2px rgba(79, 70, 229, 0.1);
 }
+
+/* Mobile header title styling */
+@media (max-width: 768px) {
+  #appTitle {
+    font-size: 1.3rem;
+  }
+}

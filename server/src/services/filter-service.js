@@ -38,7 +38,8 @@ class FilterService {
 
     // Filename filter
     if (filterConfig.filename && filterConfig.filename.trim()) {
-      filtered = this.applyFilenameFilter(filtered, filterConfig.filename);
+      const caseSensitive = filterConfig.caseSensitive !== undefined ? filterConfig.caseSensitive : true;
+      filtered = this.applyFilenameFilter(filtered, filterConfig.filename, caseSensitive);
     }
 
     // Size filter
@@ -49,6 +50,18 @@ class FilterService {
     // Date filter
     if (filterConfig.date && filterConfig.date.trim()) {
       filtered = this.applyDateFilter(filtered, filterConfig.date);
+    }
+
+    // Metadata filter
+    if (filterConfig.metadata && filterConfig.metadata.trim()) {
+      const caseSensitive = filterConfig.caseSensitive !== undefined ? filterConfig.caseSensitive : true;
+      filtered = this.applyMetadataFilter(filtered, filterConfig.metadata, caseSensitive);
+    }
+
+    // Input file metadata filter
+    if (filterConfig.inputMetadata && filterConfig.inputMetadata.trim()) {
+      const caseSensitive = filterConfig.caseSensitive !== undefined ? filterConfig.caseSensitive : true;
+      filtered = this.applyInputMetadataFilter(filtered, filterConfig.inputMetadata, caseSensitive);
     }
 
     // Media type filter
@@ -63,30 +76,37 @@ class FilterService {
    * Apply filename filter with basic wildcard support
    * @param {Array} files - Array of file objects
    * @param {string} pattern - Filename pattern
+   * @param {boolean} caseSensitive - Whether search should be case sensitive
    * @returns {Array} Filtered file array
    */
-  applyFilenameFilter(files, pattern) {
-    const normalizedPattern = pattern.toLowerCase().trim();
+  applyFilenameFilter(files, pattern, caseSensitive = true) {
+    const trimmedPattern = pattern.trim();
+    const searchPattern = caseSensitive ? trimmedPattern : trimmedPattern.toLowerCase();
     
     // Simple wildcard to regex conversion
-    const regexPattern = normalizedPattern
+    const regexPattern = searchPattern
       .replace(/\*/g, '.*')
       .replace(/\?/g, '.');
     
     try {
-      const regex = new RegExp(regexPattern, 'i');
+      const flags = caseSensitive ? 'g' : 'gi';
+      const regex = new RegExp(regexPattern, flags);
       return files.filter(file => {
         // Search both filename and full path
         const filename = file.name || '';
         const fullPath = file.fullPath || file.path || '';
-        return regex.test(filename) || regex.test(fullPath);
+        const searchFilename = caseSensitive ? filename : filename.toLowerCase();
+        const searchFullPath = caseSensitive ? fullPath : fullPath.toLowerCase();
+        return regex.test(searchFilename) || regex.test(searchFullPath);
       });
     } catch (error) {
       // Fallback to simple contains search if regex fails
       return files.filter(file => {
-        const filename = (file.name || '').toLowerCase();
-        const fullPath = (file.fullPath || file.path || '').toLowerCase();
-        return filename.includes(normalizedPattern) || fullPath.includes(normalizedPattern);
+        const filename = file.name || '';
+        const fullPath = file.fullPath || file.path || '';
+        const searchFilename = caseSensitive ? filename : filename.toLowerCase();
+        const searchFullPath = caseSensitive ? fullPath : fullPath.toLowerCase();
+        return searchFilename.includes(searchPattern) || searchFullPath.includes(searchPattern);
       });
     }
   }
@@ -218,7 +238,29 @@ class FilterService {
         break;
       
       default:
-        // Try to parse as date
+        // Check for date range format (startDate:endDate)
+        if (pattern.includes(':')) {
+          const [start, end] = pattern.split(':');
+          
+          if (start && start.trim()) {
+            startDate = new Date(start.trim());
+            if (isNaN(startDate)) startDate = null;
+          }
+          
+          if (end && end.trim()) {
+            endDate = new Date(end.trim());
+            if (isNaN(endDate)) endDate = null;
+            else {
+              // Set end date to end of day
+              endDate.setHours(23, 59, 59, 999);
+            }
+          }
+          
+          // If we have valid dates, break to use them
+          if (startDate || endDate) break;
+        }
+        
+        // Try to parse as single date
         const customDate = new Date(pattern);
         if (!isNaN(customDate.getTime())) {
           startDate = new Date(customDate.getFullYear(), customDate.getMonth(), customDate.getDate());
@@ -264,42 +306,94 @@ class FilterService {
     return match ? match[1].toLowerCase() : '';
   }
 
+
   /**
-   * Apply sorting to filtered results
+   * Apply metadata filter - searches in ComfyUI workflow JSON metadata
    * @param {Array} files - Array of file objects
-   * @param {Object} sortConfig - Sort configuration
-   * @returns {Array} Sorted file array
+   * @param {string} searchTerm - Search term to look for in metadata
+   * @param {boolean} caseSensitive - Whether search is case sensitive
+   * @returns {Array} Filtered file array
    */
-  applySorting(files, sortConfig) {
-    if (!sortConfig || !sortConfig.field) {
+  applyMetadataFilter(files, searchTerm, caseSensitive = true) {
+    if (!searchTerm || !searchTerm.trim()) {
       return files;
     }
 
-    const { field, direction = 'asc' } = sortConfig;
-    const multiplier = direction === 'desc' ? -1 : 1;
-
-    return [...files].sort((a, b) => {
-      let aValue, bValue;
-
-      switch (field) {
-        case 'name':
-          aValue = a.name || '';
-          bValue = b.name || '';
-          return multiplier * aValue.localeCompare(bValue);
-        
-        case 'size':
-          aValue = a.size || 0;
-          bValue = b.size || 0;
-          return multiplier * (aValue - bValue);
-        
-        case 'date':
-          aValue = new Date(a.created_at || a.mtime || 0);
-          bValue = new Date(b.created_at || b.mtime || 0);
-          return multiplier * (aValue - bValue);
-        
-        default:
-          return 0;
+    const searchPattern = caseSensitive ? searchTerm : searchTerm.toLowerCase();
+    
+    return files.filter(file => {
+      // Check if file has workflow metadata
+      if (!file.workflow || typeof file.workflow !== 'object') {
+        return false;
       }
+
+      // Convert workflow object to searchable JSON string
+      const workflowString = JSON.stringify(file.workflow);
+      const searchableText = caseSensitive ? workflowString : workflowString.toLowerCase();
+      
+      // Support basic wildcard patterns
+      if (searchPattern.includes('*')) {
+        const regexPattern = searchPattern
+          .replace(/[.*+?^${}()|[\]\\]/g, '\\$&') // Escape special regex chars
+          .replace(/\\\\?\*/g, '.*'); // Convert * to .*
+        
+        const regex = new RegExp(regexPattern, caseSensitive ? '' : 'i');
+        return regex.test(searchableText);
+      }
+      
+      // Simple substring search
+      return searchableText.includes(searchPattern);
+    });
+  }
+
+  /**
+   * Apply input file metadata filter - searches in workflow input file metadata
+   * Uses the same syntax and patterns as other filters for consistency
+   * @param {Array} files - Array of file objects
+   * @param {string} searchTerm - Search term to look for in input file metadata
+   * @param {boolean} caseSensitive - Whether search is case sensitive
+   * @returns {Array} Filtered file array
+   */
+  applyInputMetadataFilter(files, searchTerm, caseSensitive = true) {
+    if (!searchTerm || !searchTerm.trim()) {
+      return files;
+    }
+
+    const trimmedPattern = searchTerm.trim();
+    const searchPattern = caseSensitive ? trimmedPattern : trimmedPattern.toLowerCase();
+    
+    return files.filter(file => {
+      // Check if file has input file metadata
+      if (!file.inputFiles || !Array.isArray(file.inputFiles) || file.inputFiles.length === 0) {
+        return false;
+      }
+
+      // Search through all input file metadata using consistent pattern matching
+      return file.inputFiles.some(inputFile => {
+        // Use searchableContent if available, otherwise convert to JSON
+        let searchableText = inputFile.searchableContent || JSON.stringify(inputFile);
+        searchableText = caseSensitive ? searchableText : searchableText.toLowerCase();
+        
+        // Use the same wildcard pattern matching as filename filter
+        if (searchPattern.includes('*') || searchPattern.includes('?')) {
+          // Simple wildcard to regex conversion (same as filename filter)
+          const regexPattern = searchPattern
+            .replace(/\*/g, '.*')
+            .replace(/\?/g, '.');
+          
+          try {
+            const flags = caseSensitive ? 'g' : 'gi';
+            const regex = new RegExp(regexPattern, flags);
+            return regex.test(searchableText);
+          } catch (error) {
+            // Fallback to simple contains search if regex fails
+            return searchableText.includes(searchPattern);
+          }
+        }
+        
+        // Simple substring search (same as other filters)
+        return searchableText.includes(searchPattern);
+      });
     });
   }
 }

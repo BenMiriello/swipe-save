@@ -12,6 +12,7 @@ const AppInit = {
     this.setupViewRouting();
     this.initializeErrorHandler();
     this.setupGlobalState();
+    this.setupMobileTitle();
   },
 
   /**
@@ -92,6 +93,25 @@ const AppInit = {
       currentFilePath: null,
       totalFiles: 0
     };
+  },
+
+  /**
+   * Setup mobile title handler
+   */
+  setupMobileTitle() {
+    const updateTitle = () => {
+      const title = document.getElementById('appTitle');
+      if (!title) return;
+      
+      if (window.innerWidth <= 768) {
+        title.textContent = 'SS';
+      } else {
+        title.textContent = 'Swipe-Save';
+      }
+    };
+
+    document.addEventListener('DOMContentLoaded', updateTitle);
+    window.addEventListener('resize', updateTitle);
   }
 };
 

@@ -6,6 +6,7 @@ const fileOps = require('../fileOperations');
 const config = require('../config');
 const PreviewService = require('../services/preview-service');
 const FilterService = require('../services/filter-service');
+// PNG metadata extraction is available in fileOperations
 
 // Initialize services
 const previewService = new PreviewService();
@@ -13,6 +14,86 @@ const filterService = new FilterService();
 
 // Action history for undo functionality
 const actionHistory = [];
+
+/**
+ * Add workflow metadata to files by extracting from PNG metadata
+ * @param {Array} files - Array of file objects
+ * @returns {Promise<Array>} Files with workflow metadata added
+ */
+async function addWorkflowMetadata(files) {
+  const filesWithMetadata = await Promise.all(files.map(async (file) => {
+    try {
+      // Only process PNG files as they can contain ComfyUI workflow metadata
+      if (!file.name.toLowerCase().endsWith('.png')) {
+        return file;
+      }
+
+      // Extract ComfyUI metadata from PNG
+      const metadata = await fileOps.extractComfyMetadata(file.fullPath, file.name);
+      if (!metadata) {
+        return file;
+      }
+
+      // Add workflow data if found
+      const fileWithMetadata = { ...file };
+      if (metadata.workflow) {
+        fileWithMetadata.workflow = metadata.workflow;
+      }
+      if (metadata.prompt) {
+        fileWithMetadata.prompt = metadata.prompt;
+      }
+      if (metadata.parameters) {
+        fileWithMetadata.parameters = metadata.parameters;
+      }
+
+      return fileWithMetadata;
+    } catch (error) {
+      console.error(`Error extracting workflow metadata for ${file.name}:`, error);
+      return file;
+    }
+  }));
+
+  return filesWithMetadata;
+}
+
+/**
+ * Add input file metadata to files by extracting workflow input references
+ * @param {Array} files - Array of file objects
+ * @returns {Promise<Array>} Files with input file metadata added
+ */
+async function addInputFileMetadata(files) {
+  const WorkflowInputExtractor = require('../services/workflow-input-extractor');
+  const extractor = new WorkflowInputExtractor();
+  
+  const filesWithInputMetadata = await Promise.all(files.map(async (file) => {
+    try {
+      // Skip files without workflow metadata
+      if (!file.workflow || typeof file.workflow !== 'object') {
+        return file;
+      }
+
+      // Extract input file references from workflow
+      const inputFiles = extractor.extractInputFiles(file.workflow);
+      if (inputFiles.length === 0) {
+        return file;
+      }
+
+      // Extract metadata for the input files
+      const inputFileMetadata = await extractor.extractInputFileMetadata(inputFiles);
+      
+      // Add input file metadata to the main file
+      const fileWithInputMetadata = { ...file };
+      fileWithInputMetadata.inputFiles = inputFileMetadata;
+      
+      return fileWithInputMetadata;
+    } catch (error) {
+      console.error(`Error extracting input file metadata for ${file.name}:`, error);
+      return file;
+    }
+  }));
+
+  return filesWithInputMetadata;
+}
 
 // Helper functions for path generation based on datestamp folder setting
 function getTargetBasePath(fileDate, baseDir) {
@@ -194,24 +275,8 @@ router.get('/api/media', async (req, res) => {
     let sortBy = req.query.sortBy || 'date';
     let order = req.query.order || 'desc';
     
-    // If no sorting params provided, try to load from saved state
-    if (!req.query.sortBy && !req.query.order) {
-      try {
-        const os = require('os');
-        const savedStatePath = path.join(os.homedir(), '.config', 'swipe-save', 'filters', 'current-state.json');
-        if (await fs.pathExists(savedStatePath)) {
-          const savedState = await fs.readJson(savedStatePath);
-          if (savedState && savedState.appliedSorting) {
-            sortBy = savedState.appliedSorting.field || 'date';
-            order = savedState.appliedSorting.direction || 'desc';
-            console.log('Using saved sorting:', { sortBy, order });
-          }
-        }
-      } catch (error) {
-        console.error('Error loading saved sorting state:', error);
-      }
-    }
     const includePreviews = req.query.includePreviews === 'true';
+    const includeWorkflowMetadata = req.query.includeWorkflowMetadata === 'true';
     const sources = req.query.sources; // 'enabled', 'all', or specific IDs
     const directories = req.query.directories; // Specific directory IDs
     const groups = req.query.groups; // Specific group IDs
@@ -272,6 +337,7 @@ router.get('/api/media', async (req, res) => {
             const hasFilters = !!(
               savedState.appliedFilters.filename ||
               savedState.appliedFilters.metadata ||
+              savedState.appliedFilters.inputMetadata ||
               savedState.appliedFilters.date ||
               savedState.appliedFilters.size ||
               (savedState.appliedMediaTypes && savedState.appliedMediaTypes.length > 0)
@@ -292,16 +358,27 @@ router.get('/api/media', async (req, res) => {
       }
     }
     
+    // Extract workflow metadata BEFORE filtering if metadata filtering is requested
+    const needsWorkflowMetadata = filterConfig && filterConfig.metadata && filterConfig.metadata.trim();
+    const needsInputMetadata = filterConfig && filterConfig.inputMetadata && filterConfig.inputMetadata.trim();
+    
+    // If we need ANY metadata filtering, we must include workflow metadata
+    if ((needsWorkflowMetadata || needsInputMetadata) && includeWorkflowMetadata) {
+      console.log('Extracting workflow metadata before filtering...');
+      allFiles = await addWorkflowMetadata(allFiles);
+    }
+
+    // Extract input file metadata BEFORE filtering if input metadata filtering is requested
+    if (needsInputMetadata && includeWorkflowMetadata) {
+      console.log('Extracting input file metadata before filtering...');
+      allFiles = await addInputFileMetadata(allFiles);
+    }
+    
     if (filterConfig) {
       allFiles = filterService.applyFilters(allFiles, filterConfig);
       console.log(`Applied ${usedSavedState ? 'saved' : 'provided'} filters, ${allFiles.length} files remaining`);
     }
     
-    // Apply sorting if filters were applied (may have changed order) or use saved sorting
-    if ((req.query.filters || usedSavedState) && req.query.sortBy) {
-      const sortConfig = { field: sortBy, direction: order };
-      allFiles = filterService.applySorting(allFiles, sortConfig);
-    }
     
     // Apply pagination
     const totalItems = allFiles.length;
@@ -324,6 +401,12 @@ router.get('/api/media', async (req, res) => {
     if (includePreviews) {
       console.log(`Generating previews for ${mediaFiles.length} files...`);
       processedFiles = await previewService.generatePreviews(mediaFiles);
+    }
+
+    // Extract workflow metadata if requested (skip if already extracted for filtering)
+    if (includeWorkflowMetadata && !(needsWorkflowMetadata || needsInputMetadata)) {
+      console.log(`Extracting workflow metadata for ${processedFiles.length} files...`);
+      processedFiles = await addWorkflowMetadata(processedFiles);
     }
     
     const response = {

@@ -11,6 +11,7 @@ document.addEventListener('alpine:init', () => {
     currentFilters: {
       filename: '',
       metadata: '',
+      inputMetadata: '',
       date: '',
       size: ''
     },
@@ -19,18 +20,19 @@ document.addEventListener('alpine:init', () => {
     appliedFilters: {
       filename: '',
       metadata: '',
+      inputMetadata: '',
       date: '',
       size: ''
     },
     
     // Advanced Options
     includeWorkflowMetadata: false,
+    caseSensitive: true, // On by default
     
-    // Sorting Configuration
-    sorting: {
-      field: 'date',
-      direction: 'desc'
-    },
+    // Applied state tracking
+    appliedIncludeWorkflowMetadata: false,
+    appliedCaseSensitive: true,
+    
     
     // Media Type Filters
     mediaTypes: [],
@@ -40,6 +42,7 @@ document.addEventListener('alpine:init', () => {
     suggestions: {
       filename: [],
       metadata: [],
+      inputMetadata: [],
       date: [],
       size: []
     },
@@ -54,14 +57,33 @@ document.addEventListener('alpine:init', () => {
     // Methods
     async init() {
       console.log('Filter store initialized');
-      await this.loadPresets();
-      await this.loadSuggestions();
-      await this.loadCurrentState();
       
-      // Apply loaded state immediately if there are saved filters
-      if (this.hasAppliedFilters()) {
-        console.log('Auto-applying saved filters on initialization');
-        await this.saveFilters();
+      // Ensure we start with clean loading states
+      this.isLoading = false;
+      const listView = Alpine.store('listView');
+      if (listView) {
+        listView.isLoading = false;
+      }
+      
+      try {
+        await this.loadPresets();
+        await this.loadSuggestions();
+        await this.loadCurrentState();
+        
+        // Apply loaded state immediately if there are saved filters
+        // Don't auto-save on initialization to prevent stuck loading states
+        if (this.hasAppliedFilters()) {
+          console.log('Saved filters detected - they will be applied when list loads');
+          // Just mark that we have applied filters, don't actually save/load now
+          // The list view will automatically apply them when it loads
+        }
+      } catch (error) {
+        console.error('Error during filter store initialization:', error);
+        // Ensure loading states are cleared on any error
+        this.isLoading = false;
+        if (listView) {
+          listView.isLoading = false;
+        }
       }
     },
     
@@ -70,8 +92,14 @@ document.addEventListener('alpine:init', () => {
      */
     toggle() {
       this.active = !this.active;
-      if (this.active && this.presets.length === 0) {
-        this.loadPresets();
+      if (this.active) {
+        // Load initial count when opening modal
+        this.previewActive = true;
+        this.updateLiveResults();
+        
+        if (this.presets.length === 0) {
+          this.loadPresets();
+        }
       }
     },
     
@@ -99,6 +127,7 @@ document.addEventListener('alpine:init', () => {
       return !!(
         this.currentFilters.filename ||
         this.currentFilters.metadata ||
+        this.currentFilters.inputMetadata ||
         this.currentFilters.date ||
         this.currentFilters.size ||
         this.mediaTypes.length > 0
@@ -112,6 +141,7 @@ document.addEventListener('alpine:init', () => {
       return !!(
         this.appliedFilters.filename ||
         this.appliedFilters.metadata ||
+        this.appliedFilters.inputMetadata ||
         this.appliedFilters.date ||
         this.appliedFilters.size ||
         (this.appliedMediaTypes && this.appliedMediaTypes.length > 0)
@@ -119,46 +149,76 @@ document.addEventListener('alpine:init', () => {
     },
     
     /**
-     * Start live preview of filters
+     * Apply filters immediately to UI (can be reverted on cancel)
      */
-    async startPreview() {
-      if (this.previewActive) return;
-      
+    async applyFiltersImmediately() {
       this.previewActive = true;
-      await this.updatePreview();
+      await this.updateLiveResults();
     },
     
     /**
-     * Update live preview
+     * Update live results and apply to UI immediately
      */
-    async updatePreview() {
-      if (!this.previewActive) return;
+    async updateLiveResults() {
+      // Safety timeout to prevent stuck loading state
+      const safetyTimeout = setTimeout(() => {
+        console.warn('Live results timeout - clearing loading state');
+        const listView = Alpine.store('listView');
+        if (listView) {
+          listView.isLoading = false;
+        }
+      }, 10000); // 10 second timeout
       
       try {
+        const listView = Alpine.store('listView');
+        
         // Build filter URL parameters
-        let url = `${window.appConfig.getApiUrl()}/api/media?includePreviews=false`; // No previews for count only
+        let url = `${window.appConfig.getApiUrl()}/api/media?includePreviews=true`;
         
         const filterConfig = { ...this.currentFilters };
         if (this.mediaTypes.length > 0) {
           filterConfig.mediaTypes = this.mediaTypes;
         }
+        filterConfig.caseSensitive = this.caseSensitive;
         
         if (this.hasActiveFilters()) {
           url += `&filters=${encodeURIComponent(JSON.stringify(filterConfig))}`;
-          url += `&includeWorkflowMetadata=${this.includeWorkflowMetadata}`;
+          // Automatically include workflow metadata if any metadata filtering is used
+          const needsMetadata = !!(filterConfig.metadata || filterConfig.inputMetadata);
+          url += `&includeWorkflowMetadata=${this.includeWorkflowMetadata || needsMetadata}`;
         }
         
-        // Add sorting
-        url += `&sortBy=${this.sorting.field}&order=${this.sorting.direction}`;
         
-        // Fetch just for count
+        // Apply to UI immediately
+        listView.isLoading = true;
+        
         const response = await fetch(url);
         if (response.ok) {
           const data = await response.json();
-          this.previewResultCount = (data.items || data.files || []).length;
+          const newFiles = data.items || data.files || [];
+          
+          // Update count immediately
+          this.previewResultCount = newFiles.length;
+          
+          // Update list view with new results
+          listView.allFiles.length = 0;
+          listView.allFiles.push(...newFiles);
+          listView.totalPages = Math.ceil(listView.allFiles.length / listView.itemsPerPage);
+          listView.currentPage = 1; // Reset to first page
+          listView.updateDisplayedFiles();
         }
       } catch (error) {
-        console.error('Error updating preview:', error);
+        console.error('Error updating live results:', error);
+        // On error, show no files
+        listView.allFiles.length = 0;
+        listView.displayedFiles.length = 0;
+        listView.totalPages = 0;
+        listView.currentPage = 1;
+        this.previewResultCount = 0;
+      } finally {
+        clearTimeout(safetyTimeout); // Clear the safety timeout
+        const listView = Alpine.store('listView');
+        listView.isLoading = false;
       }
     },
     
@@ -166,7 +226,23 @@ document.addEventListener('alpine:init', () => {
      * Apply current filters (save them)
      */
     async saveFilters() {
+      // Prevent multiple simultaneous save operations
+      if (this.isLoading) {
+        console.log('Save already in progress, skipping...');
+        return;
+      }
+      
       this.isLoading = true;
+      
+      // Safety timeout to prevent stuck loading state
+      const safetyTimeout = setTimeout(() => {
+        console.warn('Filter save timeout - clearing loading state');
+        this.isLoading = false;
+        const listView = Alpine.store('listView');
+        if (listView) {
+          listView.isLoading = false;
+        }
+      }, 10000); // 10 second timeout
       
       try {
         const listView = Alpine.store('listView');
@@ -182,12 +258,14 @@ document.addEventListener('alpine:init', () => {
             filterConfig.mediaTypes = this.mediaTypes;
           }
           
+          filterConfig.caseSensitive = this.caseSensitive;
+          
           url += `&filters=${encodeURIComponent(JSON.stringify(filterConfig))}`;
-          url += `&includeWorkflowMetadata=${this.includeWorkflowMetadata}`;
+          // Automatically include workflow metadata if any metadata filtering is used
+          const needsMetadata = !!(filterConfig.metadata || filterConfig.inputMetadata);
+          url += `&includeWorkflowMetadata=${this.includeWorkflowMetadata || needsMetadata}`;
         }
         
-        // Add sorting
-        url += `&sortBy=${this.sorting.field}&order=${this.sorting.direction}`;
         
         // Directly fetch and update list view
         listView.isLoading = true;
@@ -210,6 +288,7 @@ document.addEventListener('alpine:init', () => {
         this.appliedFilters = { ...this.currentFilters };
         this.appliedMediaTypes = [...this.mediaTypes];
         this.appliedIncludeWorkflowMetadata = this.includeWorkflowMetadata;
+        this.appliedCaseSensitive = this.caseSensitive;
         this.appliedSorting = { ...this.sorting };
         
         // Update suggestions with newly used filter strings
@@ -221,7 +300,15 @@ document.addEventListener('alpine:init', () => {
         console.log('Filters saved successfully');
       } catch (error) {
         console.error('Error saving filters:', error);
+        // On error, ensure UI shows no files and is not loading
+        const listView = Alpine.store('listView');
+        listView.allFiles.length = 0;
+        listView.displayedFiles.length = 0;
+        listView.totalPages = 0;
+        listView.currentPage = 1;
+        this.previewResultCount = 0;
       } finally {
+        clearTimeout(safetyTimeout); // Clear the safety timeout
         this.isLoading = false;
         const listView = Alpine.store('listView');
         listView.isLoading = false;
@@ -230,14 +317,18 @@ document.addEventListener('alpine:init', () => {
     },
     
     /**
-     * Cancel filter changes
+     * Cancel filter changes and restore previous state
      */
-    cancelFilters() {
+    async cancelFilters() {
       // Revert to applied state
       this.currentFilters = { ...this.appliedFilters };
       this.mediaTypes = [...(this.appliedMediaTypes || [])];
       this.includeWorkflowMetadata = this.appliedIncludeWorkflowMetadata || false;
-      this.sorting = { ...(this.appliedSorting || { field: 'date', direction: 'desc' }) };
+      this.caseSensitive = this.appliedCaseSensitive !== undefined ? this.appliedCaseSensitive : true;
+      
+      // Restore list view to the last saved state
+      const listView = Alpine.store('listView');
+      await listView.loadFiles(); // Reload original files without filters
       
       this.previewActive = false;
       this.previewResultCount = null;
@@ -247,29 +338,43 @@ document.addEventListener('alpine:init', () => {
      * Clear all filters
      */
     async clearFilters() {
+      // Clear current filters
       this.currentFilters = {
         filename: '',
         metadata: '',
+        inputMetadata: '',
         date: '',
         size: ''
       };
       this.mediaTypes = [];
       this.includeWorkflowMetadata = false;
+      this.caseSensitive = true; // Reset to default
+      
+      // Clear applied filters
+      this.appliedFilters = {
+        filename: '',
+        metadata: '',
+        inputMetadata: '',
+        date: '',
+        size: ''
+      };
+      this.appliedMediaTypes = [];
+      this.appliedIncludeWorkflowMetadata = false;
+      this.appliedCaseSensitive = true;
+      
+      
+      // Clear preview state
+      this.previewActive = false;
+      this.previewResultCount = null;
+      
+      // Save cleared state for persistence
+      await this.saveCurrentState();
       
       // Reload all files without filters
       const listView = Alpine.store('listView');
       await listView.loadFiles();
     },
     
-    /**
-     * Reset sorting to default
-     */
-    resetSorting() {
-      this.sorting = {
-        field: 'date',
-        direction: 'desc'
-      };
-    },
     
     /**
      * Toggle media type selection
@@ -310,7 +415,7 @@ document.addEventListener('alpine:init', () => {
      * Load filter suggestions from server
      */
     async loadSuggestions() {
-      const fields = ['filename', 'metadata', 'date', 'size'];
+      const fields = ['filename', 'metadata', 'inputMetadata', 'date', 'size'];
       
       for (const field of fields) {
         try {
@@ -337,9 +442,9 @@ document.addEventListener('alpine:init', () => {
       const preset = {
         name: name.trim(),
         filters: { ...this.currentFilters },
-        sorting: { ...this.sorting },
         mediaTypes: [...this.mediaTypes],
-        includeWorkflowMetadata: this.includeWorkflowMetadata
+        includeWorkflowMetadata: this.includeWorkflowMetadata,
+        caseSensitive: this.caseSensitive
       };
       
       try {
@@ -376,9 +481,9 @@ document.addEventListener('alpine:init', () => {
       
       // Load preset configuration
       this.currentFilters = { ...preset.filters };
-      this.sorting = { ...preset.sorting };
       this.mediaTypes = [...(preset.mediaTypes || [])];
       this.includeWorkflowMetadata = preset.includeWorkflowMetadata || false;
+      this.caseSensitive = preset.caseSensitive !== undefined ? preset.caseSensitive : true;
       
       // Update preset usage
       try {
@@ -427,7 +532,7 @@ document.addEventListener('alpine:init', () => {
      * Update filter usage statistics
      */
     async updateFilterUsage() {
-      const fields = ['filename', 'metadata', 'date', 'size'];
+      const fields = ['filename', 'metadata', 'inputMetadata', 'date', 'size'];
       
       for (const field of fields) {
         const value = this.currentFilters[field];
@@ -500,10 +605,10 @@ document.addEventListener('alpine:init', () => {
           appliedFilters: { ...this.appliedFilters },
           mediaTypes: [...this.mediaTypes],
           appliedMediaTypes: [...(this.appliedMediaTypes || [])],
-          sorting: { ...this.sorting },
-          appliedSorting: { ...(this.appliedSorting || { field: 'date', direction: 'desc' }) },
           includeWorkflowMetadata: this.includeWorkflowMetadata,
-          appliedIncludeWorkflowMetadata: this.appliedIncludeWorkflowMetadata || false
+          appliedIncludeWorkflowMetadata: this.appliedIncludeWorkflowMetadata || false,
+          caseSensitive: this.caseSensitive,
+          appliedCaseSensitive: this.appliedCaseSensitive !== undefined ? this.appliedCaseSensitive : true
         };
         
         const response = await fetch(`${window.appConfig.getApiUrl()}/api/filters/current-state`, {
@@ -523,6 +628,19 @@ document.addEventListener('alpine:init', () => {
     },
     
     /**
+     * Force clear all loading states (emergency method)
+     */
+    forceClearLoadingStates() {
+      console.log('Force clearing all loading states');
+      this.isLoading = false;
+      this.previewActive = false;
+      const listView = Alpine.store('listView');
+      if (listView) {
+        listView.isLoading = false;
+      }
+    },
+    
+    /**
      * Load current filter state for persistence
      */
     async loadCurrentState() {
@@ -534,19 +652,18 @@ document.addEventListener('alpine:init', () => {
             // Load applied filters (what was actually applied to the data)
             this.appliedFilters = { ...(state.appliedFilters || {}) };
             this.appliedMediaTypes = [...(state.appliedMediaTypes || [])];
-            this.appliedSorting = { ...(state.appliedSorting || { field: 'date', direction: 'desc' }) };
             this.appliedIncludeWorkflowMetadata = state.appliedIncludeWorkflowMetadata || false;
+            this.appliedCaseSensitive = state.appliedCaseSensitive !== undefined ? state.appliedCaseSensitive : true;
             
             // Set current filters to match applied filters (so modal shows what's actually applied)
             this.currentFilters = { ...this.appliedFilters };
             this.mediaTypes = [...this.appliedMediaTypes];
-            this.sorting = { ...this.appliedSorting };
             this.includeWorkflowMetadata = this.appliedIncludeWorkflowMetadata;
+            this.caseSensitive = this.appliedCaseSensitive;
             
             console.log('Loaded saved filter state:', {
               appliedFilters: this.appliedFilters,
-              appliedMediaTypes: this.appliedMediaTypes,
-              appliedSorting: this.appliedSorting
+              appliedMediaTypes: this.appliedMediaTypes
             });
           }
         }

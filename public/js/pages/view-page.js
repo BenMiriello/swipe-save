@@ -77,30 +77,41 @@ class ViewPage {
    * Initialize single view functionality
    */
   async initializeSingleView(filePath, index) {
-    // Load files data if not already loaded
-    await this.loadFilesData();
+    // Use the same files data as the list view to maintain consistency
+    const listView = Alpine.store('listView');
+    if (listView && listView.allFiles && listView.allFiles.length > 0) {
+      this.filesData = listView.allFiles;
+    } else {
+      // Fallback to loading files data if list view doesn't have them
+      await this.loadFilesData();
+    }
     
     // Set up state manager
     if (window.stateManager && this.filesData) {
       window.stateManager.setFiles(this.filesData);
       
-      // Find the file index by path if not provided
+      // Use the provided index directly since it should match the list view's data
       let fileIndex = index;
-      alert(`Initial: index=${index}, filePath=${filePath}`);
       
-      if (index === 0 || !this.filesData[index] || this.filesData[index].fullPath !== filePath) {
-        alert(`Doing path lookup because: index===0? ${index === 0}, no file at index? ${!this.filesData[index]}, path mismatch? ${this.filesData[index] ? this.filesData[index].fullPath !== filePath : 'no file'}`);
-        
-        // Try to find by fullPath first, then fallback to path for backward compatibility
-        fileIndex = this.filesData.findIndex(file => file.fullPath === filePath || file.path === filePath);
-        alert(`Found fileIndex via path lookup: ${fileIndex}`);
-        if (fileIndex === -1) {
-          console.error('File not found:', filePath);
-          window.router.navigate('/list');
-          return;
+      // Validate the index and file path match
+      if (index >= 0 && index < this.filesData.length && this.filesData[index]) {
+        const expectedFile = this.filesData[index];
+        if (expectedFile.fullPath === filePath || expectedFile.path === filePath) {
+          // Index is valid and points to the correct file
+          fileIndex = index;
+        } else {
+          // Index doesn't match, try to find by path
+          fileIndex = this.filesData.findIndex(file => file.fullPath === filePath || file.path === filePath);
         }
       } else {
-        alert(`Using provided index: ${index}`);
+        // Index is invalid, find by path
+        fileIndex = this.filesData.findIndex(file => file.fullPath === filePath || file.path === filePath);
+      }
+      
+      if (fileIndex === -1) {
+        console.error('File not found:', filePath);
+        window.router.navigate('/list');
+        return;
       }
       
       // Navigate to the file

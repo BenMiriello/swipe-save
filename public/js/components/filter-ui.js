@@ -13,9 +13,26 @@ function createFilterComponent() {
     showSaveDialog: false,
     newPresetName: '',
     
+    // Info toggle state
+    showInfo: {
+      filename: false,
+      metadata: false,
+      inputMetadata: false
+    },
+    
+    // Collapsible state (collapsed by default)
+    showCollapsible: {
+      size: false,
+      date: false
+    },
+    
     // Size slider state (0-100 scale)
     sizeMin: 0,
     sizeMax: 100,
+    
+    // Date range state
+    startDate: '',
+    endDate: '',
     
     // Initialize component
     init() {
@@ -32,27 +49,31 @@ function createFilterComponent() {
       });
 
       // Watch for filter changes and trigger live preview
-      let previewTimeout = null;
-      const triggerPreview = () => {
-        if (previewTimeout) clearTimeout(previewTimeout);
-        previewTimeout = setTimeout(() => {
-          if (this.$store.filters.hasActiveFilters()) {
-            this.$store.filters.startPreview();
-          }
-        }, 500); // Debounce by 500ms
+      // Auto-apply filters immediately with debouncing
+      let applyTimeout = null;
+      const triggerImmediateApply = () => {
+        if (applyTimeout) clearTimeout(applyTimeout);
+        applyTimeout = setTimeout(async () => {
+          this.$store.filters.previewActive = true;
+          await this.$store.filters.updateLiveResults();
+        }, 300); // Debounce by 300ms
       };
 
-      // Watch all filter fields
-      this.$watch('$store.filters.currentFilters.filename', triggerPreview);
-      this.$watch('$store.filters.currentFilters.metadata', triggerPreview);  
-      this.$watch('$store.filters.currentFilters.date', triggerPreview);
-      this.$watch('$store.filters.currentFilters.size', triggerPreview);
-      this.$watch('$store.filters.mediaTypes', triggerPreview);
-      this.$watch('$store.filters.sorting', triggerPreview);
+      // Watch all filter fields and apply immediately
+      this.$watch('$store.filters.currentFilters.filename', triggerImmediateApply);
+      this.$watch('$store.filters.currentFilters.metadata', triggerImmediateApply);
+      this.$watch('$store.filters.currentFilters.inputMetadata', triggerImmediateApply);
+      this.$watch('$store.filters.currentFilters.date', triggerImmediateApply);
+      this.$watch('$store.filters.currentFilters.size', triggerImmediateApply);
+      this.$watch('$store.filters.mediaTypes', triggerImmediateApply);
       
       // Watch size sliders and convert to filter format
       this.$watch('sizeMin', () => this.updateSizeFilter());
       this.$watch('sizeMax', () => this.updateSizeFilter());
+      
+      // Watch date inputs and convert to filter format
+      this.$watch('startDate', () => this.updateDateFilter());
+      this.$watch('endDate', () => this.updateDateFilter());
     },
     
     // Handle keyboard shortcuts
@@ -126,6 +147,16 @@ function createFilterComponent() {
         const success = await this.$store.filters.deletePreset(presetId);
         if (!success) {
           alert('Error deleting preset');
+        } else {
+          // Force hover state reset after deletion
+          setTimeout(() => {
+            const deleteButtons = document.querySelectorAll('.filter-preset-delete');
+            deleteButtons.forEach(btn => {
+              btn.blur(); // Remove focus
+              btn.style.background = 'none'; // Reset background
+              btn.style.color = '#999'; // Reset color
+            });
+          }, 50);
         }
       }
     },
@@ -162,6 +193,10 @@ function createFilterComponent() {
       
       if (filters.currentFilters.metadata) {
         parts.push(`Metadata: ${filters.currentFilters.metadata}`);
+      }
+      
+      if (filters.currentFilters.inputMetadata) {
+        parts.push(`Input Files: ${filters.currentFilters.inputMetadata}`);
       }
       
       if (filters.currentFilters.date) {
@@ -279,6 +314,75 @@ function createFilterComponent() {
     resetSizeFilter() {
       this.sizeMin = 0;
       this.sizeMax = 100;
+    },
+    
+    // Info toggle methods
+    toggleInfo(field) {
+      this.showInfo[field] = !this.showInfo[field];
+    },
+    
+    // Collapsible methods
+    toggleCollapsible(field) {
+      this.showCollapsible[field] = !this.showCollapsible[field];
+    },
+    
+    getSizeSummary() {
+      if (this.sizeMin === 0 && this.sizeMax === 100) {
+        return 'Any Size';
+      }
+      
+      if (this.sizeMin > 0 && this.sizeMax < 100) {
+        return `${this.formatSizeValue(this.sizeMin)}-${this.formatSizeValue(this.sizeMax)}`;
+      } else if (this.sizeMin > 0) {
+        return `>${this.formatSizeValue(this.sizeMin)}`;
+      } else if (this.sizeMax < 100) {
+        return `<${this.formatSizeValue(this.sizeMax)}`;
+      }
+      
+      return 'Any Size';
+    },
+    
+    // Date methods
+    updateDateFilter() {
+      if (!this.startDate && !this.endDate) {
+        this.$store.filters.currentFilters.date = '';
+        return;
+      }
+      
+      if (this.startDate && this.endDate) {
+        this.$store.filters.currentFilters.date = `${this.startDate}:${this.endDate}`;
+      } else if (this.startDate) {
+        this.$store.filters.currentFilters.date = `${this.startDate}:`;
+      } else if (this.endDate) {
+        this.$store.filters.currentFilters.date = `:${this.endDate}`;
+      }
+    },
+    
+    getDateSummary() {
+      if (!this.startDate && !this.endDate) {
+        return 'Any Date';
+      }
+      
+      if (this.startDate && this.endDate) {
+        return `${this.formatDate(this.startDate)} - ${this.formatDate(this.endDate)}`;
+      } else if (this.startDate) {
+        return `From ${this.formatDate(this.startDate)}`;
+      } else if (this.endDate) {
+        return `Until ${this.formatDate(this.endDate)}`;
+      }
+      
+      return 'Any Date';
+    },
+    
+    formatDate(dateString) {
+      if (!dateString) return '';
+      const date = new Date(dateString);
+      return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    },
+    
+    resetDateFilter() {
+      this.startDate = '';
+      this.endDate = '';
     }
   };
 }

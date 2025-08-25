@@ -168,14 +168,23 @@ document.addEventListener('alpine:init', () => {
     },
     
     selectFile(fileIndex) {
+      console.log('=== selectFile called ===');
+      console.log('fileIndex parameter:', fileIndex);
+      console.log('currentPage:', this.currentPage);
+      console.log('itemsPerPage:', this.itemsPerPage);
+      console.log('displayedFiles length:', this.displayedFiles.length);
+      console.log('allFiles length:', this.allFiles.length);
+      
       // Prevent rapid double calls with simple debounce
       const now = Date.now();
       if (this._lastSelectFile && (now - this._lastSelectFile) < 500) {
+        console.log('Debounced - returning early');
         return;
       }
       this._lastSelectFile = now;
       
       const globalIndex = (this.currentPage - 1) * this.itemsPerPage + fileIndex;
+      console.log('Calculated globalIndex:', globalIndex);
       this.selectedFileIndex = globalIndex;
       
       // Store in localStorage for persistence across page loads
@@ -185,11 +194,13 @@ document.addEventListener('alpine:init', () => {
       // Get the file object
       const file = this.allFiles[globalIndex];
       if (!file) {
-        console.error('File not found at index:', globalIndex);
+        console.error('File not found at globalIndex:', globalIndex);
+        console.log('Available files:', this.allFiles.map((f, i) => `${i}: ${f.name}`));
         return;
       }
       
-      console.log('Selecting file:', file.name, 'at index:', globalIndex);
+      console.log('Selecting file:', file.name, 'at globalIndex:', globalIndex);
+      console.log('File object:', file);
       
       // Exit list view and switch to existing single view  
       this.exitListView();
