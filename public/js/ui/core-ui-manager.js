@@ -288,13 +288,15 @@ const coreUIManager = {
    * @param {number} currentIndex - Current image index
    * @param {number} totalFiles - Total number of files
    */
-  updateImageCounter(currentIndex, totalFiles) {
+  updateImageCounter(currentIndex, totalFiles, loading = false) {
     if (!this.elements.counterContainer) {
       this.elements.counterContainer = document.querySelector('.counter-container');
       if (!this.elements.counterContainer) return;
     }
 
-    if (totalFiles === 0) {
+    if (loading) {
+      this.elements.counterContainer.textContent = ''; // Show nothing while loading
+    } else if (totalFiles === 0) {
       this.elements.counterContainer.textContent = 'No images';
     } else {
       const current = currentIndex + 1;

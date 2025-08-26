@@ -30,9 +30,10 @@ const uiManager = {
    * Update image counter display
    * @param {number} currentIndex - Current image index
    * @param {number} totalFiles - Total number of files
+   * @param {boolean} loading - Whether files are still loading
    */
-  updateImageCounter(currentIndex, totalFiles) {
-    window.coreUIManager.updateImageCounter(currentIndex, totalFiles);
+  updateImageCounter(currentIndex, totalFiles, loading = false) {
+    window.coreUIManager.updateImageCounter(currentIndex, totalFiles, loading);
   },
 
   /**

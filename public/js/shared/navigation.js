@@ -96,7 +96,7 @@ window.sharedComponents.navigation = {
     const counter = document.createElement('div');
     counter.className = 'image-counter';
     counter.id = 'imageCounter';
-    counter.textContent = '0 of 0';
+    counter.textContent = ''; // Start empty instead of "0 of 0"
     return counter;
   },
   
@@ -105,19 +105,30 @@ window.sharedComponents.navigation = {
    * @param {Object} state - Current navigation state
    */
   updateState(state) {
-    const { currentIndex, totalFiles, mode = 'single' } = state;
+    const { currentIndex, totalFiles, mode = 'single', loading = false } = state;
     
     // Update slider
     const slider = document.getElementById('navigationSlider');
     if (slider) {
-      slider.max = totalFiles;
-      slider.value = currentIndex + 1;
+      if (loading || totalFiles === 0) {
+        slider.disabled = true;
+      } else {
+        slider.disabled = false;
+        slider.max = totalFiles;
+        slider.value = currentIndex + 1;
+      }
     }
     
     // Update counter
     const counter = document.getElementById('imageCounter');
     if (counter) {
-      counter.textContent = `${currentIndex + 1} of ${totalFiles}`;
+      if (loading) {
+        counter.textContent = ''; // Show nothing during loading
+      } else if (totalFiles === 0) {
+        counter.textContent = 'No files';
+      } else {
+        counter.textContent = `${currentIndex + 1} of ${totalFiles}`;
+      }
     }
     
     // Update button states
@@ -125,11 +136,11 @@ window.sharedComponents.navigation = {
     const nextButton = document.querySelector('.nav-next');
     
     if (prevButton) {
-      prevButton.disabled = currentIndex === 0;
+      prevButton.disabled = loading || currentIndex === 0;
     }
     
     if (nextButton) {
-      nextButton.disabled = currentIndex === totalFiles - 1;
+      nextButton.disabled = loading || currentIndex === totalFiles - 1;
     }
   },
   
