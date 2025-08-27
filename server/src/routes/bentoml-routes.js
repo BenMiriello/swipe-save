@@ -32,16 +32,9 @@ router.post('/api/bentoml/queue-workflow-with-edits', async (req, res) => {
     // Use the provided workflow directly (preserves formatting and text edits)
     let workflowData = workflow;
     
-    // Check workflow format and convert if needed
-    if (workflowData.nodes && Array.isArray(workflowData.nodes)) {
-      try {
-        const { convertGUIToAPI } = require('./workflow-routes');
-        workflowData = convertGUIToAPI(workflowData);
-      } catch (error) {
-        console.error('GUI to API conversion failed:', error);
-        return res.status(400).json({ error: 'Failed to convert workflow format: ' + error.message });
-      }
-    }
+    // ComfyUI accepts both GUI and API formats - preserve original format
+    const isGUIFormat = workflowData.nodes && Array.isArray(workflowData.nodes);
+    console.log(`Using ${isGUIFormat ? 'GUI' : 'API'} format workflow - preserving structure`);
     
     const results = [];
     
@@ -142,43 +135,58 @@ router.post('/api/bentoml/queue-workflow', async (req, res) => {
     let workflowData;
     let workflowFormat = 'unknown';
     
-    // Prefer prompt (API format) over workflow (GUI format) to avoid conversion issues
-    if (metadata.prompt) {
-      workflowData = metadata.prompt;
-      workflowFormat = 'api';
-      console.log('Using prompt data (API format)');
-    } else if (metadata.workflow) {
+    // Prefer workflow (GUI format) over prompt (API format) to preserve node layout, bypassed nodes, and subgraphs
+    if (metadata.workflow) {
       workflowData = metadata.workflow;
       workflowFormat = 'gui';
-      console.log('Using workflow data (GUI format)');
+      console.log(`Using workflow data (GUI format) - preserves layout and node states. Nodes: ${metadata.workflow.nodes?.length}, WanVideoSampler nodes: ${metadata.workflow.nodes?.filter(n => n.type === 'WanVideoSampler').length}`);
+    } else if (metadata.prompt) {
+      workflowData = metadata.prompt;
+      workflowFormat = 'api';
+      console.log(`Using prompt data (API format) - fallback. Nodes: ${Object.keys(metadata.prompt).length}`);
     } else {
       return res.status(404).json({ error: 'No workflow found in image metadata' });
     }
 
-    // Phase 2: Schema-driven seed modification with mode support
+    // Phase 2: Schema-driven seed modification with mode support  
     const actualSeedMode = seedMode || (modifySeeds ? 'randomize' : 'original');
-    
-    if (actualSeedMode !== 'original') {
-      try {
-        const schema = await bentomlService.getServiceSchema();
-        workflowData = bentomlService.modifyWorkflowSeeds(workflowData, actualSeedMode, null, schema);
-      } catch (schemaError) {
-        console.warn('Schema-based seed modification failed, using fallback:', schemaError.message);
-        workflowData = bentomlService.modifyWorkflowSeeds(workflowData, actualSeedMode);
-      }
-    } else if (actualSeedMode !== 'original') {
-      // Fallback seed modification
-      workflowData = bentomlService.modifyWorkflowSeeds(workflowData, actualSeedMode);
-    }
+    console.log(`Seed mode: ${actualSeedMode}, format: ${workflowFormat}`);
 
-    // Check workflow format and convert if needed
-    if (workflowFormat === 'gui' || (workflowData.nodes && Array.isArray(workflowData.nodes))) {
-      console.log('Converting GUI format workflow to API format...');
+    // Apply ComfyUI web GUI approach: submit both formats for complete preservation
+    let executionWorkflow = workflowData;
+    let metadataWorkflow = workflowData;
+    
+    if (workflowFormat === 'gui') {
+      // Convert GUI to API for execution (filters bypassed nodes)
+      console.log('Converting GUI workflow to API format for execution...');
       try {
         const { convertGUIToAPI } = require('./workflow-routes');
-        workflowData = convertGUIToAPI(workflowData);
-        console.log('Successfully converted GUI workflow to API format');
-        workflowFormat = 'api';
+        executionWorkflow = convertGUIToAPI(workflowData);
+        metadataWorkflow = workflowData; // Keep original GUI for metadata
+        console.log(`Converted ${workflowData.nodes.length} GUI nodes to ${Object.keys(executionWorkflow).length} API nodes for execution`);
+        
+        // CRITICAL: Apply seed modification to the converted API workflow
+        if (actualSeedMode !== 'original') {
+          console.log('Applying seed modification to converted API workflow...');
+          console.log('BEFORE seed modification - checking workflow seeds:');
+          for (const [nodeId, node] of Object.entries(executionWorkflow)) {
+            if (node.inputs && typeof node.inputs.seed === 'number') {
+              console.log(`  Node ${nodeId} (${node.class_type}) seed: ${node.inputs.seed}`);
+            }
+          }
+          
+          // Modify both standard "seed" properties AND widget_X properties from custom nodes
+          executionWorkflow = bentomlService.modifyWorkflowSeeds(executionWorkflow, actualSeedMode);
+          
+          console.log('AFTER seed modification - checking workflow seeds:');
+          for (const [nodeId, node] of Object.entries(executionWorkflow)) {
+            if (node.inputs && typeof node.inputs.seed === 'number') {
+              console.log(`  Node ${nodeId} (${node.class_type}) seed: ${node.inputs.seed}`);
+            }
+          }
+          console.log('API workflow seed modification completed');
+        }
+        
       } catch (error) {
         console.error('GUI to API conversion failed:', error);
         return res.status(400).json({ 
@@ -189,11 +197,12 @@ router.post('/api/bentoml/queue-workflow', async (req, res) => {
     }
 
     // Submit to ComfyUI (via BentoML service)
-    const result = await bentomlService.submitWorkflow(workflowData, {
+    const result = await bentomlService.submitWorkflow(executionWorkflow, {
       modifySeeds,
       controlAfterGenerate,
       quantity: quantity || 1,
-      clientId: req.headers['x-client-id']
+      clientId: req.headers['x-client-id'],
+      metadataWorkflow: metadataWorkflow // Include original GUI workflow for metadata embedding
     });
 
     if (false) { // Debug disabled

@@ -58,7 +58,8 @@ class BentoMLService {
       modifySeeds = false,
       controlAfterGenerate = 'increment',
       quantity = 1,
-      clientId = null
+      clientId = null,
+      metadataWorkflow = null
     } = options;
 
     if (!await this.healthCheck()) {
@@ -66,24 +67,40 @@ class BentoMLService {
     }
 
     try {
-      // Check if workflow needs conversion (GUI format)
-      if (workflowData.nodes && Array.isArray(workflowData.nodes)) {
-        throw new Error('GUI format workflows require conversion. Use legacy endpoint for now.');
+      // ComfyUI web GUI approach: submit API for execution + GUI for metadata
+      const isGUIFormat = workflowData.nodes && Array.isArray(workflowData.nodes);
+      const hasMetadata = metadataWorkflow && metadataWorkflow.nodes && Array.isArray(metadataWorkflow.nodes);
+      
+      console.log(`Submitting ${isGUIFormat ? 'GUI' : 'API'} format workflow for execution`);
+      if (hasMetadata) {
+        console.log(`Including GUI metadata workflow with ${metadataWorkflow.nodes.length} nodes for preservation`);
       }
 
-      // Prepare for direct ComfyUI submission (API format expected)
+      // Prepare for direct ComfyUI submission (accepts both GUI and API formats)
       const clientId_final = clientId || this.generateClientId();
 
       // Submit directly to ComfyUI's prompt endpoint (bypassing BentoML for now)
+      const submissionPayload = {
+        prompt: workflowData, // API format for execution
+        client_id: clientId || this.generateClientId(),
+        // Include complete GUI workflow for metadata embedding (like ComfyUI web GUI)
+        ...(metadataWorkflow && { workflow: metadataWorkflow })
+      };
+      
+      // Debug: Log the seed values we're actually sending to ComfyUI
+      console.log('FINAL SUBMISSION - Checking seeds being sent to ComfyUI:');
+      for (const [nodeId, node] of Object.entries(workflowData)) {
+        if (node.inputs && typeof node.inputs.seed === 'number') {
+          console.log(`  Submitting Node ${nodeId} (${node.class_type}) seed: ${node.inputs.seed}`);
+        }
+      }
+      
       const response = await fetch(`${this.bentomlUrl}/prompt`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({
-          prompt: workflowData,
-          client_id: clientId || this.generateClientId()
-        }),
+        body: JSON.stringify(submissionPayload),
         timeout: 30000
       });
 
@@ -93,6 +110,12 @@ class BentoMLService {
       }
 
       const result = await response.json();
+      
+      // Check for ComfyUI-specific errors (even with 200 status)
+      if (result.error) {
+        console.error('ComfyUI rejected workflow:', result.error);
+        throw new Error(`ComfyUI error: ${result.error.type} - ${result.error.message}`);
+      }
       
       console.log(`BentoML: Successfully submitted workflow${quantity > 1 ? ` (${quantity} times)` : ''} to ComfyUI`);
       
@@ -218,16 +241,38 @@ class BentoMLService {
         }
       }
     } else {
-      // Fallback: recursive search (current approach)
-      const modifySeeds = (obj) => {
+      // Enhanced fallback: handle both named seeds and widget-based seeds
+      const modifySeeds = (obj, parentKey = '') => {
         if (typeof obj !== 'object' || obj === null) return;
 
+        // Handle named seed properties AND widget_X properties from converted custom nodes
         for (const key in obj) {
           if (key === 'seed' && typeof obj[key] === 'number') {
             obj[key] = seedMode === 'randomize' ? generateRandomSeed() : incrementSeed(obj[key]);
             seedCount++;
+          } else if (key.startsWith('widget_') && typeof obj[key] === 'number') {
+            // Handle widget_0, widget_1, etc. from converted custom nodes
+            // Apply same heuristics as GUI widget detection
+            const value = obj[key];
+            if (Number.isInteger(value) && value > 0 && value <= 2147483647) {
+              // Could be a seed - randomize it
+              obj[key] = seedMode === 'randomize' ? generateRandomSeed() : incrementSeed(value);
+              seedCount++;
+              console.log(`Modified API widget seed ${key}: ${value} → ${obj[key]}`);
+            }
           } else if (typeof obj[key] === 'object') {
-            modifySeeds(obj[key]);
+            modifySeeds(obj[key], key);
+          }
+        }
+
+        // Handle widget-based seeds for custom nodes (like WanVideoSampler)
+        if (parentKey === 'nodes' && Array.isArray(obj)) {
+          // This is a nodes array
+          for (const node of obj) {
+            if (node && node.type && node.widgets_values && Array.isArray(node.widgets_values)) {
+              const widgetSeedCount = this.modifyWidgetSeeds(node, seedMode, generateRandomSeed, incrementSeed);
+              seedCount += widgetSeedCount;
+            }
           }
         }
       };
@@ -239,6 +284,46 @@ class BentoMLService {
     }
 
     return workflowData;
+  }
+
+  /**
+   * Modify widget-based seeds for custom nodes
+   */
+  modifyWidgetSeeds(node, seedMode, generateRandomSeed, incrementSeed) {
+    let modifiedCount = 0;
+
+    // Dynamic seed detection: look for seed-like values in widgets_values
+    if (node.widgets_values && Array.isArray(node.widgets_values)) {
+      node.widgets_values.forEach((value, index) => {
+        // Enhanced heuristic: detect seed-like numbers
+        // - Must be a number and integer
+        // - Seeds can be small (like 6, 30) or large (like 479516935823353)
+        // - Exclude obvious non-seeds: 0, 1, booleans, strings, floats
+        // - Exclude tiny step counts (2, 3, 4, 5) but allow reasonable seed values
+        const isInteger = Number.isInteger(value);
+        const isPositive = value > 0;
+        const notTinyStepCount = value < 2 || value > 10; // Exclude 2,3,4,5,6,7,8,9,10 (likely step counts)
+        const inSeedRange = value <= 9999999999999999; // Reasonable max for seeds
+        
+        // Special case: if it's in a typical "seed position" (index 0 or 3), be more lenient
+        const isInSeedPosition = index === 0 || index === 3;
+        const couldBeSeed = isInSeedPosition ? (value >= 1) : (value >= 100); // Lower threshold for seed positions
+        
+        if (typeof value === 'number' && 
+            isInteger && 
+            isPositive && 
+            couldBeSeed &&
+            inSeedRange) {
+          
+          const newSeed = seedMode === 'randomize' ? generateRandomSeed() : incrementSeed(value);
+          node.widgets_values[index] = newSeed;
+          modifiedCount++;
+          console.log(`Modified ${node.type} (ID:${node.id}) seed at widgets_values[${index}]: ${value} → ${newSeed} (position-aware detection)`);
+        }
+      });
+    }
+
+    return modifiedCount;
   }
 
   /**

@@ -70,7 +70,7 @@
 .comfyui-modal-content {
   background-color: var(--comfy-bg-primary);
   margin: 5% auto;
-  padding: var(--comfy-spacing-xl);
+  padding: var(--comfy-spacing-sm);
   border-radius: var(--comfy-radius-lg);
   width: 90%;
   max-width: 600px;
@@ -118,8 +118,8 @@
 
 /* Destination Section */
 .comfyui-destination-section {
-  margin-bottom: var(--comfy-spacing-xl);
-  padding: var(--comfy-spacing-lg);
+  margin-bottom: var(--comfy-spacing-md);
+  padding: var(--comfy-spacing-sm);
   background-color: var(--comfy-bg-secondary);
   border-radius: var(--comfy-radius-md);
   border: 1px solid var(--comfy-border-light);
@@ -144,8 +144,8 @@
   background-color: var(--comfy-bg-secondary);
   border: 2px solid var(--comfy-border-medium);
   border-radius: var(--comfy-radius-md);
-  padding: var(--comfy-spacing-sm);
-  margin-bottom: var(--comfy-spacing-xl);
+  padding: var(--comfy-spacing-xs);
+  margin-bottom: var(--comfy-spacing-md);
 }
 
 /* Error Display */
@@ -209,7 +209,7 @@
 .comfyui-modal-body {
   flex: 1;
   overflow-y: auto;
-  padding: var(--comfy-spacing-md);
+  padding: var(--comfy-spacing-xs);
 }
 
 .comfyui-modal-footer {
@@ -302,7 +302,7 @@
   flex-direction: row !important;
   justify-content: space-between !important;
   align-items: center !important;
-  padding: var(--comfy-spacing-md);
+  padding: var(--comfy-spacing-xs);
   padding-bottom: 0px;
   background: var(--comfy-bg-primary);
   min-height: 60px; /* Ensure consistent height */

@@ -126,6 +126,20 @@ function convertGUIToAPI(guiWorkflow) {
       continue;
     }
 
+    // Skip bypassed/disabled nodes (mode 2 = muted, mode 4 = never execute)
+    // ComfyUI API doesn't support bypassed nodes, so we exclude them from execution
+    if (node.mode === 2 || node.mode === 4) {
+      console.log(`Excluding bypassed node ${node.id} (${node.type}) from API workflow`);
+      continue;
+    }
+
+    // Skip problematic custom nodes that cause execution failures
+    const problematicNodes = ['SetNode']; // Add more as needed
+    if (problematicNodes.includes(node.type)) {
+      console.log(`Excluding problematic node ${node.id} (${node.type}) from API workflow`);
+      continue;
+    }
+
     const apiNode = {
       class_type: node.type,
       inputs: {}
