@@ -12,27 +12,18 @@ window.comfyUIBentoML.client = {
     debugMode: false
   },
 
-  // Feature flags (synced with server)
-  featureFlags: {
-    USE_BENTOML_SUBMISSION: true,
-    USE_BENTOML_SEEDS: false,
-    BENTOML_DEBUG: false
-  },
 
   /**
    * Initialize BentoML client
    */
   async init() {
     try {
-      // Sync feature flags with server
-      await this.syncFeatureFlags();
       
       // Check service health
       const health = await this.healthCheck();
       
       if (this.config.debugMode) {
         console.log('BentoML Client initialized:', {
-          featureFlags: this.featureFlags,
           serviceHealthy: health.healthy
         });
       }
@@ -59,9 +50,6 @@ window.comfyUIBentoML.client = {
     // Handle backward compatibility: convert modifySeeds to seedMode
     const actualSeedMode = seedMode !== 'original' ? seedMode : (modifySeeds ? 'randomize' : 'original');
 
-    if (!this.featureFlags.USE_BENTOML_SUBMISSION) {
-      throw new Error('BentoML submission not enabled. Use legacy client instead.');
-    }
 
     try {
       const response = await fetch(`${window.appConfig.getApiUrl()}/api/bentoml/queue-workflow`, {
@@ -124,9 +112,6 @@ window.comfyUIBentoML.client = {
     
     const actualSeedMode = seedMode !== 'original' ? seedMode : (modifySeeds ? 'randomize' : 'original');
 
-    if (!this.featureFlags.USE_BENTOML_SUBMISSION) {
-      throw new Error('BentoML submission not enabled. Use legacy client instead.');
-    }
 
     try {
       const response = await fetch(`${window.appConfig.getApiUrl()}/api/bentoml/queue-workflow-with-edits`, {
@@ -251,43 +236,6 @@ window.comfyUIBentoML.client = {
     }
   },
 
-  /**
-   * Sync feature flags with server
-   */
-  async syncFeatureFlags() {
-    try {
-      const response = await fetch(`${window.appConfig.getApiUrl()}/api/bentoml/flags`);
-      
-      if (response.ok) {
-        const flags = await response.json();
-        this.featureFlags = { ...this.featureFlags, ...flags };
-      }
-    } catch (error) {
-      console.warn('Failed to sync feature flags:', error.message);
-    }
-  },
-
-  /**
-   * Toggle feature flag for testing
-   */
-  async setFeatureFlag(flag, value) {
-    try {
-      const response = await fetch(`${window.appConfig.getApiUrl()}/api/bentoml/flags`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ flag, value })
-      });
-      
-      if (response.ok) {
-        const result = await response.json();
-        this.featureFlags[flag] = result.value;
-        console.log(`Feature flag ${flag} set to ${result.value}`);
-        return result;
-      }
-    } catch (error) {
-      console.error('Failed to set feature flag:', error.message);
-    }
-  },
 
   /**
    * Generate unique client ID
@@ -302,7 +250,6 @@ window.comfyUIBentoML.client = {
   getStatus() {
     return {
       config: this.config,
-      featureFlags: this.featureFlags,
       timestamp: new Date().toISOString()
     };
   }

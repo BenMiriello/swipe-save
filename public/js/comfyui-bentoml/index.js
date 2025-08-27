@@ -118,9 +118,6 @@ window.comfyUIBentoML.main = {
       const health = await window.comfyUIBentoML.client.healthCheck();
       console.log('Health check:', health.healthy ? 'PASS' : 'FAIL');
 
-      // Test 2: Feature flags
-      await window.comfyUIBentoML.client.syncFeatureFlags();
-      console.log('Feature flags:', window.comfyUIBentoML.client.featureFlags);
 
       // Test 3: Schema fetch
       if (window.comfyUIBentoML.services?.schemaProvider) {
@@ -150,8 +147,6 @@ window.comfyUIBentoML.main = {
     try {
       console.log('Enabling BentoML for testing...');
 
-      // Enable submission feature
-      const result = await window.comfyUIBentoML.client.setFeatureFlag('USE_BENTOML_SUBMISSION', true);
       
       if (result && result.success) {
         console.log('BentoML submission enabled');
@@ -178,7 +173,6 @@ window.comfyUIBentoML.main = {
    */
   async disable() {
     try {
-      const result = await window.comfyUIBentoML.client.setFeatureFlag('USE_BENTOML_SUBMISSION', false);
       
       if (result && result.success) {
         console.log('BentoML submission disabled');

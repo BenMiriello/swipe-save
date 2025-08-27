@@ -12,15 +12,6 @@ const config = require('../config');
 const bentomlService = require('../services/bentoml-service');
 
 /**
- * Feature flags for safe rollout
- */
-const FEATURE_FLAGS = {
-  USE_BENTOML_SUBMISSION: process.env.BENTOML_ENABLED === 'true' || true,
-  USE_BENTOML_SEEDS: process.env.BENTOML_SEEDS_ENABLED === 'true' || false,
-  BENTOML_DEBUG: process.env.BENTOML_DEBUG === 'true' || false
-};
-
-/**
  * Queue workflow with edited workflow data via BentoML
  */
 router.post('/api/bentoml/queue-workflow-with-edits', async (req, res) => {
@@ -35,12 +26,6 @@ router.post('/api/bentoml/queue-workflow-with-edits', async (req, res) => {
       return res.status(400).json({ error: 'Pre-edited workflow is required' });
     }
     
-    if (!FEATURE_FLAGS.USE_BENTOML_SUBMISSION) {
-      return res.status(503).json({ 
-        error: 'BentoML submission not enabled',
-        fallback: 'Use /api/queue-workflow-with-edits instead'
-      });
-    }
     
     const actualSeedMode = seedMode !== 'original' ? seedMode : (modifySeeds ? 'randomize' : 'original');
     
@@ -136,19 +121,12 @@ router.post('/api/bentoml/queue-workflow', async (req, res) => {
       return res.status(400).json({ error: 'Filename is required' });
     }
 
-    if (!FEATURE_FLAGS.USE_BENTOML_SUBMISSION) {
-      return res.status(503).json({ 
-        error: 'BentoML submission not enabled',
-        fallback: 'Use /api/queue-workflow instead'
-      });
-    }
 
     // Check if BentoML service is available
     const isServiceAvailable = await bentomlService.healthCheck();
     if (!isServiceAvailable) {
       return res.status(503).json({ 
-        error: 'BentoML service unavailable',
-        fallback: 'Use /api/queue-workflow instead'
+        error: 'BentoML service unavailable'
       });
     }
 
@@ -158,14 +136,21 @@ router.post('/api/bentoml/queue-workflow', async (req, res) => {
       return res.status(404).json({ error: 'File not found' });
     }
 
-    // Extract workflow metadata (same as legacy system)
+    // Extract workflow metadata (prefer prompt/API format over GUI format)
     const metadata = await fileOps.extractComfyMetadata(filePath, filename);
     
     let workflowData;
+    let workflowFormat = 'unknown';
+    
+    // Prefer prompt (API format) over workflow (GUI format) to avoid conversion issues
     if (metadata.prompt) {
       workflowData = metadata.prompt;
+      workflowFormat = 'api';
+      console.log('Using prompt data (API format)');
     } else if (metadata.workflow) {
       workflowData = metadata.workflow;
+      workflowFormat = 'gui';
+      console.log('Using workflow data (GUI format)');
     } else {
       return res.status(404).json({ error: 'No workflow found in image metadata' });
     }
@@ -173,7 +158,7 @@ router.post('/api/bentoml/queue-workflow', async (req, res) => {
     // Phase 2: Schema-driven seed modification with mode support
     const actualSeedMode = seedMode || (modifySeeds ? 'randomize' : 'original');
     
-    if (actualSeedMode !== 'original' && FEATURE_FLAGS.USE_BENTOML_SEEDS) {
+    if (actualSeedMode !== 'original') {
       try {
         const schema = await bentomlService.getServiceSchema();
         workflowData = bentomlService.modifyWorkflowSeeds(workflowData, actualSeedMode, null, schema);
@@ -187,10 +172,20 @@ router.post('/api/bentoml/queue-workflow', async (req, res) => {
     }
 
     // Check workflow format and convert if needed
-    if (workflowData.nodes && Array.isArray(workflowData.nodes)) {
+    if (workflowFormat === 'gui' || (workflowData.nodes && Array.isArray(workflowData.nodes))) {
       console.log('Converting GUI format workflow to API format...');
-      // For now, let the BentoML service handle conversion or use fallback
-      // TODO: Implement conversion or use BentoML's built-in conversion
+      try {
+        const { convertGUIToAPI } = require('./workflow-routes');
+        workflowData = convertGUIToAPI(workflowData);
+        console.log('Successfully converted GUI workflow to API format');
+        workflowFormat = 'api';
+      } catch (error) {
+        console.error('GUI to API conversion failed:', error);
+        return res.status(400).json({ 
+          error: 'Failed to convert workflow format: ' + error.message,
+          suggestion: 'This workflow may contain custom nodes not supported in API conversion'
+        });
+      }
     }
 
     // Submit to ComfyUI (via BentoML service)
@@ -201,7 +196,7 @@ router.post('/api/bentoml/queue-workflow', async (req, res) => {
       clientId: req.headers['x-client-id']
     });
 
-    if (FEATURE_FLAGS.BENTOML_DEBUG) {
+    if (false) { // Debug disabled
       console.log('BentoML submission result:', result);
     }
 
@@ -214,7 +209,7 @@ router.post('/api/bentoml/queue-workflow', async (req, res) => {
       controlAfterGenerate: controlAfterGenerate,
       bentomlInfo: {
         serviceUrl: bentomlService.getServiceInfo().url,
-        usedSchema: FEATURE_FLAGS.USE_BENTOML_SEEDS
+        usedSchema: true
       }
     });
 
@@ -222,8 +217,7 @@ router.post('/api/bentoml/queue-workflow', async (req, res) => {
     console.error('BentoML workflow submission error:', error);
     res.status(500).json({ 
       error: error.message,
-      method: 'bentoml',
-      fallback: 'Consider using /api/queue-workflow'
+      method: 'bentoml'
     });
   }
 });
@@ -235,9 +229,6 @@ router.get('/api/bentoml/status/:workflowId', async (req, res) => {
   try {
     const { workflowId } = req.params;
 
-    if (!FEATURE_FLAGS.USE_BENTOML_SUBMISSION) {
-      return res.status(503).json({ error: 'BentoML not enabled' });
-    }
 
     const status = await bentomlService.getWorkflowStatus(workflowId);
     res.json(status);
@@ -255,9 +246,6 @@ router.post('/api/bentoml/cancel/:workflowId', async (req, res) => {
   try {
     const { workflowId } = req.params;
 
-    if (!FEATURE_FLAGS.USE_BENTOML_SUBMISSION) {
-      return res.status(503).json({ error: 'BentoML not enabled' });
-    }
 
     const result = await bentomlService.cancelWorkflow(workflowId);
     res.json({
@@ -283,7 +271,6 @@ router.get('/api/bentoml/health', async (req, res) => {
     res.json({
       healthy: isHealthy,
       serviceInfo,
-      featureFlags: FEATURE_FLAGS,
       timestamp: new Date().toISOString()
     });
 
@@ -301,9 +288,6 @@ router.get('/api/bentoml/health', async (req, res) => {
  */
 router.get('/api/bentoml/schema', async (req, res) => {
   try {
-    if (!FEATURE_FLAGS.USE_BENTOML_SUBMISSION) {
-      return res.status(503).json({ error: 'BentoML not enabled' });
-    }
 
     const schema = await bentomlService.getServiceSchema();
     
@@ -319,31 +303,5 @@ router.get('/api/bentoml/schema', async (req, res) => {
   }
 });
 
-/**
- * Feature flag management (for testing)
- */
-router.get('/api/bentoml/flags', (req, res) => {
-  res.json(FEATURE_FLAGS);
-});
-
-router.post('/api/bentoml/flags', (req, res) => {
-  const { flag, value } = req.body;
-  
-  if (FEATURE_FLAGS.hasOwnProperty(flag)) {
-    FEATURE_FLAGS[flag] = Boolean(value);
-    console.log(`Feature flag ${flag} set to ${value}`);
-    res.json({ 
-      success: true, 
-      flag, 
-      value: FEATURE_FLAGS[flag],
-      allFlags: FEATURE_FLAGS 
-    });
-  } else {
-    res.status(400).json({ 
-      error: 'Invalid feature flag', 
-      availableFlags: Object.keys(FEATURE_FLAGS) 
-    });
-  }
-});
 
 module.exports = router;

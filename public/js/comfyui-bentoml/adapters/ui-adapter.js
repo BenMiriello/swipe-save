@@ -16,7 +16,7 @@ window.comfyUIBentoML.uiAdapter = {
     try {
       // Check if BentoML is enabled
       const status = await window.comfyUIBentoML.client.getStatus();
-      this.isEnabled = status.featureFlags.USE_BENTOML_SUBMISSION;
+      this.isEnabled = true;
 
       if (this.isEnabled) {
         console.log('BentoML UI adapter enabled');
@@ -74,7 +74,7 @@ window.comfyUIBentoML.uiAdapter = {
           try {
             // Check if BentoML is available
             const bentomlClient = window.comfyUIBentoML.client;
-            const canUseBentoML = bentomlClient.featureFlags.USE_BENTOML_SUBMISSION;
+            const canUseBentoML = true;
 
             let results = [];
 
@@ -118,22 +118,6 @@ window.comfyUIBentoML.uiAdapter = {
           }
         },
 
-        // Legacy queue method (original implementation)
-        async handleLegacyQueue(file, settings) {
-          const modifiedWorkflow = this.$store.workflowEditor.getModifiedWorkflow();
-
-          for (let i = 0; i < settings.quantity; i++) {
-            await window.comfyUIServices.apiClient.queueWorkflowWithEdits(
-              file,
-              modifiedWorkflow,
-              settings.seedMode !== 'original', // Convert seedMode to boolean for backward compatibility
-              settings.controlAfterGenerate,
-              Alpine.store('comfyDestinations').selectedDestination
-            );
-          }
-
-          return { method: 'legacy', success: true };
-        },
 
         // Enhanced result logging with method info
         addResultLog(count, useNewSeed, controlMode, isError, method = '', errorMessage = null) {
@@ -202,11 +186,16 @@ window.comfyUIBentoML.uiAdapter = {
           console.log(`BentoML schema analysis found ${textFields.length} text fields`);
 
         } catch (schemaError) {
-          console.warn('BentoML schema analysis failed, using fallback:', schemaError.message);
+          console.warn('BentoML schema analysis failed:', schemaError.message);
           
-          // Fallback to legacy analysis
-          this.analysisResult = await window.comfyUIServices.workflowAnalyzer.analyzeWorkflow(workflowData);
-          this.analysisResult.method = 'legacy-fallback';
+          // Basic fallback analysis
+          this.analysisResult = {
+            nodes: [],
+            textFields: [],
+            hasValidStructure: false,
+            method: 'basic-fallback',
+            error: schemaError.message
+          };
         }
 
         this.loadSavedEdits(file.name);
@@ -253,7 +242,7 @@ window.comfyUIBentoML.uiAdapter = {
    */
   async toggleBentoMLFeature(enable = true) {
     try {
-      const result = await window.comfyUIBentoML.client.setFeatureFlag('USE_BENTOML_SUBMISSION', enable);
+      const result = { success: true, value: true };
       
       if (result && result.success) {
         this.isEnabled = result.value;
