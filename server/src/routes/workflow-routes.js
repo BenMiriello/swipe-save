@@ -291,7 +291,7 @@ function modifyControlAfterGenerate(workflow, controlMode = 'increment') {
 // Queue workflow with pre-edited workflow data (preserves formatting)
 router.post('/api/queue-workflow-with-edits', async (req, res) => {
   try {
-    const { filename, workflow, modifySeeds, controlAfterGenerate, comfyUrl } = req.body;
+    const { filename, workflow, modifySeeds, controlAfterGenerate, comfyUrl, quantity = 1 } = req.body;
 
 
     if (!filename) {
@@ -316,42 +316,51 @@ router.post('/api/queue-workflow-with-edits', async (req, res) => {
       }
     }
 
-    if (modifySeeds) {
-      workflowData = modifyWorkflowSeeds(workflowData);
-    }
-
-    if (controlAfterGenerate) {
-      workflowData = modifyControlAfterGenerate(workflowData, controlAfterGenerate);
-    }
-
-    const clientId = 'swipe-save-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9);
-
     let targetUrl = comfyUrl || getDefaultComfyUIUrl(req);
-    
-    // Normalize URL to ensure reliable connection
     targetUrl = config.normalizeComfyUIUrl(targetUrl);
-
+    
     const fetch = require('node-fetch');
-    const response = await fetch(`${targetUrl}/prompt`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        prompt: workflowData,
-        client_id: clientId
-      })
-    });
+    const results = [];
+    
+    // Submit workflow multiple times based on quantity, each with unique seeds
+    for (let i = 0; i < quantity; i++) {
+      // Create unique workflow for each submission to prevent ComfyUI deduplication
+      let currentWorkflow = JSON.parse(JSON.stringify(workflowData)); // Deep copy
+      
+      if (modifySeeds) {
+        currentWorkflow = modifyWorkflowSeeds(currentWorkflow);
+      }
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`ComfyUI API error: ${response.status} - ${errorText}`);
+      if (controlAfterGenerate) {
+        currentWorkflow = modifyControlAfterGenerate(currentWorkflow, controlAfterGenerate);
+      }
+
+      // Generate unique client ID for each submission
+      const clientId = 'swipe-save-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9) + '-' + i;
+
+      const response = await fetch(`${targetUrl}/prompt`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          prompt: currentWorkflow,
+          client_id: clientId
+        })
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`ComfyUI API error on submission ${i+1}/${quantity}: ${response.status} - ${errorText}`);
+      }
+
+      const result = await response.json();
+      results.push(result);
+      console.log(`Workflow queued successfully (${i+1}/${quantity})`);
     }
-
-    const result = await response.json();
-    console.log('Workflow queued successfully');
 
     res.json({ 
       success: true, 
-      result: result,
+      results: results,
+      quantity: quantity,
       comfyUrl: targetUrl,
       modifiedSeeds: modifySeeds,
       controlAfterGenerate: controlAfterGenerate,

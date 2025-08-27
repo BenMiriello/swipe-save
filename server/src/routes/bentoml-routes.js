@@ -15,10 +15,114 @@ const bentomlService = require('../services/bentoml-service');
  * Feature flags for safe rollout
  */
 const FEATURE_FLAGS = {
-  USE_BENTOML_SUBMISSION: process.env.BENTOML_ENABLED === 'true' || false,
+  USE_BENTOML_SUBMISSION: process.env.BENTOML_ENABLED === 'true' || true,
   USE_BENTOML_SEEDS: process.env.BENTOML_SEEDS_ENABLED === 'true' || false,
   BENTOML_DEBUG: process.env.BENTOML_DEBUG === 'true' || false
 };
+
+/**
+ * Queue workflow with edited workflow data via BentoML
+ */
+router.post('/api/bentoml/queue-workflow-with-edits', async (req, res) => {
+  try {
+    const { filename, workflow, seedMode = 'original', modifySeeds, controlAfterGenerate = 'increment', quantity = 1 } = req.body;
+    
+    if (!filename) {
+      return res.status(400).json({ error: 'Filename is required' });
+    }
+    
+    if (!workflow) {
+      return res.status(400).json({ error: 'Pre-edited workflow is required' });
+    }
+    
+    if (!FEATURE_FLAGS.USE_BENTOML_SUBMISSION) {
+      return res.status(503).json({ 
+        error: 'BentoML submission not enabled',
+        fallback: 'Use /api/queue-workflow-with-edits instead'
+      });
+    }
+    
+    const actualSeedMode = seedMode !== 'original' ? seedMode : (modifySeeds ? 'randomize' : 'original');
+    
+    // Use the provided workflow directly (preserves formatting and text edits)
+    let workflowData = workflow;
+    
+    // Check workflow format and convert if needed
+    if (workflowData.nodes && Array.isArray(workflowData.nodes)) {
+      try {
+        const { convertGUIToAPI } = require('./workflow-routes');
+        workflowData = convertGUIToAPI(workflowData);
+      } catch (error) {
+        console.error('GUI to API conversion failed:', error);
+        return res.status(400).json({ error: 'Failed to convert workflow format: ' + error.message });
+      }
+    }
+    
+    const results = [];
+    
+    // Submit workflow multiple times based on quantity, each with unique seeds
+    for (let i = 0; i < quantity; i++) {
+      let currentWorkflow = JSON.parse(JSON.stringify(workflowData)); // Deep copy
+      
+      // Apply seed modification using BentoML service
+      if (actualSeedMode !== 'original') {
+        try {
+          currentWorkflow = bentomlService.modifyWorkflowSeeds(currentWorkflow, actualSeedMode);
+        } catch (error) {
+          console.warn('BentoML seed modification failed, using fallback:', error.message);
+          // Fallback to legacy seed modification
+          const { modifyWorkflowSeeds } = require('./workflow-routes');
+          currentWorkflow = modifyWorkflowSeeds(currentWorkflow);
+        }
+      }
+      
+      if (controlAfterGenerate && controlAfterGenerate !== 'increment') {
+        const { modifyControlAfterGenerate } = require('./workflow-routes');
+        currentWorkflow = modifyControlAfterGenerate(currentWorkflow, controlAfterGenerate);
+      }
+      
+      // Generate unique client ID
+      const clientId = 'swipe-save-bentoml-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9) + '-' + i;
+      
+      // Submit via ComfyUI directly (same as legacy but with BentoML client ID)
+      const config = require('../config');
+      const targetUrl = config.normalizeComfyUIUrl(config.COMFYUI_URL);
+      const fetch = require('node-fetch');
+      
+      const response = await fetch(`${targetUrl}/prompt`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          prompt: currentWorkflow,
+          client_id: clientId
+        })
+      });
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`ComfyUI API error on submission ${i+1}/${quantity}: ${response.status} - ${errorText}`);
+      }
+      
+      const result = await response.json();
+      results.push(result);
+      console.log(`BentoML edited workflow queued successfully (${i+1}/${quantity})`);
+    }
+    
+    res.json({
+      success: true,
+      method: 'bentoml-edited',
+      results: results,
+      quantity: quantity,
+      seedMode: actualSeedMode,
+      controlAfterGenerate: controlAfterGenerate,
+      preservedFormatting: true
+    });
+    
+  } catch (error) {
+    console.error('BentoML edited workflow error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
 
 /**
  * Queue workflow via BentoML (Phase 1: Direct submission)

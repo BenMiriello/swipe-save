@@ -57,52 +57,40 @@ window.comfyUIComponents.modalComponents = {
         this.setButtonState('queue', 'processing');
         this.error = null;
         
-        // Check if seeds should be randomized based on seedMode setting
-        const shouldRandomizeSeeds = settings.seedMode === 'randomize';
-        
         // Check if there are field edits that need to be applied
         const workflowStore = Alpine.store('comfyWorkflow');
         const hasFieldEdits = workflowStore.fieldEdits && Object.keys(workflowStore.fieldEdits).length > 0;
         
         try {
-          if (settings.quantity > 1) {
-            console.log(`ComfyUI: Starting batch of ${settings.quantity} workflows`);
-          }
-          
-          for (let i = 0; i < settings.quantity; i++) {
-            if (hasFieldEdits) {
-              // Get the original workflow and apply field edits
-              const modifiedWorkflow = await this.getModifiedWorkflow(file, workflowStore.fieldEdits);
-              
-              await window.comfyUIServices.apiClient.queueWorkflowWithEdits(
-                file,
-                modifiedWorkflow,
-                shouldRandomizeSeeds,
-                settings.controlAfterGenerate,
-                Alpine.store('comfyDestinations').selectedDestination
-              );
-            } else {
-              await window.comfyUIServices.apiClient.queueWorkflow(
-                file,
-                shouldRandomizeSeeds,
-                settings.controlAfterGenerate,
-                Alpine.store('comfyDestinations').selectedDestination
-              );
-            }
-          }
-          
-          if (settings.quantity > 1) {
-            console.log(`ComfyUI: Completed batch of ${settings.quantity} workflows`);
+          if (hasFieldEdits) {
+            console.log(`ComfyUI: Workflow has field edits - using BentoML edited workflow submission`);
+            const modifiedWorkflow = await this.getModifiedWorkflow(file, workflowStore.fieldEdits);
+            
+            const result = await window.comfyUIBentoML.client.queueWorkflowWithEdits(file, modifiedWorkflow, {
+              seedMode: settings.seedMode,
+              controlAfterGenerate: settings.controlAfterGenerate,
+              quantity: settings.quantity
+            });
+            console.log('BentoML edited workflow result:', result);
+            
+          } else {
+            console.log(`ComfyUI: No field edits - using BentoML standard submission`);
+            const result = await window.comfyUIBentoML.client.queueWorkflow(file, {
+              seedMode: settings.seedMode,
+              controlAfterGenerate: settings.controlAfterGenerate,
+              quantity: settings.quantity
+            });
+            console.log('BentoML standard result:', result);
           }
           
           this.setButtonState('queue', 'success');
-          this.addResultLog(settings.quantity, shouldRandomizeSeeds, settings.controlAfterGenerate, false);
+          this.addResultLog(settings.quantity, settings.seedMode !== 'original', settings.controlAfterGenerate, false);
           
         } catch (error) {
           console.error('Queue error:', error);
           this.setButtonState('queue', 'error');
           this.error = error.message || 'Failed to queue workflow';
-          this.addResultLog(settings.quantity, shouldRandomizeSeeds, settings.controlAfterGenerate, true, error.message);
+          this.addResultLog(settings.quantity, settings.seedMode !== 'original', settings.controlAfterGenerate, true, error.message);
         }
       },
       

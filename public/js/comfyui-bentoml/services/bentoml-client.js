@@ -112,6 +112,70 @@ window.comfyUIBentoML.client = {
   },
 
   /**
+   * Queue workflow with pre-edited workflow data via BentoML
+   */
+  async queueWorkflowWithEdits(file, modifiedWorkflow, options = {}) {
+    const {
+      seedMode = 'original',
+      modifySeeds = false,
+      controlAfterGenerate = 'increment',
+      quantity = 1
+    } = options;
+    
+    const actualSeedMode = seedMode !== 'original' ? seedMode : (modifySeeds ? 'randomize' : 'original');
+
+    if (!this.featureFlags.USE_BENTOML_SUBMISSION) {
+      throw new Error('BentoML submission not enabled. Use legacy client instead.');
+    }
+
+    try {
+      const response = await fetch(`${window.appConfig.getApiUrl()}/api/bentoml/queue-workflow-with-edits`, {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'X-Client-ID': this.generateClientId()
+        },
+        body: JSON.stringify({
+          filename: file.name,
+          workflow: modifiedWorkflow,
+          seedMode: actualSeedMode,
+          modifySeeds: actualSeedMode !== 'original',
+          controlAfterGenerate,
+          quantity
+        })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        
+        if (response.status === 503) {
+          throw new Error(`BentoML unavailable: ${errorData.error}. ${errorData.fallback || 'Use legacy workflow submission.'}`);
+        }
+        
+        throw new Error(errorData.error || 'BentoML edited workflow submission failed');
+      }
+
+      const result = await response.json();
+      
+      const message = `BentoML edited: Queued workflow ${quantity > 1 ? `${quantity} times` : ''} with ${actualSeedMode} seeds, control: ${controlAfterGenerate}`;
+      console.log(message);
+      
+      return {
+        success: true,
+        method: 'bentoml-edited',
+        results: result.results,
+        quantity: result.quantity,
+        message,
+        result
+      };
+
+    } catch (error) {
+      console.error(`BentoML edited: Failed to queue workflow - ${error.message}`);
+      throw error;
+    }
+  },
+
+  /**
    * Get workflow status from BentoML
    */
   async getWorkflowStatus(workflowId) {
