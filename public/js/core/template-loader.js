@@ -51,18 +51,12 @@ const TemplateLoader = {
     return this.loadTemplate('templates/modals/comfyui-modal.html', 'comfyui-modal-container');
   },
 
-  /**
-   * Load options dropdown component template
-   */
-  async loadOptionsDropdown() {
-    return this.loadTemplate('templates/components/options-dropdown.html', 'options-dropdown-container');
-  }
 };
 
 // Auto-load templates when DOM is ready to maintain existing functionality
 document.addEventListener('DOMContentLoaded', async () => {
   try {
-    // Only load ComfyUI modal since options dropdown is now inline
+    // Load ComfyUI modal template
     const comfyResult = await TemplateLoader.loadComfyUIModal();
     
     // Dispatch event to signal templates are loaded

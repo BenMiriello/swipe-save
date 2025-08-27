@@ -14,7 +14,7 @@ window.comfyUIBentoML.client = {
 
   // Feature flags (synced with server)
   featureFlags: {
-    USE_BENTOML_SUBMISSION: false,
+    USE_BENTOML_SUBMISSION: true,
     USE_BENTOML_SEEDS: false,
     BENTOML_DEBUG: false
   },

@@ -20,22 +20,46 @@ const DirectoryUIUpdater = {
    * Update source directory display in options
    */
   updateSourceDirectoryDisplay() {
-    const sourcePathEl = document.getElementById('sourcePathClickable');
-    if (!sourcePathEl) return;
+    const container = document.getElementById('sourceDirectoriesContainer');
+    if (!container) return;
 
     const config = window.directoryManager.config;
     const enabledDirectories = config.sources.directories.filter(d => d.enabled);
+    const groups = config.sources.groups || [];
     
-    if (enabledDirectories.length === 0) {
-      sourcePathEl.textContent = 'Click to add source directory';
-      sourcePathEl.title = 'No source directories configured';
-    } else if (enabledDirectories.length === 1) {
-      const dir = enabledDirectories[0];
-      sourcePathEl.textContent = this.shortenPath(dir.path);
-      sourcePathEl.title = `Source: ${dir.path}`;
+    if (enabledDirectories.length === 0 && groups.length === 0) {
+      container.innerHTML = `
+        <div class="directory-item">
+          <span class="dir-name">No source directories configured</span>
+          <button class="btn btn-small" onclick="directoryManager.showSourcePicker()">+ Add Source</button>
+        </div>
+      `;
     } else {
-      sourcePathEl.textContent = `${enabledDirectories.length} directories`;
-      sourcePathEl.title = `Multiple source directories:\n${enabledDirectories.map(d => d.path).join('\n')}`;
+      let html = '';
+      
+      // Show enabled directories
+      enabledDirectories.forEach(dir => {
+        html += `
+          <div class="directory-item">
+            <span class="dir-icon">📁</span>
+            <span class="dir-name" title="${dir.path}">${this.shortenPath(dir.path)}</span>
+            <button class="btn btn-small" onclick="directoryManager.removeDirectory('${dir.id}')">Remove</button>
+          </div>
+        `;
+      });
+      
+      // Show groups
+      groups.forEach(group => {
+        html += `
+          <div class="directory-item group">
+            <span class="dir-icon">📂</span>
+            <span class="dir-name">${group.name} (${group.directories.length} folders)</span>
+            <button class="btn btn-small" onclick="directoryManager.editGroup('${group.id}')">Edit</button>
+          </div>
+        `;
+      });
+      
+      container.innerHTML = html;
     }
   },
 
@@ -43,7 +67,7 @@ const DirectoryUIUpdater = {
    * Update destination display in options
    */
   updateDestinationDisplay() {
-    const destPathEl = document.getElementById('destPathClickable');
+    const destPathEl = document.getElementById('currentDestinationPath');
     if (!destPathEl) return;
 
     const config = window.directoryManager.config;
@@ -93,10 +117,10 @@ const DirectoryUIUpdater = {
     }
 
     setTimeout(() => {
-      const sourcePathEl = document.getElementById('sourcePathClickable');
-      if (sourcePathEl) {
-        sourcePathEl.style.animation = 'pulse 2s infinite';
-        sourcePathEl.title = 'Click here to configure your first source directory';
+      const sourceContainer = document.getElementById('sourceDirectoriesContainer');
+      if (sourceContainer) {
+        sourceContainer.style.animation = 'pulse 2s infinite';
+        sourceContainer.title = 'Configure your first source directory';
       }
     }, 1000);
   },

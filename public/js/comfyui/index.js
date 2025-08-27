@@ -100,10 +100,19 @@ class ComfyUIModule {
 
   openWorkflowModal(file) {
     if (typeof Alpine !== 'undefined' && Alpine.store) {
-      Alpine.store('comfyWorkflow').setFile(file);
-      Alpine.store('comfyWorkflow').openModal();
-      if (window.location.hostname === 'localhost') {
-        console.log('Opening ComfyUI modal for:', file.name);
+      try {
+        const store = Alpine.store('comfyWorkflow');
+        if (!store) {
+          console.error('ComfyUI workflow store not found');
+          return;
+        }
+        store.setFile(file);
+        store.openModal();
+        if (window.location.hostname === 'localhost') {
+          console.log('Opening ComfyUI modal for:', file.name);
+        }
+      } catch (error) {
+        console.error('Error accessing ComfyUI store:', error);
       }
     } else {
       console.error('Alpine not available');
@@ -112,7 +121,14 @@ class ComfyUIModule {
 
   closeWorkflowModal() {
     if (typeof Alpine !== 'undefined' && Alpine.store) {
-      Alpine.store('comfyWorkflow').closeModal();
+      try {
+        const store = Alpine.store('comfyWorkflow');
+        if (store) {
+          store.closeModal();
+        }
+      } catch (error) {
+        console.error('Error closing ComfyUI modal:', error);
+      }
     }
   }
 

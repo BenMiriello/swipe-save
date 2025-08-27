@@ -216,7 +216,18 @@ class AppController {
     if (state.allFiles.length === 0) return;
 
     const currentFile = state.allFiles[state.currentIndex];
-    window.comfyUIModule.openWorkflowModal(currentFile);
+    
+    // Safety check for ComfyUI module
+    if (!window.comfyUIModule) {
+      console.error('ComfyUI module not loaded');
+      return;
+    }
+    
+    try {
+      window.comfyUIModule.openWorkflowModal(currentFile);
+    } catch (error) {
+      console.error('Error opening ComfyUI modal:', error);
+    }
   }
 
   /**

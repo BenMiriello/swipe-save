@@ -991,6 +991,36 @@ const directoryManager = {
       dirsElement.style.display = 'none';
       toggleElement.textContent = '▶';
     }
+  },
+
+  /**
+   * Show source picker (delegate to existing method)
+   */
+  showSourcePicker() {
+    this.openDirectoryPicker();
+  },
+
+  /**
+   * Remove directory by ID
+   */
+  async removeDirectory(directoryId) {
+    try {
+      await window.directoryApi.removeDirectory(directoryId);
+      await this.loadConfig();
+      DirectoryUIUpdater.refreshOptionsUI();
+    } catch (error) {
+      console.error('Error removing directory:', error);
+      alert('Failed to remove directory');
+    }
+  },
+
+  /**
+   * Edit group by ID
+   */
+  async editGroup(groupId) {
+    // For now, just refresh - could implement group editing modal later
+    console.log('Edit group:', groupId);
+    alert('Group editing not implemented yet');
   }
 };
 
