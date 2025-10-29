@@ -52,9 +52,21 @@ function getFallbackInputName(nodeType, slotIndex, dataType) {
 /**
  * Convert GUI format workflow to API format for ComfyUI queuing
  */
-function convertGUIToAPI(guiWorkflow) {
+async function convertGUIToAPI(guiWorkflow) {
   if (!guiWorkflow || !guiWorkflow.nodes || !Array.isArray(guiWorkflow.nodes)) {
     throw new Error('Invalid GUI workflow format');
+  }
+  
+  // Get available nodes from ComfyUI to validate node types
+  let availableNodes = null;
+  try {
+    const fetch = require('node-fetch');
+    const response = await fetch('http://127.0.0.1:8188/object_info');
+    const objectInfo = await response.json();
+    availableNodes = new Set(Object.keys(objectInfo));
+    console.log(`Loaded ${availableNodes.size} available node types from ComfyUI`);
+  } catch (error) {
+    console.warn('Could not fetch ComfyUI object_info, proceeding without node validation:', error.message);
   }
 
   const apiWorkflow = {};
@@ -80,7 +92,27 @@ function convertGUIToAPI(guiWorkflow) {
     'LoadImage': ['image', 'upload'],
     'PreviewImage': [], // images comes from connection
     'PerturbedAttention': ['scale', 'adaptive_scale', 'unet_block', 'unet_block_id', 'sigma_start', 'sigma_end', 'rescale', 'rescale_mode'],
-    'ImageScaleBy': ['upscale_method', 'scale_by']
+    'ImageScaleBy': ['upscale_method', 'scale_by'],
+    'VHS_VideoCombine': ['frame_rate', 'loop_count', 'filename_prefix', 'format', 'pix_fmt', 'bitrate', 'megabit', 'save_metadata', 'pingpong', 'save_output', null], // last is videopreview (complex object, skip)
+    'WanVideoDecode': ['enable_vae_tiling', 'tile_x', 'tile_y', 'tile_stride_x', 'tile_stride_y', 'normalization'],
+    'WanVideoVAELoader': ['model_name', 'precision'],
+    'WanVideoSampler': [null, 'cfg', 'shift', 'seed', null, 'force_offload', 'scheduler', 'riflex_freq_index', 'denoise_strength', 'batched_cfg', 'rope_function', 'start_step', 'end_step', 'add_noise_to_samples'], // index 0 can be steps (widget) or connection, index 4 is control_after_generate (skip)
+    'WanVideoEmptyEmbeds': [null, null, 'width', 'height', 'num_frames'], // first 2 are connections, last 3 come from widgets but map to connections
+    'WanVideoSetBlockSwap': [], // all inputs are connections, not widgets  
+    'WanVideoTextEncodeCached': ['model_name', 'precision', 'positive_prompt', 'negative_prompt', 'quantization', 'use_disk_cache', 'device'],
+    'WanVideoBlockSwap': ['blocks_to_swap', 'offload_img_emb', 'offload_txt_emb', 'use_non_blocking', 'vace_blocks_to_swap', 'prefetch_blocks', 'block_swap_debug'],
+    'WanVideoModelLoader': ['model', 'base_precision', 'quantization', 'load_device', 'attention_mode'],
+    'WanVideoContextOptions': ['context_schedule', 'context_frames', 'context_stride', 'context_overlap', 'freenoise', 'verbose', 'fuse_method'],
+    'WanVideoLoraSelectMulti': ['lora_0', 'strength_0', 'lora_1', 'strength_1', 'lora_2', 'strength_2', 'lora_3', 'strength_3', 'lora_4', 'strength_4', 'low_mem_load', 'merge_loras'],
+    'BasicScheduler': ['scheduler', 'steps', 'denoise'],
+    'ttN text': ['text'],
+    'easy int': ['value'],
+    'INTConstant': ['value'],
+    'StringToFloatList': ['string'],
+    'DummyComfyWanModelObject': ['shift'],
+    'CreateCFGScheduleFloatList': [null, 'cfg_scale_end', null, null, null, null], // mismatched widgets
+    'Width and height from aspect ratio 🪴': ['aspect_ratio', 'target_size', 'multiple_of'],
+    'WanVideoTorchCompileSettings': ['backend', 'fullgraph', 'mode', 'dynamic', 'dynamo_cache_size_limit', 'compile_transformer_blocks_only', 'dynamo_recompile_limit']
   };
 
   // Full input mappings for connection handling - maps slot index to input name
@@ -118,7 +150,20 @@ function convertGUIToAPI(guiWorkflow) {
     'ModelMergeSimple': ['model1', 'model2'],
     'CLIPMergeSimple': ['clip1', 'clip2'],
     'PerturbedAttention': ['model'], // model comes from connection, rest are widgets
-    'ImageScaleBy': ['image'] // image comes from connection, rest are widgets
+    'ImageScaleBy': ['image'], // image comes from connection, rest are widgets
+    'VHS_VideoCombine': ['images', 'audio', 'meta_batch', 'vae'], // images connection is required, others optional
+    'WanVideoDecode': ['vae', 'samples'], // both connections required
+    'WanVideoVAELoader': ['compile_args'], // 1 connection
+    'WanVideoSampler': ['model', 'image_embeds', 'text_embeds', 'samples', 'feta_args', 'context_options', 'cache_args', 'flowedit_args', 'slg_args', 'loop_args', 'experimental_args', 'sigmas', 'unianimate_poses', 'fantasytalking_embeds', 'uni3c_embeds', 'multitalk_embeds', 'freeinit_args', 'steps', 'end_step'], // many connections, slots 17=steps, 18=end_step
+    'WanVideoEmptyEmbeds': ['control_embeds', 'extra_latents', 'width', 'height', 'num_frames'], // width, height, num_frames come from widgets but appear as connections here
+    'WanVideoSetBlockSwap': ['model'], // 1 connection
+    'WanVideoTextEncodeCached': ['extender_args'], // 1 optional connection
+    'WanVideoBlockSwap': [], // no connections, all widgets
+    'WanVideoModelLoader': ['compile_args', 'block_swap_args', 'lora'], // first 3 connections, more optional
+    'WanVideoContextOptions': ['reference_latent', 'vae'], // 2 optional connections
+    'WanVideoLoraSelectMulti': ['prev_lora', 'blocks'], // 2 connections
+    'BasicScheduler': ['model'], // 1 connection
+    'CreateCFGScheduleFloatList': ['steps'] // 1 connection
   };
 
   for (const node of guiWorkflow.nodes) {
@@ -133,9 +178,15 @@ function convertGUIToAPI(guiWorkflow) {
       continue;
     }
 
-    // Skip problematic custom nodes that cause execution failures
-    const problematicNodes = ['SetNode']; // Add more as needed
-    if (problematicNodes.includes(node.type)) {
+    // Skip nodes that don't exist in ComfyUI (dynamic validation)
+    if (availableNodes && !availableNodes.has(node.type)) {
+      console.log(`Excluding unknown node ${node.id} (${node.type}) - not available in ComfyUI`);
+      continue;
+    }
+    
+    // Skip known problematic nodes (fallback for when object_info is not available)
+    const problematicNodes = ['SetNode', 'Note', 'Fast Groups Bypasser (rgthree)', 'PrimitiveNode'];
+    if (!availableNodes && problematicNodes.includes(node.type)) {
       console.log(`Excluding problematic node ${node.id} (${node.type}) from API workflow`);
       continue;
     }
@@ -144,25 +195,76 @@ function convertGUIToAPI(guiWorkflow) {
       class_type: node.type,
       inputs: {}
     };
+    
+    // Preserve node properties for custom nodes that need them (like rgthree nodes)
+    if (node.properties && Object.keys(node.properties).length > 0) {
+      // Filter out internal/UI-only properties
+      const filteredProperties = {};
+      for (const [key, value] of Object.entries(node.properties)) {
+        // Skip UI-specific properties that shouldn't be sent to ComfyUI
+        if (!key.startsWith('ue_') && key !== 'version') {
+          filteredProperties[key] = value;
+        }
+      }
+      if (Object.keys(filteredProperties).length > 0) {
+        apiNode.inputs = { ...apiNode.inputs, ...filteredProperties };
+      }
+    }
 
     // NOTE: Layout data (pos, size) is not preserved as ComfyUI API
     // does not accept position data during workflow execution
 
     // Add widget values as inputs using widget-specific mappings
-    if (node.widgets_values && Array.isArray(node.widgets_values)) {
-      const widgetNames = widgetMappings[node.type] || [];
+    if (node.widgets_values) {
+      if (Array.isArray(node.widgets_values)) {
+        // Handle array format widget values (most common)
+        const widgetNames = widgetMappings[node.type] || [];
 
-      node.widgets_values.forEach((value, index) => {
-        const inputName = widgetNames[index];
-        if (inputName && inputName !== null) {
-          apiNode.inputs[inputName] = value;
-        } else {
-          // For unmapped nodes, use generic widget names to preserve values
-          // This ensures custom node widgets don't get lost during conversion
-          const fallbackName = `widget_${index}`;
-          apiNode.inputs[fallbackName] = value;
+        node.widgets_values.forEach((value, index) => {
+          const inputName = widgetNames[index];
+          if (inputName && inputName !== null) {
+            apiNode.inputs[inputName] = value;
+          } else {
+            // For unmapped nodes, use generic widget names to preserve values
+            // This ensures custom node widgets don't get lost during conversion
+            const fallbackName = `widget_${index}`;
+            apiNode.inputs[fallbackName] = value;
+          }
+        });
+      } else if (typeof node.widgets_values === 'object' && node.widgets_values !== null) {
+        // Handle object format widget values (rare but occurs in some custom nodes like VHS_VideoCombine)
+        // In this format, property names are already the correct input names
+        for (const [key, value] of Object.entries(node.widgets_values)) {
+          // Skip complex objects that shouldn't be sent to ComfyUI
+          if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
+            continue;
+          }
+          apiNode.inputs[key] = value;
         }
-      });
+      }
+    }
+
+    // Special handling for nodes where widgets map to connection-style inputs
+    if (node.type === 'WanVideoEmptyEmbeds' && Array.isArray(node.widgets_values) && node.widgets_values.length >= 3) {
+      // For WanVideoEmptyEmbeds, widgets [0,1,2] = [width, height, num_frames] should be direct inputs
+      apiNode.inputs['width'] = node.widgets_values[0];
+      apiNode.inputs['height'] = node.widgets_values[1]; 
+      apiNode.inputs['num_frames'] = node.widgets_values[2];
+    }
+
+    // Special handling for WanVideoSampler steps input (can be widget or connection)
+    if (node.type === 'WanVideoSampler' && Array.isArray(node.widgets_values) && node.widgets_values.length > 0) {
+      // Check if steps input will come from a connection (look for incoming link to slot 17 based on our connection mapping)
+      const hasStepsConnection = guiWorkflow.links && guiWorkflow.links.some(link => 
+        link && link[3] === node.id && link[4] === 17 // target_node_id === node.id && target_slot === 17
+      );
+      
+      if (!hasStepsConnection) {
+        // No connection for steps, use widget value from index 0
+        apiNode.inputs['steps'] = node.widgets_values[0];
+        // Remove the generic widget_0 since we're using it as steps
+        delete apiNode.inputs['widget_0'];
+      }
     }
 
     // Add node connections from links
@@ -219,6 +321,20 @@ function convertGUIToAPI(guiWorkflow) {
     }
 
     apiWorkflow[String(node.id)] = apiNode;
+  }
+
+  // Clean up connections that reference excluded nodes
+  const includedNodeIds = new Set(Object.keys(apiWorkflow));
+  for (const [nodeId, node] of Object.entries(apiWorkflow)) {
+    for (const [inputName, inputValue] of Object.entries(node.inputs)) {
+      if (Array.isArray(inputValue) && inputValue.length === 2) {
+        const referencedNodeId = String(inputValue[0]);
+        if (!includedNodeIds.has(referencedNodeId)) {
+          console.log(`Removing connection from node ${nodeId} input '${inputName}' to excluded node ${referencedNodeId}`);
+          delete node.inputs[inputName];
+        }
+      }
+    }
   }
 
   return apiWorkflow;

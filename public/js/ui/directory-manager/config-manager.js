@@ -10,7 +10,7 @@ const DirectoryConfigManager = {
    */
   async loadConfig() {
     try {
-      this.config = await window.directoryApi.getConfig();
+      this.config = await window.directoryApi.getDirectoryConfig();
       
       // Ensure config has all required sections
       if (!this.config.sources) this.config.sources = { directories: [], groups: [] };

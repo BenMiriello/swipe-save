@@ -74,10 +74,7 @@ class AppController {
       refreshIcon.addEventListener('click', this.fetchMediaFiles.bind(this));
     }
 
-    const saveIcon = document.querySelector('.save-icon');
-    if (saveIcon) {
-      saveIcon.addEventListener('click', this.downloadCurrentFile.bind(this));
-    }
+    // Save icon handler moved to core-ui-manager.js to avoid duplication
 
     const prevButton = document.querySelector('.btn-secondary:first-child');
     if (prevButton) {

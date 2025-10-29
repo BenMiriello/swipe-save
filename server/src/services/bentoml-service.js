@@ -87,13 +87,16 @@ class BentoMLService {
         ...(metadataWorkflow && { workflow: metadataWorkflow })
       };
       
-      // Debug: Log the seed values we're actually sending to ComfyUI
+      // Debug: Log the seed values and submission payload
       console.log('FINAL SUBMISSION - Checking seeds being sent to ComfyUI:');
       for (const [nodeId, node] of Object.entries(workflowData)) {
         if (node.inputs && typeof node.inputs.seed === 'number') {
           console.log(`  Submitting Node ${nodeId} (${node.class_type}) seed: ${node.inputs.seed}`);
         }
       }
+      console.log('Submission payload keys:', Object.keys(submissionPayload));
+      console.log('Workflow data has', Object.keys(workflowData).length, 'nodes');
+      console.log('Client ID:', submissionPayload.client_id);
       
       const response = await fetch(`${this.bentomlUrl}/prompt`, {
         method: 'POST',
@@ -247,7 +250,7 @@ class BentoMLService {
 
         // Handle named seed properties AND widget_X properties from converted custom nodes
         for (const key in obj) {
-          if (key === 'seed' && typeof obj[key] === 'number') {
+          if ((key === 'seed' || key === 'noise_seed') && typeof obj[key] === 'number') {
             obj[key] = seedMode === 'randomize' ? generateRandomSeed() : incrementSeed(obj[key]);
             seedCount++;
           } else if (key.startsWith('widget_') && typeof obj[key] === 'number') {

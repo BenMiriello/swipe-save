@@ -161,7 +161,7 @@ router.post('/api/bentoml/queue-workflow', async (req, res) => {
       console.log('Converting GUI workflow to API format for execution...');
       try {
         const { convertGUIToAPI } = require('./workflow-routes');
-        executionWorkflow = convertGUIToAPI(workflowData);
+        executionWorkflow = await convertGUIToAPI(workflowData);
         metadataWorkflow = workflowData; // Keep original GUI for metadata
         console.log(`Converted ${workflowData.nodes.length} GUI nodes to ${Object.keys(executionWorkflow).length} API nodes for execution`);
         
@@ -194,6 +194,33 @@ router.post('/api/bentoml/queue-workflow', async (req, res) => {
           suggestion: 'This workflow may contain custom nodes not supported in API conversion'
         });
       }
+    }
+
+    // Apply seed modification to API format workflows (if not already done above for GUI→API conversion)
+    if (workflowFormat === 'api' && actualSeedMode !== 'original') {
+      console.log('Applying seed modification to API workflow...');
+      console.log('BEFORE seed modification - checking workflow seeds:');
+      for (const [nodeId, node] of Object.entries(executionWorkflow)) {
+        if (node.inputs && (node.inputs.seed !== undefined || node.inputs.noise_seed !== undefined)) {
+          console.log(`  Node ${nodeId} (${node.class_type}):`, 
+            node.inputs.seed !== undefined ? `seed: ${node.inputs.seed}` : '',
+            node.inputs.noise_seed !== undefined ? `noise_seed: ${node.inputs.noise_seed}` : ''
+          );
+        }
+      }
+      
+      executionWorkflow = bentomlService.modifyWorkflowSeeds(executionWorkflow, actualSeedMode);
+      
+      console.log('AFTER seed modification - checking workflow seeds:');
+      for (const [nodeId, node] of Object.entries(executionWorkflow)) {
+        if (node.inputs && (node.inputs.seed !== undefined || node.inputs.noise_seed !== undefined)) {
+          console.log(`  Node ${nodeId} (${node.class_type}):`,
+            node.inputs.seed !== undefined ? `seed: ${node.inputs.seed}` : '',
+            node.inputs.noise_seed !== undefined ? `noise_seed: ${node.inputs.noise_seed}` : ''
+          );
+        }
+      }
+      console.log('API workflow seed modification completed');
     }
 
     // Submit to ComfyUI (via BentoML service)
