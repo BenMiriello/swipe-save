@@ -26,14 +26,14 @@ const CoreEventSetup = {
     // Previous/back navigation
     this.eventManager.registerClick(
       '.btn-secondary:first-child, .btn-nav:first-child',
-      () => this.callSafely('actionController', 'showPreviousImage'),
+      () => this.callSafely('appController', 'showPreviousImage'),
       'nav-previous'
     );
 
     // Next/forward navigation
     this.eventManager.registerClick(
       '.btn-secondary:last-child, .btn-nav:last-child',
-      () => this.callSafely('actionController', 'showNextImage'),
+      () => this.callSafely('appController', 'showNextImage'),
       'nav-next'
     );
 
@@ -73,13 +73,13 @@ const CoreEventSetup = {
     // Arrow navigation
     this.eventManager.registerKeyboard(
       'ArrowLeft',
-      () => this.callSafely('actionController', 'showPreviousImage'),
+      () => this.callSafely('appController', 'showPreviousImage'),
       'kb-nav-left'
     );
 
     this.eventManager.registerKeyboard(
       'ArrowRight',
-      () => this.callSafely('actionController', 'showNextImage'),
+      () => this.callSafely('appController', 'showNextImage'),
       'kb-nav-right'
     );
 
@@ -136,25 +136,25 @@ const CoreEventSetup = {
     // Additional keyboard shortcuts (Command+A/J for previous, Command+D/L for next)
     this.eventManager.registerKeyboard(
       'Cmd+a',
-      () => this.callSafely('actionController', 'showPreviousImage'),
+      () => this.callSafely('appController', 'showPreviousImage'),
       'kb-nav-a'
     );
 
     this.eventManager.registerKeyboard(
       'Cmd+j',
-      () => this.callSafely('actionController', 'showPreviousImage'),
+      () => this.callSafely('appController', 'showPreviousImage'),
       'kb-nav-j'
     );
 
     this.eventManager.registerKeyboard(
       'Cmd+d',
-      () => this.callSafely('actionController', 'showNextImage'),
+      () => this.callSafely('appController', 'showNextImage'),
       'kb-nav-d'
     );
 
     this.eventManager.registerKeyboard(
       'Cmd+l',
-      () => this.callSafely('actionController', 'showNextImage'),
+      () => this.callSafely('appController', 'showNextImage'),
       'kb-nav-l'
     );
   },
