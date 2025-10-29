@@ -31,8 +31,7 @@ class AppController {
       downloadCurrentFile: this.downloadCurrentFile.bind(this)
     });
 
-    // Setup additional UI controls
-    this.setupUIControls();
+    // Event handling managed by EventManager
   }
 
   /**
@@ -60,35 +59,6 @@ class AppController {
     return window.stateManager.getState();
   }
 
-  /**
-   * Setup additional UI controls (buttons, etc.)
-   */
-  setupUIControls() {
-    const reloadIcon = document.querySelector('.reload-icon');
-    if (reloadIcon) {
-      reloadIcon.addEventListener('click', this.fetchMediaFiles.bind(this));
-    }
-
-    const refreshIcon = document.querySelector('.refresh-icon');
-    if (refreshIcon) {
-      refreshIcon.addEventListener('click', this.fetchMediaFiles.bind(this));
-    }
-
-    const prevButton = document.querySelector('.btn-secondary:first-child');
-    if (prevButton) {
-      prevButton.addEventListener('click', this.showPreviousImage.bind(this));
-    }
-
-    const nextButton = document.querySelector('.btn-secondary:last-child');
-    if (nextButton) {
-      nextButton.addEventListener('click', this.showNextImage.bind(this));
-    }
-
-    const undoButton = document.querySelector('.btn-undo');
-    if (undoButton) {
-      undoButton.addEventListener('click', this.undoLastAction.bind(this));
-    }
-  }
 
   /**
    * Fetch media files from server

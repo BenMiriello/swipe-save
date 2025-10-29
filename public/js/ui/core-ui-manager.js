@@ -248,30 +248,7 @@ const coreUIManager = {
       });
     }
 
-    const prevButton = document.querySelector('.btn-nav:first-child');
-    if (prevButton) {
-      prevButton.addEventListener('click', handlers.showPrevious);
-    }
-
-    const nextButton = document.querySelector('.btn-nav:last-child');
-    if (nextButton) {
-      nextButton.addEventListener('click', handlers.showNext);
-    }
-
-    const undoButton = document.querySelector('.btn-undo');
-    if (undoButton) {
-      undoButton.addEventListener('click', handlers.undoLastAction);
-    }
-
-    const comfyuiIcon = document.querySelector('.comfyui-icon');
-    if (comfyuiIcon) {
-      comfyuiIcon.addEventListener('click', handlers.openComfyUIModal);
-    }
-
-    const saveIcon = document.querySelector('.save-icon');
-    if (saveIcon) {
-      saveIcon.addEventListener('click', handlers.downloadCurrentFile);
-    }
+    // Core navigation events handled by EventManager
   },
 
   /**

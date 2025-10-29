@@ -26,42 +26,42 @@ const CoreEventSetup = {
     // Previous/back navigation
     this.eventManager.registerClick(
       '.btn-secondary:first-child, .btn-nav:first-child',
-      () => window.actionController?.showPreviousImage?.(),
+      () => this.callSafely('actionController', 'showPreviousImage'),
       'nav-previous'
     );
 
     // Next/forward navigation
     this.eventManager.registerClick(
       '.btn-secondary:last-child, .btn-nav:last-child',
-      () => window.actionController?.showNextImage?.(),
+      () => this.callSafely('actionController', 'showNextImage'),
       'nav-next'
     );
 
     // Undo button
     this.eventManager.registerClick(
       '.btn-undo',
-      () => window.actionController?.undoLastAction?.(),
+      () => this.callSafely('actionController', 'undoLastAction'),
       'nav-undo'
     );
 
     // Save/download button
     this.eventManager.registerClick(
       '.save-icon',
-      () => window.actionController?.downloadCurrentFile?.(),
+      () => this.callSafely('actionController', 'downloadCurrentFile'),
       'action-save'
     );
 
     // Reload/refresh buttons
     this.eventManager.registerClick(
       '.reload-icon, .refresh-icon',
-      () => window.appController?.fetchMediaFiles?.(),
+      () => this.callSafely('appController', 'fetchMediaFiles'),
       'action-refresh'
     );
 
     // ComfyUI modal trigger
     this.eventManager.registerClick(
       '.comfyui-icon',
-      () => window.appController?.openComfyUIModal?.(),
+      () => this.callSafely('appController', 'openComfyUIModal'),
       'modal-comfyui'
     );
   },
@@ -73,64 +73,89 @@ const CoreEventSetup = {
     // Arrow navigation
     this.eventManager.registerKeyboard(
       'ArrowLeft',
-      () => window.actionController?.showPreviousImage?.(),
+      () => this.callSafely('actionController', 'showPreviousImage'),
       'kb-nav-left'
     );
 
     this.eventManager.registerKeyboard(
       'ArrowRight',
-      () => window.actionController?.showNextImage?.(),
+      () => this.callSafely('actionController', 'showNextImage'),
       'kb-nav-right'
     );
 
     // Command combinations
     this.eventManager.registerKeyboard(
       'Cmd+z',
-      () => window.actionController?.undoLastAction?.(),
+      () => this.callSafely('actionController', 'undoLastAction'),
       'kb-undo'
     );
 
     this.eventManager.registerKeyboard(
       'Cmd+s',
-      () => window.actionController?.downloadCurrentFile?.(),
+      () => this.callSafely('actionController', 'downloadCurrentFile'),
       'kb-save'
     );
 
     this.eventManager.registerKeyboard(
       'Cmd+r',
-      () => window.appController?.fetchMediaFiles?.(),
+      () => this.callSafely('appController', 'fetchMediaFiles'),
       'kb-refresh'
     );
 
     this.eventManager.registerKeyboard(
       'Cmd+o',
-      () => window.appController?.toggleOptionsMenu?.(),
+      () => this.callSafely('appController', 'toggleOptionsMenu'),
       'kb-options'
     );
 
     // Command + Arrow combinations for actions
     this.eventManager.registerKeyboard(
       'Cmd+ArrowLeft',
-      () => window.actionController?.performAction?.('archive'),
+      () => this.callSafely('actionController', 'performAction', 'archive'),
       'kb-action-archive'
     );
 
     this.eventManager.registerKeyboard(
       'Cmd+ArrowRight',
-      () => window.actionController?.performAction?.('saved'),
+      () => this.callSafely('actionController', 'performAction', 'saved'),
       'kb-action-save'
     );
 
     this.eventManager.registerKeyboard(
       'Cmd+ArrowUp',
-      () => window.actionController?.performAction?.('best_complete'),
+      () => this.callSafely('actionController', 'performAction', 'best_complete'),
       'kb-action-best'
     );
 
     this.eventManager.registerKeyboard(
       'Cmd+ArrowDown',
-      () => window.actionController?.performAction?.('delete'),
+      () => this.callSafely('actionController', 'performAction', 'delete'),
       'kb-action-delete'
+    );
+
+    // Additional keyboard shortcuts (Command+A/J for previous, Command+D/L for next)
+    this.eventManager.registerKeyboard(
+      'Cmd+a',
+      () => this.callSafely('actionController', 'showPreviousImage'),
+      'kb-nav-a'
+    );
+
+    this.eventManager.registerKeyboard(
+      'Cmd+j',
+      () => this.callSafely('actionController', 'showPreviousImage'),
+      'kb-nav-j'
+    );
+
+    this.eventManager.registerKeyboard(
+      'Cmd+d',
+      () => this.callSafely('actionController', 'showNextImage'),
+      'kb-nav-d'
+    );
+
+    this.eventManager.registerKeyboard(
+      'Cmd+l',
+      () => this.callSafely('actionController', 'showNextImage'),
+      'kb-nav-l'
     );
   },
 
@@ -157,7 +182,7 @@ const CoreEventSetup = {
         if (key && action) {
           this.eventManager.registerKeyboard(
             key,
-            () => window.actionController?.performAction?(action),
+            () => this.callSafely('actionController', 'performAction', action),
             `kb-dynamic-${key}-${action}`
           );
         }
@@ -165,6 +190,21 @@ const CoreEventSetup = {
     };
 
     setupKeys();
+  },
+
+  /**
+   * Safely call methods on window objects that may not exist yet
+   * @param {string} objectName - Name of the window object
+   * @param {string} methodName - Name of the method to call
+   * @param {...any} args - Arguments to pass to the method
+   */
+  callSafely(objectName, methodName, ...args) {
+    const obj = window[objectName];
+    if (obj && typeof obj[methodName] === 'function') {
+      return obj[methodName](...args);
+    } else {
+      console.warn(`${objectName}.${methodName} not available yet`);
+    }
   },
 
   /**
@@ -177,10 +217,10 @@ const CoreEventSetup = {
   }
 };
 
-// EventManager disabled - restored to original event handling
-// document.addEventListener('DOMContentLoaded', () => {
-//   CoreEventSetup.init();
-// });
+// Initialize events when DOM is ready
+document.addEventListener('DOMContentLoaded', () => {
+  CoreEventSetup.init();
+});
 
 // Export globally
 window.CoreEventSetup = CoreEventSetup;
