@@ -8,7 +8,9 @@ const interactionHandler = {
    */
   init(callbacks) {
     this.callbacks = callbacks;
-    // Keyboard events now handled by CoreEventSetup
+
+    // Add event listeners
+    document.addEventListener('keydown', this.handleKeyDown.bind(this));
   },
 
   /**
@@ -119,6 +121,102 @@ const interactionHandler = {
       });
     });
   },
+
+  /**
+   * Handle keyboard events
+   * @param {KeyboardEvent} e - Keyboard event
+   */
+  handleKeyDown(e) {
+    // Skip if typing in an input or textarea
+    if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+
+    // Handle arrow key navigation
+    if (e.key === 'ArrowLeft' && !e.metaKey) {
+      e.preventDefault();
+      this.callbacks.showPrevious();
+      return;
+    }
+
+    if (e.key === 'ArrowRight' && !e.metaKey) {
+      e.preventDefault();
+      this.callbacks.showNext();
+      return;
+    }
+
+    // Handle action keys (from the keyboardMap in config)
+    if (window.appConfig && window.appConfig.keyboardMap && window.appConfig.keyboardMap[e.key] && !e.metaKey) {
+      const action = window.appConfig.keyboardMap[e.key];
+      this.callbacks.performAction(action);
+      return;
+    }
+
+    // Handle Command/Ctrl key combinations
+    if (e.metaKey) {
+      switch(e.key) {
+        // Command+Z for undo
+        case 'z':
+          e.preventDefault();
+          this.callbacks.undoLastAction();
+          return;
+
+        // Command+O for options menu
+        case 'o':
+          e.preventDefault();
+          this.callbacks.toggleOptions();
+          return;
+
+        // Command+S for download
+        case 's':
+          e.preventDefault();
+          this.callbacks.downloadCurrentFile();
+          return;
+
+        // Command+R for refresh
+        case 'r':
+          e.preventDefault();
+          this.callbacks.refreshFiles();
+          return;
+
+        // Command+Left for archive
+        case 'ArrowLeft':
+          e.preventDefault();
+          this.callbacks.performAction('archive');
+          return;
+
+        // Command+Down for delete
+        case 'ArrowDown':
+          e.preventDefault();
+          this.callbacks.performAction('delete');
+          return;
+
+        // Command+Up for best
+        case 'ArrowUp':
+          e.preventDefault();
+          this.callbacks.performAction('best_complete');
+          return;
+
+        // Command+Right for save
+        case 'ArrowRight':
+          e.preventDefault();
+          this.callbacks.performAction('saved');
+          return;
+      }
+
+      // Command+A/J for previous image
+      if (e.key.toLowerCase() === 'a' || e.key.toLowerCase() === 'j') {
+        e.preventDefault();
+        this.callbacks.showPrevious();
+        return;
+      }
+
+      // Command+D/L for next image
+      if (e.key.toLowerCase() === 'd' || e.key.toLowerCase() === 'l') {
+        e.preventDefault();
+        this.callbacks.showNext();
+        return;
+      }
+    }
+  }
 
 };
 

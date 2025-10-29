@@ -177,10 +177,10 @@ const CoreEventSetup = {
   }
 };
 
-// Initialize events when DOM is ready
-document.addEventListener('DOMContentLoaded', () => {
-  CoreEventSetup.init();
-});
+// EventManager disabled - restored to original event handling
+// document.addEventListener('DOMContentLoaded', () => {
+//   CoreEventSetup.init();
+// });
 
 // Export globally
 window.CoreEventSetup = CoreEventSetup;
